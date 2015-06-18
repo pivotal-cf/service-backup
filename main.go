@@ -1,29 +1,52 @@
 package main
 
 import (
-	"io/ioutil"
+	"flag"
+	"fmt"
 	"os"
 	"os/exec"
+
+	"github.com/cloudfoundry-incubator/cf-lager"
+	"github.com/pivotal-golang/lager"
 )
 
 func main() {
-	args := os.Args[1:]
+
+	flags := flag.NewFlagSet(os.Args[0], flag.ExitOnError)
+
+	awsCLIBinaryPath := flags.String("aws-cli", "", "Path to AWS CLI")
+	sourceFolder := flags.String("source-folder", "", "Local path to upload from (e.g.: /var/vcap/data)")
+	destFolder := flags.String("dest-folder", "", "Remote path to upload to (e.g.: s3://bucket-name/path/to/loc)")
+	endpointURL := flags.String("endpoint-url", "", "S3 endpoint URL")
+	awsAccessKeyID := flags.String("aws-access-key-id", "", "S3 endpoint URL")
+	awsSecretAccessKey := flags.String("aws-secret-access-key", "", "S3 endpoint URL")
+
+	cf_lager.AddFlags(flags)
+	flags.Parse(os.Args[1:])
+
+	logger, _ := cf_lager.New("ServiceBackup")
+
 	cmd := exec.Command(
-		"/var/vcap/packages/aws-cli/bin/aws",
+		*awsCLIBinaryPath,
 		"s3",
-		"cp",
-		args[0],
-		args[1],
+		"sync",
+		*sourceFolder,
+		*destFolder,
 		"--endpoint-url",
-		args[2],
+		*endpointURL,
 	)
 
-	out, err := cmd.CombinedOutput()
-	if err != nil {
-		_ = ioutil.WriteFile(args[3], []byte(err.Error()), 0644)
+	env := []string{}
+	env = append(env, fmt.Sprintf("AWS_ACCESS_KEY_ID=%s", *awsAccessKeyID))
+	env = append(env, fmt.Sprintf("AWS_SECRET_ACCESS_KEY=%s", *awsSecretAccessKey))
+	cmd.Env = env
 
+	logger.Info("command", lager.Data{"command": cmd})
+
+	out, err := cmd.CombinedOutput()
+	logger.Info("Upload", lager.Data{"out": string(out)})
+	if err != nil {
+		logger.Fatal("", err)
 	}
-	if out != nil {
-		ioutil.WriteFile(args[3], out, 0644)
-	}
+	logger.Info("backup uploaded ok")
 }
