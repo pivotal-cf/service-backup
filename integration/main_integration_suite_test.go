@@ -125,6 +125,8 @@ func beforeSuiteOtherNodes(b []byte) {
 
 var _ = SynchronizedBeforeSuite(beforeSuiteFirstNode, beforeSuiteOtherNodes)
 
-var _ = AfterSuite(func() {
+var _ = SynchronizedAfterSuite(func() {
+	return
+}, func() {
 	gexec.CleanupBuildArtifacts()
 })

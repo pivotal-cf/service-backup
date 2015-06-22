@@ -13,5 +13,5 @@ AWS_SECRET_ACCESS_KEY="${AWS_SECRET_ACCESS_KEY:?}"
 pushd "${BASE_DIR}"
   go get -t -v -d ./...
   go install github.com/onsi/ginkgo/ginkgo
-  ginkgo -r -p -race -randomizeAllSpecs integration/
+  ginkgo -r -p -race -randomizeAllSpecs "$@" integration/
 popd
