@@ -19,6 +19,7 @@ const (
 	awsAccessKeyFlagName     = "aws-access-key-id"
 	awsSecretKeyFlagName     = "aws-secret-access-key"
 	backupCreatorCmdFlagName = "backup-creator-cmd"
+	cleanupCmdFlagName       = "cleanup-cmd"
 )
 
 var (
@@ -34,7 +35,8 @@ func main() {
 	endpointURL := flags.String(endpointURLFlagName, "", "S3 endpoint URL")
 	awsAccessKeyID := flags.String(awsAccessKeyFlagName, "", "AWS access key ID")
 	awsSecretAccessKey := flags.String(awsSecretKeyFlagName, "", "AWS secret access key")
-	backupCreatorCmd := flags.String(backupCreatorCmdFlagName, "", "Path to program for creating backup")
+	backupCreatorCmd := flags.String(backupCreatorCmdFlagName, "", "Command for creating backup")
+	cleanupCmd := flags.String(cleanupCmdFlagName, "", "Command for cleaning backup")
 
 	cf_lager.AddFlags(flags)
 	flags.Parse(os.Args[1:])
@@ -68,10 +70,16 @@ func main() {
 		*awsAccessKeyID,
 		*awsSecretAccessKey,
 		*endpointURL,
-		logger,
 	)
 	if err != nil {
 		logger.Fatal("performBackup", err)
+	}
+
+	err = performCleanup(
+		*cleanupCmd,
+	)
+	if err != nil {
+		logger.Error("Cleanup command failed", err)
 	}
 
 	logger.Info("Backup uploaded successfully.")
@@ -88,17 +96,14 @@ func performBackup(
 ) error {
 
 	args := strings.Split(backupCreatorCmd, " ")
-	backupCmd := exec.Command(args[0], args[1:]...)
+	cmd := exec.Command(args[0], args[1:]...)
 
-	out, err := backupCmd.CombinedOutput()
+	out, err := cmd.CombinedOutput()
 	logger.Debug("performBackup", lager.Data{"cmd": backupCreatorCmd, "out": string(out)})
-	if err != nil {
-		return err
-	}
-	return nil
+
+	return err
 }
 
-//TODO refactor this out into a separate unit-testable package
 func uploadBackup(
 	awsCLIBinaryPath,
 	sourceFolder,
@@ -106,7 +111,6 @@ func uploadBackup(
 	awsAccessKeyID,
 	awsSecretAccessKey,
 	endpointURL string,
-	logger lager.Logger,
 ) error {
 
 	cmd := exec.Command(
@@ -134,4 +138,19 @@ func uploadBackup(
 
 	logger.Info("backup uploaded ok")
 	return nil
+}
+
+func performCleanup(cleanupCmd string) error {
+	if cleanupCmd == "" {
+		logger.Info("Cleanup command not provided")
+		return nil
+	}
+
+	args := strings.Split(cleanupCmd, " ")
+	cmd := exec.Command(args[0], args[1:]...)
+
+	out, err := cmd.CombinedOutput()
+	logger.Debug("performCleanup", lager.Data{"cmd": cleanupCmd, "out": string(out)})
+
+	return err
 }

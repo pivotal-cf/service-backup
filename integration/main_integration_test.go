@@ -22,7 +22,8 @@ func performBackup(
 	sourceFolder,
 	destFolder,
 	endpointURL,
-	backupCreatorCmd string,
+	backupCreatorCmd,
+	cleanupCmd string,
 ) (*gexec.Session, error) {
 
 	backupCmd := exec.Command(
@@ -35,6 +36,7 @@ func performBackup(
 		"--endpoint-url", endpointURL,
 		"--logLevel", "debug",
 		"--backup-creator-cmd", backupCreatorCmd,
+		"--cleanup-cmd", cleanupCmd,
 	)
 
 	return gexec.Start(backupCmd, GinkgoWriter, GinkgoWriter)
@@ -59,6 +61,7 @@ var _ = Describe("Service Backup Binary", func() {
 	var (
 		destFolder       string
 		backupCreatorCmd string
+		cleanupCmd       string
 		fileContents     string
 	)
 
@@ -106,6 +109,11 @@ var _ = Describe("Service Backup Binary", func() {
 				sourceFilePath,
 				fileContents,
 			)
+
+			cleanupCmd = fmt.Sprintf(
+				"rm -rf %s",
+				sourceFolder,
+			)
 		})
 
 		Context("when all required inputs are valid", func() {
@@ -118,7 +126,7 @@ var _ = Describe("Service Backup Binary", func() {
 				Eventually(session, awsTimeout).Should(gexec.Exit(0))
 			})
 
-			It("uploads a directory successfully if the access and secret access keys are defined", func() {
+			It("uploads a directory successfully", func() {
 				By("Uploading the file to the blobstore")
 				session, err := performBackup(
 					awsCLIPath,
@@ -128,6 +136,7 @@ var _ = Describe("Service Backup Binary", func() {
 					destFolder,
 					endpointURL,
 					backupCreatorCmd,
+					cleanupCmd,
 				)
 				Expect(err).ToNot(HaveOccurred())
 				Eventually(session, awsTimeout).Should(gexec.Exit(0))
@@ -152,14 +161,82 @@ var _ = Describe("Service Backup Binary", func() {
 
 				Expect(actualString).To(Equal(fileContents))
 			})
+
+			Context("when cleanup-cmd is provided", func() {
+				Context("when the cleanup command fails with non-zero exit code", func() {
+					const failingCleanupCmd = "ls /not/a/valid/directory"
+
+					It("logs and exits without error", func() {
+						session, err := performBackup(
+							awsCLIPath,
+							awsAccessKeyID,
+							awsSecretAccessKey,
+							sourceFolder,
+							destFolder,
+							endpointURL,
+							backupCreatorCmd,
+							failingCleanupCmd,
+						)
+
+						Expect(err).ToNot(HaveOccurred())
+						Eventually(session, awsTimeout).Should(gexec.Exit(0))
+						Eventually(session.Out).Should(gbytes.Say("Cleanup command failed"))
+					})
+				})
+
+				Context("when the cleanup command is valid", func() {
+					It("executes the cleanup command and returns without error", func() {
+						By("Uploading the file to the blobstore")
+						session, err := performBackup(
+							awsCLIPath,
+							awsAccessKeyID,
+							awsSecretAccessKey,
+							sourceFolder,
+							destFolder,
+							endpointURL,
+							backupCreatorCmd,
+							cleanupCmd,
+						)
+						Expect(err).ToNot(HaveOccurred())
+						Eventually(session, awsTimeout).Should(gexec.Exit(0))
+
+						By("Validating that the source directory is deleted")
+						_, err = os.Stat(sourceFolder)
+						Expect(err).To(HaveOccurred())
+						Expect(os.IsNotExist(err)).To(BeTrue())
+					})
+				})
+			})
+
+			Context("when cleanup-cmd is not provided", func() {
+				const emptyCleanupCmd = ""
+
+				It("logs and exits without error", func() {
+					session, err := performBackup(
+						awsCLIPath,
+						awsAccessKeyID,
+						awsSecretAccessKey,
+						sourceFolder,
+						destFolder,
+						endpointURL,
+						backupCreatorCmd,
+						emptyCleanupCmd,
+					)
+
+					Expect(err).ToNot(HaveOccurred())
+					Eventually(session, awsTimeout).Should(gexec.Exit(0))
+					Eventually(session.Out).Should(gbytes.Say("Cleanup command not provided"))
+				})
+			})
+
 		})
 
 		Context("when credentials are invalid", func() {
-
 			const (
 				invalidAwsAccessKeyID     = "invalid-access-key-id"
 				invalidAwsSecretAccessKey = "invalid-secret-access-key"
 			)
+
 			It("fails to upload a directory", func() {
 				By("Trying to upload the file to the blobstore")
 				session, err := performBackup(
@@ -170,6 +247,7 @@ var _ = Describe("Service Backup Binary", func() {
 					destFolder,
 					endpointURL,
 					backupCreatorCmd,
+					cleanupCmd,
 				)
 				Expect(err).ToNot(HaveOccurred())
 				Eventually(session, awsTimeout).Should(gexec.Exit(2))
@@ -182,8 +260,8 @@ var _ = Describe("Service Backup Binary", func() {
 		})
 
 		Context("when the AWS CLI path flag is not provided", func() {
-
 			const invalidAWSCLIPath = ""
+
 			It("gracefully fails to perform the upload", func() {
 				session, err := performBackup(
 					invalidAWSCLIPath,
@@ -193,6 +271,7 @@ var _ = Describe("Service Backup Binary", func() {
 					destFolder,
 					endpointURL,
 					backupCreatorCmd,
+					cleanupCmd,
 				)
 
 				Expect(err).ToNot(HaveOccurred())
@@ -202,8 +281,8 @@ var _ = Describe("Service Backup Binary", func() {
 		})
 
 		Context("when the source folder flag is not provided", func() {
-
 			const invalidSourceFolder = ""
+
 			It("gracefully fails to perform the upload", func() {
 				session, err := performBackup(
 					awsCLIPath,
@@ -213,6 +292,7 @@ var _ = Describe("Service Backup Binary", func() {
 					destFolder,
 					endpointURL,
 					backupCreatorCmd,
+					cleanupCmd,
 				)
 
 				Expect(err).ToNot(HaveOccurred())
@@ -223,6 +303,7 @@ var _ = Describe("Service Backup Binary", func() {
 
 		Context("when the destination folder flag is not provided", func() {
 			const emptyDestFolder = ""
+
 			It("gracefully fails to perform the upload", func() {
 				session, err := performBackup(
 					awsCLIPath,
@@ -232,6 +313,7 @@ var _ = Describe("Service Backup Binary", func() {
 					emptyDestFolder,
 					endpointURL,
 					backupCreatorCmd,
+					cleanupCmd,
 				)
 
 				Expect(err).ToNot(HaveOccurred())
@@ -242,6 +324,7 @@ var _ = Describe("Service Backup Binary", func() {
 
 		Context("when the endpoint URL flag is not provided", func() {
 			const emptyEndpointURL = ""
+
 			It("gracefully fails to perform the upload", func() {
 				session, err := performBackup(
 					awsCLIPath,
@@ -251,6 +334,7 @@ var _ = Describe("Service Backup Binary", func() {
 					destFolder,
 					emptyEndpointURL,
 					backupCreatorCmd,
+					cleanupCmd,
 				)
 
 				Expect(err).ToNot(HaveOccurred())
@@ -259,8 +343,9 @@ var _ = Describe("Service Backup Binary", func() {
 			})
 		})
 
-		Context("when backup-creator-binary is not provided", func() {
-			const invalidBackupCreatorBinaryPath = ""
+		Context("when backup-creator-cmd is not provided", func() {
+			const invalidBackupCreatorCmd = ""
+
 			It("gracefully fails to perform the upload", func() {
 				session, err := performBackup(
 					awsCLIPath,
@@ -269,7 +354,8 @@ var _ = Describe("Service Backup Binary", func() {
 					sourceFolder,
 					destFolder,
 					endpointURL,
-					invalidBackupCreatorBinaryPath,
+					invalidBackupCreatorCmd,
+					cleanupCmd,
 				)
 
 				Expect(err).ToNot(HaveOccurred())
@@ -290,6 +376,7 @@ var _ = Describe("Service Backup Binary", func() {
 					destFolder,
 					endpointURL,
 					failingBackupCreatorCmd,
+					cleanupCmd,
 				)
 
 				Expect(err).ToNot(HaveOccurred())
@@ -300,7 +387,6 @@ var _ = Describe("Service Backup Binary", func() {
 	})
 
 	Context("when credentials are not provided", func() {
-
 		const (
 			emptyAWSAccessKeyID     = ""
 			emptyAWSSecretAccessKey = ""
@@ -316,6 +402,7 @@ var _ = Describe("Service Backup Binary", func() {
 				destFolder,
 				endpointURL,
 				backupCreatorCmd,
+				cleanupCmd,
 			)
 
 			Expect(err).ToNot(HaveOccurred())
@@ -331,6 +418,7 @@ var _ = Describe("Service Backup Binary", func() {
 				destFolder,
 				endpointURL,
 				backupCreatorCmd,
+				cleanupCmd,
 			)
 
 			Expect(err).ToNot(HaveOccurred())
