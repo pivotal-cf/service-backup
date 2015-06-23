@@ -5,18 +5,20 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"strings"
 
 	"github.com/cloudfoundry-incubator/cf-lager"
 	"github.com/pivotal-golang/lager"
 )
 
 const (
-	awsCLIFlagName       = "aws-cli"
-	sourceFolderFlagName = "source-folder"
-	destFolderFlagName   = "dest-folder"
-	endpointURLFlagName  = "endpoint-url"
-	awsAccessKeyFlagName = "aws-access-key-id"
-	awsSecretKeyFlagName = "aws-secret-access-key"
+	awsCLIFlagName           = "aws-cli"
+	sourceFolderFlagName     = "source-folder"
+	destFolderFlagName       = "dest-folder"
+	endpointURLFlagName      = "endpoint-url"
+	awsAccessKeyFlagName     = "aws-access-key-id"
+	awsSecretKeyFlagName     = "aws-secret-access-key"
+	backupCreatorCmdFlagName = "backup-creator-cmd"
 )
 
 var (
@@ -32,6 +34,7 @@ func main() {
 	endpointURL := flags.String(endpointURLFlagName, "", "S3 endpoint URL")
 	awsAccessKeyID := flags.String(awsAccessKeyFlagName, "", "AWS access key ID")
 	awsSecretAccessKey := flags.String(awsSecretKeyFlagName, "", "AWS secret access key")
+	backupCreatorCmd := flags.String(backupCreatorCmdFlagName, "", "Path to program for creating backup")
 
 	cf_lager.AddFlags(flags)
 	flags.Parse(os.Args[1:])
@@ -49,8 +52,16 @@ func main() {
 	validateFlag(sourceFolder, sourceFolderFlagName)
 	validateFlag(destFolder, destFolderFlagName)
 	validateFlag(endpointURL, endpointURLFlagName)
+	validateFlag(backupCreatorCmd, backupCreatorCmdFlagName)
 
 	err := performBackup(
+		*backupCreatorCmd,
+	)
+	if err != nil {
+		logger.Fatal("performBackup", err)
+	}
+
+	err = uploadBackup(
 		*awsCLIBinaryPath,
 		*sourceFolder,
 		*destFolder,
@@ -72,8 +83,23 @@ func validateFlag(value *string, flagName string) {
 	}
 }
 
-//TODO refactor this out into a separate unit-testable package
 func performBackup(
+	backupCreatorCmd string,
+) error {
+
+	args := strings.Split(backupCreatorCmd, " ")
+	backupCmd := exec.Command(args[0], args[1:]...)
+
+	out, err := backupCmd.CombinedOutput()
+	logger.Debug("performBackup", lager.Data{"cmd": backupCreatorCmd, "out": string(out)})
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+//TODO refactor this out into a separate unit-testable package
+func uploadBackup(
 	awsCLIBinaryPath,
 	sourceFolder,
 	destFolder,
@@ -98,10 +124,10 @@ func performBackup(
 	env = append(env, fmt.Sprintf("AWS_SECRET_ACCESS_KEY=%s", awsSecretAccessKey))
 	cmd.Env = env
 
-	logger.Info("performBackup", lager.Data{"command": cmd})
+	logger.Info("uploadBackup", lager.Data{"command": cmd})
 
 	out, err := cmd.CombinedOutput()
-	logger.Debug("performBackup", lager.Data{"out": string(out)})
+	logger.Debug("uploadBackup", lager.Data{"out": string(out)})
 	if err != nil {
 		return err
 	}

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -130,3 +131,9 @@ var _ = SynchronizedAfterSuite(func() {
 }, func() {
 	gexec.CleanupBuildArtifacts()
 })
+
+func assetPath(filename string) string {
+	path, err := filepath.Abs(filepath.Join("assets", filename))
+	Expect(err).ToNot(HaveOccurred())
+	return path
+}

@@ -1,0 +1,6 @@
+#!/bin/bash
+
+FILE_NAME=${1:?}
+CONTENTS=${2:?}
+
+echo -n "${CONTENTS}" > "${FILE_NAME}"

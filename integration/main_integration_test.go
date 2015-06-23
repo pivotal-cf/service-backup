@@ -21,7 +21,8 @@ func performBackup(
 	awsSecretAccessKey,
 	sourceFolder,
 	destFolder,
-	endpointURL string,
+	endpointURL,
+	backupCreatorCmd string,
 ) (*gexec.Session, error) {
 
 	backupCmd := exec.Command(
@@ -33,6 +34,7 @@ func performBackup(
 		"--dest-folder", destFolder,
 		"--endpoint-url", endpointURL,
 		"--logLevel", "debug",
+		"--backup-creator-cmd", backupCreatorCmd,
 	)
 
 	return gexec.Start(backupCmd, GinkgoWriter, GinkgoWriter)
@@ -54,7 +56,11 @@ func deleteBackup(sourceFilePath string) (*gexec.Session, error) {
 }
 
 var _ = Describe("Service Backup Binary", func() {
-	var destFolder string
+	var (
+		destFolder       string
+		backupCreatorCmd string
+		fileContents     string
+	)
 
 	BeforeEach(func() {
 		destPath, err := uuid.NewV4()
@@ -76,10 +82,6 @@ var _ = Describe("Service Backup Binary", func() {
 			Expect(err).ToNot(HaveOccurred())
 
 			sourceFile, err := ioutil.TempFile(sourceFolder, "temp-file.txt")
-			defer sourceFile.Close()
-			Expect(err).ToNot(HaveOccurred())
-
-			_, err = sourceFile.WriteString("hi")
 			Expect(err).ToNot(HaveOccurred())
 
 			return sourceFile.Name()
@@ -93,9 +95,20 @@ var _ = Describe("Service Backup Binary", func() {
 		BeforeEach(func() {
 			sourceFilePath := createFileToUpload()
 			sourceFileName = getFilenameFromPath(sourceFilePath)
+
+			fileContentsUUID, err := uuid.NewV4()
+			Expect(err).ToNot(HaveOccurred())
+			fileContents = fileContentsUUID.String()
+
+			backupCreatorCmd = fmt.Sprintf(
+				"%s %s %s",
+				assetPath("create-fake-backup"),
+				sourceFilePath,
+				fileContents,
+			)
 		})
 
-		Context("when credentials are valid", func() {
+		Context("when all required inputs are valid", func() {
 
 			AfterEach(func() {
 				_ = os.Remove(sourceFolder)
@@ -114,38 +127,50 @@ var _ = Describe("Service Backup Binary", func() {
 					sourceFolder,
 					destFolder,
 					endpointURL,
+					backupCreatorCmd,
 				)
 				Expect(err).ToNot(HaveOccurred())
 				Eventually(session, awsTimeout).Should(gexec.Exit(0))
 
 				targetFilePath := filepath.Join(sourceFolder, "downloaded_file")
-				sourceFilePath := filepath.Join(sourceFolder, sourceFileName)
 
 				By("Downloading the uploaded file from the blobstore")
 				verifySession, err := downloadBackup(destFolder+"/"+sourceFileName, targetFilePath)
 				Expect(err).ToNot(HaveOccurred())
 				Eventually(verifySession, awsTimeout).Should(gexec.Exit(0))
 
-				By("Comparing the downloaded file against the source")
+				By("Validating the contents of the downloaded file")
 				downloadedFile, err := os.Open(targetFilePath)
 				Expect(err).ToNot(HaveOccurred())
 				defer downloadedFile.Close()
 
-				sourceFile, err := os.Open(sourceFilePath)
-				Expect(err).ToNot(HaveOccurred())
-				defer sourceFile.Close()
-
-				actualData := make([]byte, 100)
-				_, err = sourceFile.Read(actualData)
+				actualData := make([]byte, len(fileContents))
+				_, err = downloadedFile.Read(actualData)
 				Expect(err).ToNot(HaveOccurred())
 
-				expectedData := make([]byte, 100)
-				_, err = downloadedFile.Read(expectedData)
-				Expect(err).ToNot(HaveOccurred())
+				actualString := string(actualData)
 
-				Expect(actualData).To(Equal(expectedData))
+				Expect(actualString).To(Equal(fileContents))
 			})
+		})
 
+		Context("when backup-creator-binary is not provided", func() {
+			const invalidBackupCreatorBinaryPath = ""
+			It("gracefully fails to perform the upload", func() {
+				session, err := performBackup(
+					awsCLIPath,
+					awsAccessKeyID,
+					awsSecretAccessKey,
+					sourceFolder,
+					destFolder,
+					endpointURL,
+					invalidBackupCreatorBinaryPath,
+				)
+
+				Expect(err).ToNot(HaveOccurred())
+				Eventually(session, awsTimeout).Should(gexec.Exit(2))
+				Eventually(session.Out).Should(gbytes.Say("Flag backup-creator-cmd not provided"))
+			})
 		})
 
 		Context("when credentials are invalid", func() {
@@ -163,6 +188,7 @@ var _ = Describe("Service Backup Binary", func() {
 					sourceFolder,
 					destFolder,
 					endpointURL,
+					backupCreatorCmd,
 				)
 				Expect(err).ToNot(HaveOccurred())
 				Eventually(session, awsTimeout).Should(gexec.Exit(2))
@@ -185,6 +211,7 @@ var _ = Describe("Service Backup Binary", func() {
 					sourceFolder,
 					destFolder,
 					endpointURL,
+					backupCreatorCmd,
 				)
 
 				Expect(err).ToNot(HaveOccurred())
@@ -204,6 +231,7 @@ var _ = Describe("Service Backup Binary", func() {
 					invalidSourceFolder,
 					destFolder,
 					endpointURL,
+					backupCreatorCmd,
 				)
 
 				Expect(err).ToNot(HaveOccurred())
@@ -222,6 +250,7 @@ var _ = Describe("Service Backup Binary", func() {
 					sourceFolder,
 					emptyDestFolder,
 					endpointURL,
+					backupCreatorCmd,
 				)
 
 				Expect(err).ToNot(HaveOccurred())
@@ -240,6 +269,7 @@ var _ = Describe("Service Backup Binary", func() {
 					sourceFolder,
 					destFolder,
 					emptyEndpointURL,
+					backupCreatorCmd,
 				)
 
 				Expect(err).ToNot(HaveOccurred())
@@ -265,6 +295,7 @@ var _ = Describe("Service Backup Binary", func() {
 				sourceFolder,
 				destFolder,
 				endpointURL,
+				backupCreatorCmd,
 			)
 
 			Expect(err).ToNot(HaveOccurred())
@@ -279,6 +310,7 @@ var _ = Describe("Service Backup Binary", func() {
 				sourceFolder,
 				destFolder,
 				endpointURL,
+				backupCreatorCmd,
 			)
 
 			Expect(err).ToNot(HaveOccurred())
