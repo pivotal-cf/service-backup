@@ -58,7 +58,7 @@ func main() {
 		*backupCreatorCmd,
 	)
 	if err != nil {
-		logger.Fatal("performBackup", err)
+		logger.Fatal("Backup creator command failed", err)
 	}
 
 	err = uploadBackup(

@@ -277,6 +277,26 @@ var _ = Describe("Service Backup Binary", func() {
 				Eventually(session.Out).Should(gbytes.Say("Flag endpoint-url not provided"))
 			})
 		})
+
+		Context("when the backup creation command fails with non-zero exit code", func() {
+			const failingBackupCreatorCmd = "ls /not/a/valid/directory"
+
+			It("gracefully fails to perform the upload", func() {
+				session, err := performBackup(
+					awsCLIPath,
+					awsAccessKeyID,
+					awsSecretAccessKey,
+					sourceFolder,
+					destFolder,
+					endpointURL,
+					failingBackupCreatorCmd,
+				)
+
+				Expect(err).ToNot(HaveOccurred())
+				Eventually(session, awsTimeout).Should(gexec.Exit(2))
+				Eventually(session.Out).Should(gbytes.Say("Backup creator command failed"))
+			})
+		})
 	})
 
 	Context("when credentials are not provided", func() {
