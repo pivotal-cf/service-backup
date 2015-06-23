@@ -154,25 +154,6 @@ var _ = Describe("Service Backup Binary", func() {
 			})
 		})
 
-		Context("when backup-creator-binary is not provided", func() {
-			const invalidBackupCreatorBinaryPath = ""
-			It("gracefully fails to perform the upload", func() {
-				session, err := performBackup(
-					awsCLIPath,
-					awsAccessKeyID,
-					awsSecretAccessKey,
-					sourceFolder,
-					destFolder,
-					endpointURL,
-					invalidBackupCreatorBinaryPath,
-				)
-
-				Expect(err).ToNot(HaveOccurred())
-				Eventually(session, awsTimeout).Should(gexec.Exit(2))
-				Eventually(session.Out).Should(gbytes.Say("Flag backup-creator-cmd not provided"))
-			})
-		})
-
 		Context("when credentials are invalid", func() {
 
 			const (
@@ -275,6 +256,25 @@ var _ = Describe("Service Backup Binary", func() {
 				Expect(err).ToNot(HaveOccurred())
 				Eventually(session, awsTimeout).Should(gexec.Exit(2))
 				Eventually(session.Out).Should(gbytes.Say("Flag endpoint-url not provided"))
+			})
+		})
+
+		Context("when backup-creator-binary is not provided", func() {
+			const invalidBackupCreatorBinaryPath = ""
+			It("gracefully fails to perform the upload", func() {
+				session, err := performBackup(
+					awsCLIPath,
+					awsAccessKeyID,
+					awsSecretAccessKey,
+					sourceFolder,
+					destFolder,
+					endpointURL,
+					invalidBackupCreatorBinaryPath,
+				)
+
+				Expect(err).ToNot(HaveOccurred())
+				Eventually(session, awsTimeout).Should(gexec.Exit(2))
+				Eventually(session.Out).Should(gbytes.Say("Flag backup-creator-cmd not provided"))
 			})
 		})
 
