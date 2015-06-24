@@ -49,13 +49,20 @@ func NewExecutor(
 }
 
 func (b *backup) performBackup() error {
+	b.logger.Info("Perform backup started")
 	args := strings.Split(b.backupCreatorCmd, " ")
 	cmd := exec.Command(args[0], args[1:]...)
 
 	out, err := cmd.CombinedOutput()
-	b.logger.Debug("performBackup", lager.Data{"cmd": b.backupCreatorCmd, "out": string(out)})
+	b.logger.Debug("Perform backup debug info", lager.Data{"cmd": b.backupCreatorCmd, "out": string(out)})
 
-	return err
+	if err != nil {
+		b.logger.Error("Perform backup completed with error", err)
+		return err
+	}
+
+	b.logger.Info("Perform backup completed without error")
+	return nil
 }
 
 func (b *backup) performCleanup() error {
@@ -63,22 +70,25 @@ func (b *backup) performCleanup() error {
 		b.logger.Info("Cleanup command not provided")
 		return nil
 	}
+	b.logger.Info("Cleanup started")
 
 	args := strings.Split(b.cleanupCmd, " ")
 	cmd := exec.Command(args[0], args[1:]...)
 
 	out, err := cmd.CombinedOutput()
-	b.logger.Debug("performCleanup", lager.Data{"cmd": b.cleanupCmd, "out": string(out)})
+	b.logger.Debug("Perform cleanup debug info", lager.Data{"cmd": b.cleanupCmd, "out": string(out)})
 
 	if err != nil {
+		b.logger.Error("Cleanup completed with error", err)
 		return err
 	}
 
-	b.logger.Info("Cleanup command successful")
+	b.logger.Info("Cleanup completed without error")
 	return nil
 }
 
 func (b *backup) uploadBackup() error {
+	b.logger.Info("Upload backup started")
 	cmd := exec.Command(
 		b.awsCLIBinaryPath,
 		"s3",
@@ -89,40 +99,35 @@ func (b *backup) uploadBackup() error {
 		b.endpointURL,
 	)
 
-	env := []string{}
-	env = append(env, fmt.Sprintf("AWS_ACCESS_KEY_ID=%s", b.awsAccessKeyID))
-	env = append(env, fmt.Sprintf("AWS_SECRET_ACCESS_KEY=%s", b.awsSecretAccessKey))
-	cmd.Env = env
+	cmd.Env = []string{}
+	cmd.Env = append(cmd.Env, fmt.Sprintf("AWS_ACCESS_KEY_ID=%s", b.awsAccessKeyID))
 
-	b.logger.Info("uploadBackup", lager.Data{"command": cmd})
+	b.logger.Debug("Upload backup debug info", lager.Data{"command": cmd})
+	cmd.Env = append(cmd.Env, fmt.Sprintf("AWS_SECRET_ACCESS_KEY=%s", b.awsSecretAccessKey))
 
 	out, err := cmd.CombinedOutput()
-	b.logger.Debug("uploadBackup", lager.Data{"out": string(out)})
+	b.logger.Debug("Upload backup debug output", lager.Data{"out": string(out)})
 	if err != nil {
+		b.logger.Error("Upload backup completed with error", err)
 		return err
 	}
 
-	b.logger.Info("backup uploaded ok")
+	b.logger.Info("Upload backup completed without error")
 	return nil
 }
 
 func (b *backup) RunOnce() error {
 	err := b.performBackup()
 	if err != nil {
-		b.logger.Error("Backup creator command failed", err)
 		return err
 	}
 
 	err = b.uploadBackup()
 	if err != nil {
-		b.logger.Error("Backup upload failed", err)
 		return err
 	}
 
-	err = b.performCleanup()
-	if err != nil {
-		b.logger.Error("Cleanup command failed", err)
-		// Do not return error if cleanup command failed.
-	}
+	// Do not return error if cleanup command failed.
+	_ = b.performCleanup()
 	return nil
 }
