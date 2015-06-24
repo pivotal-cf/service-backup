@@ -76,7 +76,7 @@ func (b *backup) performCleanup() error {
 	cmd := exec.Command(args[0], args[1:]...)
 
 	out, err := cmd.CombinedOutput()
-	b.logger.Debug("Perform cleanup debug info", lager.Data{"cmd": b.cleanupCmd, "out": string(out)})
+	b.logger.Debug("Cleanup debug info", lager.Data{"cmd": b.cleanupCmd, "out": string(out)})
 
 	if err != nil {
 		b.logger.Error("Cleanup completed with error", err)

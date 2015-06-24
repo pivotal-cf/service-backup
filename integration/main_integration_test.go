@@ -142,7 +142,7 @@ var _ = Describe("Service Backup Binary", func() {
 					cronSchedule,
 				)
 				Expect(err).ToNot(HaveOccurred())
-				Eventually(session.Out, awsTimeout).Should(gbytes.Say("backup uploaded"))
+				Eventually(session.Out, awsTimeout).Should(gbytes.Say("Cleanup completed"))
 
 				session.Terminate().Wait()
 				Eventually(session).Should(gexec.Exit())
@@ -186,7 +186,7 @@ var _ = Describe("Service Backup Binary", func() {
 						)
 
 						Expect(err).ToNot(HaveOccurred())
-						Eventually(session.Out, awsTimeout).Should(gbytes.Say("Cleanup command failed"))
+						Eventually(session.Out, awsTimeout).Should(gbytes.Say("Cleanup completed with error"))
 						session.Terminate().Wait()
 						Eventually(session).Should(gexec.Exit())
 					})
@@ -207,7 +207,7 @@ var _ = Describe("Service Backup Binary", func() {
 							cronSchedule,
 						)
 						Expect(err).ToNot(HaveOccurred())
-						Eventually(session.Out, awsTimeout).Should(gbytes.Say("Cleanup command successful"))
+						Eventually(session.Out, awsTimeout).Should(gbytes.Say("Cleanup completed without error"))
 						session.Terminate().Wait()
 						Eventually(session).Should(gexec.Exit())
 
@@ -399,7 +399,7 @@ var _ = Describe("Service Backup Binary", func() {
 					cronSchedule,
 				)
 				Expect(err).ToNot(HaveOccurred())
-				Eventually(session.Out).Should(gbytes.Say("Backup creator command failed"))
+				Eventually(session.Out).Should(gbytes.Say("Perform backup completed with error"))
 				session.Terminate().Wait()
 				Eventually(session).Should(gexec.Exit())
 			})
