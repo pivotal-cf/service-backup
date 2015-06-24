@@ -119,53 +119,110 @@ var _ = Describe("Service Backup Binary", func() {
 		})
 
 		Context("when all required inputs are valid", func() {
-
 			AfterEach(func() {
 				_ = os.Remove(sourceFolder)
-				session, err := deleteBackup(destFolder + "/" + sourceFileName)
-
-				Expect(err).ToNot(HaveOccurred())
-				Eventually(session, awsTimeout).Should(gexec.Exit(0))
 			})
 
-			It("uploads a directory successfully", func() {
-				By("Uploading the file to the blobstore")
-				session, err := performBackup(
-					awsCLIPath,
-					awsAccessKeyID,
-					awsSecretAccessKey,
-					sourceFolder,
-					destFolder,
-					endpointURL,
-					backupCreatorCmd,
-					cleanupCmd,
-					cronSchedule,
-				)
-				Expect(err).ToNot(HaveOccurred())
-				Eventually(session.Out, awsTimeout).Should(gbytes.Say("Cleanup completed"))
+			Context("when the bucket already exists", func() {
+				AfterEach(func() {
+					session, err := deleteBackup(destFolder + "/" + sourceFileName)
+					Expect(err).ToNot(HaveOccurred())
+					Eventually(session, awsTimeout).Should(gexec.Exit(0))
+				})
 
-				session.Terminate().Wait()
-				Eventually(session).Should(gexec.Exit())
+				It("uploads a directory successfully", func() {
+					By("Uploading the file to the blobstore")
+					session, err := performBackup(
+						awsCLIPath,
+						awsAccessKeyID,
+						awsSecretAccessKey,
+						sourceFolder,
+						destFolder,
+						endpointURL,
+						backupCreatorCmd,
+						cleanupCmd,
+						cronSchedule,
+					)
+					Expect(err).ToNot(HaveOccurred())
+					Eventually(session.Out, awsTimeout).Should(gbytes.Say("Cleanup completed"))
 
-				targetFilePath := filepath.Join(sourceFolder, "downloaded_file")
+					session.Terminate().Wait()
+					Eventually(session).Should(gexec.Exit())
 
-				By("Downloading the uploaded file from the blobstore")
-				verifySession, err := downloadBackup(destFolder+"/"+sourceFileName, targetFilePath)
-				Expect(err).ToNot(HaveOccurred())
-				Eventually(verifySession, awsTimeout).Should(gexec.Exit(0))
+					targetFilePath := filepath.Join(sourceFolder, "downloaded_file")
 
-				By("Validating the contents of the downloaded file")
-				downloadedFile, err := os.Open(targetFilePath)
-				Expect(err).ToNot(HaveOccurred())
-				defer downloadedFile.Close()
+					By("Downloading the uploaded file from the blobstore")
+					verifySession, err := downloadBackup(destFolder+"/"+sourceFileName, targetFilePath)
+					Expect(err).ToNot(HaveOccurred())
+					Eventually(verifySession, awsTimeout).Should(gexec.Exit(0))
 
-				actualData := make([]byte, len(fileContents))
-				_, err = downloadedFile.Read(actualData)
-				Expect(err).ToNot(HaveOccurred())
+					By("Validating the contents of the downloaded file")
+					downloadedFile, err := os.Open(targetFilePath)
+					Expect(err).ToNot(HaveOccurred())
+					defer downloadedFile.Close()
 
-				actualString := string(actualData)
+					actualData := make([]byte, len(fileContents))
+					_, err = downloadedFile.Read(actualData)
+					Expect(err).ToNot(HaveOccurred())
 
-				Expect(actualString).To(Equal(fileContents))
+					actualString := string(actualData)
+
+					Expect(actualString).To(Equal(fileContents))
+				})
+			})
+
+			Context("when the bucket does not already exist", func() {
+				var newBucketName string
+				var strippedUUID string
+
+				BeforeEach(func() {
+					bucketUUID, err := uuid.NewV4()
+					Expect(err).ToNot(HaveOccurred())
+					strippedUUID = bucketUUID.String()
+					strippedUUID = strippedUUID[:10]
+					newBucketName = bucketName + strippedUUID
+
+					destFolder = fmt.Sprintf("s3://%s/%s", newBucketName, strippedUUID)
+				})
+
+				AfterEach(func() {
+					session, err := runS3Command(
+						"rb",
+						"s3://"+newBucketName,
+						"--force",
+					)
+					Expect(err).ToNot(HaveOccurred())
+					Eventually(session, awsTimeout).Should(gexec.Exit(0))
+					Eventually(session.Out).Should(gbytes.Say("remove_bucket: s3://" + newBucketName))
+				})
+
+				It("makes the bucket", func() {
+					By("Uploading the file to the blobstore")
+					session, err := performBackup(
+						awsCLIPath,
+						awsAccessKeyID,
+						awsSecretAccessKey,
+						sourceFolder,
+						destFolder,
+						endpointURL,
+						backupCreatorCmd,
+						cleanupCmd,
+						cronSchedule,
+					)
+					Expect(err).ToNot(HaveOccurred())
+					Eventually(session.Out, awsTimeout).Should(gbytes.Say("Cleanup completed"))
+
+					session.Terminate().Wait()
+					Eventually(session).Should(gexec.Exit())
+
+					session, err = runS3Command(
+						"ls",
+						"s3://"+newBucketName,
+					)
+					Expect(err).ToNot(HaveOccurred())
+					Eventually(session, awsTimeout).Should(gexec.Exit(0))
+					Eventually(session.Out).Should(gbytes.Say(strippedUUID))
+				})
 			})
 
 			Context("when cleanup-cmd is provided", func() {
@@ -399,7 +456,7 @@ var _ = Describe("Service Backup Binary", func() {
 					cronSchedule,
 				)
 				Expect(err).ToNot(HaveOccurred())
-				Eventually(session.Out).Should(gbytes.Say("Perform backup completed with error"))
+				Eventually(session.Out, awsTimeout).Should(gbytes.Say("Perform backup completed with error"))
 				session.Terminate().Wait()
 				Eventually(session).Should(gexec.Exit())
 			})

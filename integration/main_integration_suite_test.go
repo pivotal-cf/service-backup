@@ -20,11 +20,11 @@ const (
 	awsSecretAccessKeyEnvKey = "AWS_SECRET_ACCESS_KEY"
 
 	bucketName = "service-backup-integration-test"
-	awsTimeout = "10s"
+	awsTimeout = "20s"
 
 	awsCLIPath   = "aws"
 	endpointURL  = "https://s3.amazonaws.com"
-	cronSchedule = "* * * * * *" // every second of every minute of every day etc
+	cronSchedule = "*/5 * * * * *" // every 5 seconds of every minute of every day etc
 )
 
 var (

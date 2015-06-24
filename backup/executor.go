@@ -48,6 +48,83 @@ func NewExecutor(
 	}
 }
 
+func (b *backup) RunOnce() error {
+	err := b.createBucketIfNeeded()
+	if err != nil {
+		return err
+	}
+
+	err = b.performBackup()
+	if err != nil {
+		return err
+	}
+
+	err = b.uploadBackup()
+	if err != nil {
+		return err
+	}
+
+	// Do not return error if cleanup command failed.
+	_ = b.performCleanup()
+	return nil
+}
+
+func (b *backup) createBucketIfNeeded() error {
+	// TODO: Pass in the bucket name as a separate arg
+	bucketNameSplit := strings.Split(b.destFolder, "/")
+	bucketName := bucketNameSplit[2] // s3://bucket-name/some/path/
+
+	b.logger.Info("Checking for bucket", lager.Data{"bucketName": bucketName})
+	cmd := exec.Command(
+		b.awsCLIBinaryPath,
+		"s3",
+		"ls",
+		"--region",
+		"us-east-1",
+		bucketName,
+	)
+
+	cmd.Env = []string{}
+	cmd.Env = append(cmd.Env, fmt.Sprintf("AWS_ACCESS_KEY_ID=%s", b.awsAccessKeyID))
+	cmd.Env = append(cmd.Env, fmt.Sprintf("AWS_SECRET_ACCESS_KEY=%s", b.awsSecretAccessKey))
+
+	out, err := cmd.CombinedOutput()
+	if err == nil {
+		b.logger.Info("Checking for bucket - bucket exists")
+		return nil
+	}
+
+	errOut := string(out)
+
+	if !strings.Contains(errOut, "NoSuchBucket") {
+		b.logger.Error("Checking for bucket - unable to list bucket", err, lager.Data{"bucketName": bucketName})
+		return err
+	}
+
+	b.logger.Info("Checking for bucket - bucket does not exist - making it now")
+	cmd = exec.Command(
+		b.awsCLIBinaryPath,
+		"s3",
+		"mb",
+		"--region",
+		"us-east-1",
+		"s3://"+bucketName,
+	)
+
+	cmd.Env = []string{}
+	cmd.Env = append(cmd.Env, fmt.Sprintf("AWS_ACCESS_KEY_ID=%s", b.awsAccessKeyID))
+	cmd.Env = append(cmd.Env, fmt.Sprintf("AWS_SECRET_ACCESS_KEY=%s", b.awsSecretAccessKey))
+
+	out, err = cmd.CombinedOutput()
+
+	if err != nil {
+		b.logger.Error("Checking for bucket - Unable to create bucket", err, lager.Data{"bucketName": bucketName, "out": string(out)})
+		return err
+	}
+	b.logger.Info("Checking for bucket - bucket created ok")
+	return nil
+}
+
 func (b *backup) performBackup() error {
 	b.logger.Info("Perform backup started")
 	args := strings.Split(b.backupCreatorCmd, " ")
@@ -113,21 +190,5 @@ func (b *backup) uploadBackup() error {
 	}
 
 	b.logger.Info("Upload backup completed without error")
-	return nil
-}
-
-func (b *backup) RunOnce() error {
-	err := b.performBackup()
-	if err != nil {
-		return err
-	}
-
-	err = b.uploadBackup()
-	if err != nil {
-		return err
-	}
-
-	// Do not return error if cleanup command failed.
-	_ = b.performCleanup()
 	return nil
 }
