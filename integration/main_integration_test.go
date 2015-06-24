@@ -23,7 +23,8 @@ func performBackup(
 	destFolder,
 	endpointURL,
 	backupCreatorCmd,
-	cleanupCmd string,
+	cleanupCmd,
+	cronSchedule string,
 ) (*gexec.Session, error) {
 
 	backupCmd := exec.Command(
@@ -37,6 +38,7 @@ func performBackup(
 		"--logLevel", "debug",
 		"--backup-creator-cmd", backupCreatorCmd,
 		"--cleanup-cmd", cleanupCmd,
+		"--cron-schedule", cronSchedule,
 	)
 
 	return gexec.Start(backupCmd, GinkgoWriter, GinkgoWriter)
@@ -137,9 +139,13 @@ var _ = Describe("Service Backup Binary", func() {
 					endpointURL,
 					backupCreatorCmd,
 					cleanupCmd,
+					cronSchedule,
 				)
 				Expect(err).ToNot(HaveOccurred())
-				Eventually(session, awsTimeout).Should(gexec.Exit(0))
+				Eventually(session.Out, awsTimeout).Should(gbytes.Say("backup uploaded"))
+
+				session.Terminate().Wait()
+				Eventually(session).Should(gexec.Exit())
 
 				targetFilePath := filepath.Join(sourceFolder, "downloaded_file")
 
@@ -176,11 +182,13 @@ var _ = Describe("Service Backup Binary", func() {
 							endpointURL,
 							backupCreatorCmd,
 							failingCleanupCmd,
+							cronSchedule,
 						)
 
 						Expect(err).ToNot(HaveOccurred())
-						Eventually(session, awsTimeout).Should(gexec.Exit(0))
-						Eventually(session.Out).Should(gbytes.Say("Cleanup command failed"))
+						Eventually(session.Out, awsTimeout).Should(gbytes.Say("Cleanup command failed"))
+						session.Terminate().Wait()
+						Eventually(session).Should(gexec.Exit())
 					})
 				})
 
@@ -196,9 +204,12 @@ var _ = Describe("Service Backup Binary", func() {
 							endpointURL,
 							backupCreatorCmd,
 							cleanupCmd,
+							cronSchedule,
 						)
 						Expect(err).ToNot(HaveOccurred())
-						Eventually(session, awsTimeout).Should(gexec.Exit(0))
+						Eventually(session.Out, awsTimeout).Should(gbytes.Say("Cleanup command successful"))
+						session.Terminate().Wait()
+						Eventually(session).Should(gexec.Exit())
 
 						By("Validating that the source directory is deleted")
 						_, err = os.Stat(sourceFolder)
@@ -221,14 +232,14 @@ var _ = Describe("Service Backup Binary", func() {
 						endpointURL,
 						backupCreatorCmd,
 						emptyCleanupCmd,
+						cronSchedule,
 					)
-
 					Expect(err).ToNot(HaveOccurred())
-					Eventually(session, awsTimeout).Should(gexec.Exit(0))
-					Eventually(session.Out).Should(gbytes.Say("Cleanup command not provided"))
+					Eventually(session.Out, awsTimeout).Should(gbytes.Say("Cleanup command not provided"))
+					session.Terminate().Wait()
+					Eventually(session).Should(gexec.Exit())
 				})
 			})
-
 		})
 
 		Context("when credentials are invalid", func() {
@@ -248,9 +259,12 @@ var _ = Describe("Service Backup Binary", func() {
 					endpointURL,
 					backupCreatorCmd,
 					cleanupCmd,
+					cronSchedule,
 				)
 				Expect(err).ToNot(HaveOccurred())
-				Eventually(session, awsTimeout).Should(gexec.Exit(2))
+				Eventually(session.Out).Should(gbytes.Say("Service-backup Started"))
+				session.Terminate().Wait()
+				Eventually(session).Should(gexec.Exit())
 
 				By("Verifying that the file was never uploaded")
 				verifySession, err := downloadBackup(destFolder+"/"+sourceFileName, filepath.Join(sourceFolder, "downloaded_file"))
@@ -272,6 +286,7 @@ var _ = Describe("Service Backup Binary", func() {
 					endpointURL,
 					backupCreatorCmd,
 					cleanupCmd,
+					cronSchedule,
 				)
 
 				Expect(err).ToNot(HaveOccurred())
@@ -293,6 +308,7 @@ var _ = Describe("Service Backup Binary", func() {
 					endpointURL,
 					backupCreatorCmd,
 					cleanupCmd,
+					cronSchedule,
 				)
 
 				Expect(err).ToNot(HaveOccurred())
@@ -314,6 +330,7 @@ var _ = Describe("Service Backup Binary", func() {
 					endpointURL,
 					backupCreatorCmd,
 					cleanupCmd,
+					cronSchedule,
 				)
 
 				Expect(err).ToNot(HaveOccurred())
@@ -335,6 +352,7 @@ var _ = Describe("Service Backup Binary", func() {
 					emptyEndpointURL,
 					backupCreatorCmd,
 					cleanupCmd,
+					cronSchedule,
 				)
 
 				Expect(err).ToNot(HaveOccurred())
@@ -356,6 +374,7 @@ var _ = Describe("Service Backup Binary", func() {
 					endpointURL,
 					invalidBackupCreatorCmd,
 					cleanupCmd,
+					cronSchedule,
 				)
 
 				Expect(err).ToNot(HaveOccurred())
@@ -377,11 +396,56 @@ var _ = Describe("Service Backup Binary", func() {
 					endpointURL,
 					failingBackupCreatorCmd,
 					cleanupCmd,
+					cronSchedule,
+				)
+				Expect(err).ToNot(HaveOccurred())
+				Eventually(session.Out).Should(gbytes.Say("Backup creator command failed"))
+				session.Terminate().Wait()
+				Eventually(session).Should(gexec.Exit())
+			})
+		})
+
+		Context("when the cron schedule is not provided", func() {
+			const emptyCronSchedule = ""
+
+			It("gracefully fails to perform the upload", func() {
+				session, err := performBackup(
+					awsCLIPath,
+					awsAccessKeyID,
+					awsSecretAccessKey,
+					sourceFolder,
+					destFolder,
+					endpointURL,
+					backupCreatorCmd,
+					cleanupCmd,
+					emptyCronSchedule,
 				)
 
 				Expect(err).ToNot(HaveOccurred())
 				Eventually(session, awsTimeout).Should(gexec.Exit(2))
-				Eventually(session.Out).Should(gbytes.Say("Backup creator command failed"))
+				Eventually(session.Out).Should(gbytes.Say("Flag cron-schedule not provided"))
+			})
+		})
+
+		Context("when the cron schedule is not valid", func() {
+			const invalidCronSchedule = "* * * * * 99"
+
+			It("gracefully fails to perform the upload", func() {
+				session, err := performBackup(
+					awsCLIPath,
+					awsAccessKeyID,
+					awsSecretAccessKey,
+					sourceFolder,
+					destFolder,
+					endpointURL,
+					backupCreatorCmd,
+					cleanupCmd,
+					invalidCronSchedule,
+				)
+
+				Expect(err).ToNot(HaveOccurred())
+				Eventually(session, awsTimeout).Should(gexec.Exit(2))
+				Eventually(session.Out).Should(gbytes.Say("Error scheduling job"))
 			})
 		})
 	})
@@ -403,6 +467,7 @@ var _ = Describe("Service Backup Binary", func() {
 				endpointURL,
 				backupCreatorCmd,
 				cleanupCmd,
+				cronSchedule,
 			)
 
 			Expect(err).ToNot(HaveOccurred())
@@ -419,6 +484,7 @@ var _ = Describe("Service Backup Binary", func() {
 				endpointURL,
 				backupCreatorCmd,
 				cleanupCmd,
+				cronSchedule,
 			)
 
 			Expect(err).ToNot(HaveOccurred())

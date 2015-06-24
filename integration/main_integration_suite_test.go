@@ -22,8 +22,9 @@ const (
 	bucketName = "service-backup-integration-test"
 	awsTimeout = "10s"
 
-	awsCLIPath  = "aws"
-	endpointURL = "https://s3.amazonaws.com"
+	awsCLIPath   = "aws"
+	endpointURL  = "https://s3.amazonaws.com"
+	cronSchedule = "* * * * * *" // every second of every minute of every day etc
 )
 
 var (
