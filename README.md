@@ -18,14 +18,14 @@ The integration tests require access to a bucket called `service-backup-integrat
   "Version": "2012-10-17",
   "Statement": [
     {
-      "Sid": "Stmt1434555464000",
+      "Sid": "servicebackupintegrationtest",
       "Effect": "Allow",
       "Action": [
           "s3:*"
       ],
       "Resource": [
-          "arn:aws:s3:::service-backup-integration-test/*",
-          "arn:aws:s3:::service-backup-integration-test"
+          "arn:aws:s3:::service-backup-*/*",
+          "arn:aws:s3:::service-backup-*"
       ]
     }
   ]
