@@ -19,8 +19,8 @@ const (
 	awsAccessKeyIDEnvKey     = "AWS_ACCESS_KEY_ID"
 	awsSecretAccessKeyEnvKey = "AWS_SECRET_ACCESS_KEY"
 
-	bucketName = "service-backup-integration-test"
-	awsTimeout = "20s"
+	existingBucketName = "service-backup-integration-test"
+	awsTimeout         = "20s"
 
 	awsCLIPath   = "aws"
 	endpointURL  = "https://s3.amazonaws.com"
@@ -31,6 +31,7 @@ var (
 	pathToServiceBackupBinary string
 	awsAccessKeyID            string
 	awsSecretAccessKey        string
+	destPath                  string
 )
 
 type config struct {
@@ -73,7 +74,7 @@ func beforeSuiteFirstNode() []byte {
 func createBucketIfNeeded() {
 	session, err := runS3Command(
 		"ls",
-		bucketName,
+		existingBucketName,
 	)
 
 	Expect(err).ToNot(HaveOccurred())
@@ -84,16 +85,16 @@ func createBucketIfNeeded() {
 		errOut := string(session.Err.Contents())
 
 		if !strings.Contains(errOut, "NoSuchBucket") {
-			Fail("Unable to list bucket: " + bucketName + " - error: " + errOut)
+			Fail("Unable to list bucket: " + existingBucketName + " - error: " + errOut)
 		}
 
 		session, err := runS3Command(
 			"mb",
-			"s3://"+bucketName,
+			"s3://"+existingBucketName,
 		)
 		Expect(err).ToNot(HaveOccurred())
 		Eventually(session, awsTimeout).Should(gexec.Exit(0))
-		Eventually(session.Out).Should(gbytes.Say("make_bucket: s3://" + bucketName))
+		Eventually(session.Out).Should(gbytes.Say("make_bucket: s3://" + existingBucketName))
 	}
 }
 

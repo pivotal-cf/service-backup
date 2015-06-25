@@ -15,7 +15,8 @@ type Executor interface {
 type backup struct {
 	awsCLIBinaryPath   string
 	sourceFolder       string
-	destFolder         string
+	destBucket         string
+	destPath           string
 	awsAccessKeyID     string
 	awsSecretAccessKey string
 	endpointURL        string
@@ -27,7 +28,8 @@ type backup struct {
 func NewExecutor(
 	awsCLIBinaryPath,
 	sourceFolder,
-	destFolder,
+	destBucket,
+	destPath,
 	awsAccessKeyID,
 	awsSecretAccessKey,
 	endpointURL,
@@ -38,7 +40,8 @@ func NewExecutor(
 	return &backup{
 		awsCLIBinaryPath:   awsCLIBinaryPath,
 		sourceFolder:       sourceFolder,
-		destFolder:         destFolder,
+		destBucket:         destBucket,
+		destPath:           destPath,
 		awsAccessKeyID:     awsAccessKeyID,
 		awsSecretAccessKey: awsSecretAccessKey,
 		endpointURL:        endpointURL,
@@ -70,18 +73,14 @@ func (b *backup) RunOnce() error {
 }
 
 func (b *backup) createBucketIfNeeded() error {
-	// TODO: Pass in the bucket name as a separate arg
-	bucketNameSplit := strings.Split(b.destFolder, "/")
-	bucketName := bucketNameSplit[2] // s3://bucket-name/some/path/
-
-	b.logger.Info("Checking for bucket", lager.Data{"bucketName": bucketName})
+	b.logger.Info("Checking for bucket", lager.Data{"destBucket": b.destBucket})
 	cmd := exec.Command(
 		b.awsCLIBinaryPath,
 		"s3",
 		"ls",
 		"--region",
 		"us-east-1",
-		bucketName,
+		b.destBucket,
 	)
 
 	cmd.Env = []string{}
@@ -97,7 +96,7 @@ func (b *backup) createBucketIfNeeded() error {
 	errOut := string(out)
 
 	if !strings.Contains(errOut, "NoSuchBucket") {
-		b.logger.Error("Checking for bucket - unable to list bucket", err, lager.Data{"bucketName": bucketName})
+		b.logger.Error("Checking for bucket - unable to list bucket", err, lager.Data{"destBucket": b.destBucket})
 		return err
 	}
 
@@ -108,7 +107,7 @@ func (b *backup) createBucketIfNeeded() error {
 		"mb",
 		"--region",
 		"us-east-1",
-		"s3://"+bucketName,
+		"s3://"+b.destBucket,
 	)
 
 	cmd.Env = []string{}
@@ -118,7 +117,7 @@ func (b *backup) createBucketIfNeeded() error {
 	out, err = cmd.CombinedOutput()
 
 	if err != nil {
-		b.logger.Error("Checking for bucket - Unable to create bucket", err, lager.Data{"bucketName": bucketName, "out": string(out)})
+		b.logger.Error("Checking for bucket - Unable to create bucket", err, lager.Data{"destBucket": b.destBucket, "out": string(out)})
 		return err
 	}
 	b.logger.Info("Checking for bucket - bucket created ok")
@@ -171,7 +170,7 @@ func (b *backup) uploadBackup() error {
 		"s3",
 		"sync",
 		b.sourceFolder,
-		b.destFolder,
+		fmt.Sprintf("s3://%s/%s", b.destBucket, b.destPath),
 		"--endpoint-url",
 		b.endpointURL,
 	)

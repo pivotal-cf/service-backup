@@ -20,7 +20,8 @@ func performBackup(
 	awsAccessKeyID,
 	awsSecretAccessKey,
 	sourceFolder,
-	destFolder,
+	destBucket,
+	destPath,
 	endpointURL,
 	backupCreatorCmd,
 	cleanupCmd,
@@ -33,7 +34,8 @@ func performBackup(
 		"--aws-access-key-id", awsAccessKeyID,
 		"--aws-secret-access-key", awsSecretAccessKey,
 		"--source-folder", sourceFolder,
-		"--dest-folder", destFolder,
+		"--dest-bucket", destBucket,
+		"--dest-path", destPath,
 		"--endpoint-url", endpointURL,
 		"--logLevel", "debug",
 		"--backup-creator-cmd", backupCreatorCmd,
@@ -44,37 +46,42 @@ func performBackup(
 	return gexec.Start(backupCmd, GinkgoWriter, GinkgoWriter)
 }
 
-func downloadBackup(sourceFilePath, targetFilePath string) (*gexec.Session, error) {
+func remotePath(bucket, path, filename string) string {
+	return fmt.Sprintf("s3://%s/%s/%s", bucket, path, filename)
+}
+
+func downloadRemoteFile(remoteFilePath, localFilePath string) (*gexec.Session, error) {
 	return runS3Command(
 		"cp",
-		sourceFilePath,
-		targetFilePath,
+		remoteFilePath,
+		localFilePath,
 	)
 }
 
-func deleteBackup(sourceFilePath string) (*gexec.Session, error) {
+func deleteRemoteFile(remoteFilePath string) (*gexec.Session, error) {
 	return runS3Command(
 		"rm",
-		sourceFilePath,
+		remoteFilePath,
 	)
 }
 
 var _ = Describe("Service Backup Binary", func() {
 	var (
-		destFolder       string
+		destBucket       string
 		backupCreatorCmd string
 		cleanupCmd       string
 		fileContents     string
 	)
 
 	BeforeEach(func() {
-		destPath, err := uuid.NewV4()
+		destBucket = existingBucketName
+
+		destPathUUID, err := uuid.NewV4()
 		Expect(err).ToNot(HaveOccurred())
-		destFolder = fmt.Sprintf("s3://%s/%s", bucketName, destPath.String())
+		destPath = destPathUUID.String()
 	})
 
 	Context("when credentials are provided", func() {
-
 		var (
 			sourceFolder   string
 			sourceFileName string
@@ -125,7 +132,7 @@ var _ = Describe("Service Backup Binary", func() {
 
 			Context("when the bucket already exists", func() {
 				AfterEach(func() {
-					session, err := deleteBackup(destFolder + "/" + sourceFileName)
+					session, err := deleteRemoteFile(remotePath(destBucket, destPath, sourceFileName))
 					Expect(err).ToNot(HaveOccurred())
 					Eventually(session, awsTimeout).Should(gexec.Exit(0))
 				})
@@ -137,7 +144,8 @@ var _ = Describe("Service Backup Binary", func() {
 						awsAccessKeyID,
 						awsSecretAccessKey,
 						sourceFolder,
-						destFolder,
+						destBucket,
+						destPath,
 						endpointURL,
 						backupCreatorCmd,
 						cleanupCmd,
@@ -152,7 +160,10 @@ var _ = Describe("Service Backup Binary", func() {
 					targetFilePath := filepath.Join(sourceFolder, "downloaded_file")
 
 					By("Downloading the uploaded file from the blobstore")
-					verifySession, err := downloadBackup(destFolder+"/"+sourceFileName, targetFilePath)
+					verifySession, err := downloadRemoteFile(
+						remotePath(destBucket, destPath, sourceFileName),
+						filepath.Join(sourceFolder, "downloaded_file"),
+					)
 					Expect(err).ToNot(HaveOccurred())
 					Eventually(verifySession, awsTimeout).Should(gexec.Exit(0))
 
@@ -172,28 +183,28 @@ var _ = Describe("Service Backup Binary", func() {
 			})
 
 			Context("when the bucket does not already exist", func() {
-				var newBucketName string
 				var strippedUUID string
 
 				BeforeEach(func() {
 					bucketUUID, err := uuid.NewV4()
 					Expect(err).ToNot(HaveOccurred())
+
 					strippedUUID = bucketUUID.String()
 					strippedUUID = strippedUUID[:10]
-					newBucketName = bucketName + strippedUUID
 
-					destFolder = fmt.Sprintf("s3://%s/%s", newBucketName, strippedUUID)
+					destBucket = existingBucketName + strippedUUID
+					destPath = strippedUUID
 				})
 
 				AfterEach(func() {
 					session, err := runS3Command(
 						"rb",
-						"s3://"+newBucketName,
+						"s3://"+destBucket,
 						"--force",
 					)
 					Expect(err).ToNot(HaveOccurred())
 					Eventually(session, awsTimeout).Should(gexec.Exit(0))
-					Eventually(session.Out).Should(gbytes.Say("remove_bucket: s3://" + newBucketName))
+					Eventually(session.Out).Should(gbytes.Say("remove_bucket: s3://" + destBucket))
 				})
 
 				It("makes the bucket", func() {
@@ -203,7 +214,8 @@ var _ = Describe("Service Backup Binary", func() {
 						awsAccessKeyID,
 						awsSecretAccessKey,
 						sourceFolder,
-						destFolder,
+						destBucket,
+						destPath,
 						endpointURL,
 						backupCreatorCmd,
 						cleanupCmd,
@@ -217,7 +229,7 @@ var _ = Describe("Service Backup Binary", func() {
 
 					session, err = runS3Command(
 						"ls",
-						"s3://"+newBucketName,
+						"s3://"+destBucket,
 					)
 					Expect(err).ToNot(HaveOccurred())
 					Eventually(session, awsTimeout).Should(gexec.Exit(0))
@@ -227,7 +239,7 @@ var _ = Describe("Service Backup Binary", func() {
 
 			Context("when cleanup-cmd is provided", func() {
 				AfterEach(func() {
-					session, err := deleteBackup(destFolder + "/" + sourceFileName)
+					session, err := deleteRemoteFile(remotePath(destBucket, destPath, sourceFileName))
 					Expect(err).ToNot(HaveOccurred())
 					Eventually(session, awsTimeout).Should(gexec.Exit(0))
 				})
@@ -241,7 +253,8 @@ var _ = Describe("Service Backup Binary", func() {
 							awsAccessKeyID,
 							awsSecretAccessKey,
 							sourceFolder,
-							destFolder,
+							destBucket,
+							destPath,
 							endpointURL,
 							backupCreatorCmd,
 							failingCleanupCmd,
@@ -263,7 +276,8 @@ var _ = Describe("Service Backup Binary", func() {
 							awsAccessKeyID,
 							awsSecretAccessKey,
 							sourceFolder,
-							destFolder,
+							destBucket,
+							destPath,
 							endpointURL,
 							backupCreatorCmd,
 							cleanupCmd,
@@ -286,7 +300,7 @@ var _ = Describe("Service Backup Binary", func() {
 				const emptyCleanupCmd = ""
 
 				AfterEach(func() {
-					session, err := deleteBackup(destFolder + "/" + sourceFileName)
+					session, err := deleteRemoteFile(remotePath(destBucket, destPath, sourceFileName))
 					Expect(err).ToNot(HaveOccurred())
 					Eventually(session, awsTimeout).Should(gexec.Exit(0))
 				})
@@ -297,7 +311,8 @@ var _ = Describe("Service Backup Binary", func() {
 						awsAccessKeyID,
 						awsSecretAccessKey,
 						sourceFolder,
-						destFolder,
+						destBucket,
+						destPath,
 						endpointURL,
 						backupCreatorCmd,
 						emptyCleanupCmd,
@@ -324,7 +339,8 @@ var _ = Describe("Service Backup Binary", func() {
 					invalidAwsAccessKeyID,
 					invalidAwsSecretAccessKey,
 					sourceFolder,
-					destFolder,
+					destBucket,
+					destPath,
 					endpointURL,
 					backupCreatorCmd,
 					cleanupCmd,
@@ -336,7 +352,10 @@ var _ = Describe("Service Backup Binary", func() {
 				Eventually(session).Should(gexec.Exit())
 
 				By("Verifying that the file was never uploaded")
-				verifySession, err := downloadBackup(destFolder+"/"+sourceFileName, filepath.Join(sourceFolder, "downloaded_file"))
+				verifySession, err := downloadRemoteFile(
+					remotePath(destBucket, destPath, sourceFileName),
+					filepath.Join(sourceFolder, "downloaded_file"),
+				)
 				Expect(err).ToNot(HaveOccurred())
 				Eventually(verifySession, awsTimeout).Should(gexec.Exit(1))
 			})
@@ -351,7 +370,8 @@ var _ = Describe("Service Backup Binary", func() {
 					awsAccessKeyID,
 					awsSecretAccessKey,
 					sourceFolder,
-					destFolder,
+					destBucket,
+					destPath,
 					endpointURL,
 					backupCreatorCmd,
 					cleanupCmd,
@@ -373,7 +393,8 @@ var _ = Describe("Service Backup Binary", func() {
 					awsAccessKeyID,
 					awsSecretAccessKey,
 					invalidSourceFolder,
-					destFolder,
+					destBucket,
+					destPath,
 					endpointURL,
 					backupCreatorCmd,
 					cleanupCmd,
@@ -386,8 +407,8 @@ var _ = Describe("Service Backup Binary", func() {
 			})
 		})
 
-		Context("when the destination folder flag is not provided", func() {
-			const emptyDestFolder = ""
+		Context("when the destination bucket flag is not provided", func() {
+			const emptyDestBucket = ""
 
 			It("gracefully fails to perform the upload", func() {
 				session, err := performBackup(
@@ -395,7 +416,8 @@ var _ = Describe("Service Backup Binary", func() {
 					awsAccessKeyID,
 					awsSecretAccessKey,
 					sourceFolder,
-					emptyDestFolder,
+					emptyDestBucket,
+					destPath,
 					endpointURL,
 					backupCreatorCmd,
 					cleanupCmd,
@@ -404,7 +426,7 @@ var _ = Describe("Service Backup Binary", func() {
 
 				Expect(err).ToNot(HaveOccurred())
 				Eventually(session, awsTimeout).Should(gexec.Exit(2))
-				Eventually(session.Out).Should(gbytes.Say("Flag dest-folder not provided"))
+				Eventually(session.Out).Should(gbytes.Say("Flag dest-bucket not provided"))
 			})
 		})
 
@@ -417,7 +439,8 @@ var _ = Describe("Service Backup Binary", func() {
 					awsAccessKeyID,
 					awsSecretAccessKey,
 					sourceFolder,
-					destFolder,
+					destBucket,
+					destPath,
 					emptyEndpointURL,
 					backupCreatorCmd,
 					cleanupCmd,
@@ -439,7 +462,8 @@ var _ = Describe("Service Backup Binary", func() {
 					awsAccessKeyID,
 					awsSecretAccessKey,
 					sourceFolder,
-					destFolder,
+					destBucket,
+					destPath,
 					endpointURL,
 					invalidBackupCreatorCmd,
 					cleanupCmd,
@@ -461,7 +485,8 @@ var _ = Describe("Service Backup Binary", func() {
 					awsAccessKeyID,
 					awsSecretAccessKey,
 					sourceFolder,
-					destFolder,
+					destBucket,
+					destPath,
 					endpointURL,
 					failingBackupCreatorCmd,
 					cleanupCmd,
@@ -483,7 +508,8 @@ var _ = Describe("Service Backup Binary", func() {
 					awsAccessKeyID,
 					awsSecretAccessKey,
 					sourceFolder,
-					destFolder,
+					destBucket,
+					destPath,
 					endpointURL,
 					backupCreatorCmd,
 					cleanupCmd,
@@ -505,7 +531,8 @@ var _ = Describe("Service Backup Binary", func() {
 					awsAccessKeyID,
 					awsSecretAccessKey,
 					sourceFolder,
-					destFolder,
+					destBucket,
+					destPath,
 					endpointURL,
 					backupCreatorCmd,
 					cleanupCmd,
@@ -532,7 +559,8 @@ var _ = Describe("Service Backup Binary", func() {
 				emptyAWSAccessKeyID,
 				emptyAWSSecretAccessKey,
 				sourceFolder,
-				destFolder,
+				destBucket,
+				destPath,
 				endpointURL,
 				backupCreatorCmd,
 				cleanupCmd,
@@ -549,7 +577,8 @@ var _ = Describe("Service Backup Binary", func() {
 				emptyAWSAccessKeyID,
 				emptyAWSSecretAccessKey,
 				sourceFolder,
-				destFolder,
+				destBucket,
+				destPath,
 				endpointURL,
 				backupCreatorCmd,
 				cleanupCmd,

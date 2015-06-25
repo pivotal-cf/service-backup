@@ -15,7 +15,8 @@ import (
 const (
 	awsCLIFlagName           = "aws-cli"
 	sourceFolderFlagName     = "source-folder"
-	destFolderFlagName       = "dest-folder"
+	destBucketFlagName       = "dest-bucket"
+	destPathFlagName         = "dest-path"
 	endpointURLFlagName      = "endpoint-url"
 	awsAccessKeyFlagName     = "aws-access-key-id"
 	awsSecretKeyFlagName     = "aws-secret-access-key"
@@ -33,7 +34,8 @@ func main() {
 
 	awsCLIBinaryPath := flags.String(awsCLIFlagName, "", "Path to AWS CLI")
 	sourceFolder := flags.String(sourceFolderFlagName, "", "Local path to upload from (e.g.: /var/vcap/data)")
-	destFolder := flags.String(destFolderFlagName, "", "Remote path to upload to (e.g.: s3://bucket-name/path/to/loc)")
+	destBucket := flags.String(destBucketFlagName, "", "Remote bucket to upload. No preceding or trailing slashes. E.g. my-remote-bucket")
+	destPath := flags.String(destPathFlagName, "", "Remote directory path inside bucket to upload to. No preceding or trailing slashes. E.g. remote/path/inside/bucket")
 	endpointURL := flags.String(endpointURLFlagName, "", "S3 endpoint URL")
 	awsAccessKeyID := flags.String(awsAccessKeyFlagName, "", "AWS access key ID")
 	awsSecretAccessKey := flags.String(awsSecretKeyFlagName, "", "AWS secret access key")
@@ -55,7 +57,7 @@ func main() {
 	validateFlag(awsSecretAccessKey, awsSecretKeyFlagName)
 	validateFlag(awsCLIBinaryPath, awsCLIFlagName)
 	validateFlag(sourceFolder, sourceFolderFlagName)
-	validateFlag(destFolder, destFolderFlagName)
+	validateFlag(destBucket, destBucketFlagName)
 	validateFlag(endpointURL, endpointURLFlagName)
 	validateFlag(backupCreatorCmd, backupCreatorCmdFlagName)
 	validateFlag(cronSchedule, cronScheduleFlagName)
@@ -63,7 +65,8 @@ func main() {
 	executor := backup.NewExecutor(
 		*awsCLIBinaryPath,
 		*sourceFolder,
-		*destFolder,
+		*destBucket,
+		*destPath,
 		*awsAccessKeyID,
 		*awsSecretAccessKey,
 		*endpointURL,
