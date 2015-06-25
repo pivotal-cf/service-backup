@@ -7,6 +7,7 @@ import (
 
 	"github.com/cloudfoundry-incubator/cf-lager"
 	"github.com/pivotal-cf-experimental/service-backup/backup"
+	"github.com/pivotal-cf-experimental/service-backup/s3"
 	"github.com/pivotal-golang/lager"
 	"github.com/tedsuo/ifrit"
 	"gopkg.in/robfig/cron.v2"
@@ -62,14 +63,19 @@ func main() {
 	validateFlag(backupCreatorCmd, backupCreatorCmdFlagName)
 	validateFlag(cronSchedule, cronScheduleFlagName)
 
-	executor := backup.NewExecutor(
-		*awsCLIBinaryPath,
-		*sourceFolder,
-		*destBucket,
-		*destPath,
+	s3Client := s3.NewAWSCLIClient(
 		*awsAccessKeyID,
 		*awsSecretAccessKey,
 		*endpointURL,
+		*awsCLIBinaryPath,
+		logger,
+	)
+
+	executor := backup.NewExecutor(
+		s3Client,
+		*sourceFolder,
+		*destBucket,
+		*destPath,
 		*backupCreatorCmd,
 		*cleanupCmd,
 		logger,
