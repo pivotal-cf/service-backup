@@ -226,6 +226,12 @@ var _ = Describe("Service Backup Binary", func() {
 			})
 
 			Context("when cleanup-cmd is provided", func() {
+				AfterEach(func() {
+					session, err := deleteBackup(destFolder + "/" + sourceFileName)
+					Expect(err).ToNot(HaveOccurred())
+					Eventually(session, awsTimeout).Should(gexec.Exit(0))
+				})
+
 				Context("when the cleanup command fails with non-zero exit code", func() {
 					const failingCleanupCmd = "ls /not/a/valid/directory"
 
@@ -278,6 +284,12 @@ var _ = Describe("Service Backup Binary", func() {
 
 			Context("when cleanup-cmd is not provided", func() {
 				const emptyCleanupCmd = ""
+
+				AfterEach(func() {
+					session, err := deleteBackup(destFolder + "/" + sourceFileName)
+					Expect(err).ToNot(HaveOccurred())
+					Eventually(session, awsTimeout).Should(gexec.Exit(0))
+				})
 
 				It("logs and exits without error", func() {
 					session, err := performBackup(
