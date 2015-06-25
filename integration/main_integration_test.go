@@ -7,6 +7,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/nu7hatch/gouuid"
 	. "github.com/onsi/ginkgo"
@@ -48,6 +49,12 @@ func performBackup(
 
 func remotePath(bucket, path, filename string) string {
 	return fmt.Sprintf("s3://%s/%s/%s", bucket, path, filename)
+}
+
+func pathWithDate(path string) string {
+	today := time.Now()
+	datePath := fmt.Sprintf("%d/%02d/%02d", today.Year(), today.Month(), today.Day())
+	return path + "/" + datePath
 }
 
 func downloadRemoteFile(remoteFilePath, localFilePath string) (*gexec.Session, error) {
@@ -132,7 +139,7 @@ var _ = Describe("Service Backup Binary", func() {
 
 			Context("when the bucket already exists", func() {
 				AfterEach(func() {
-					session, err := deleteRemoteFile(remotePath(destBucket, destPath, sourceFileName))
+					session, err := deleteRemoteFile(remotePath(destBucket, pathWithDate(destPath), sourceFileName))
 					Expect(err).ToNot(HaveOccurred())
 					Eventually(session, awsTimeout).Should(gexec.Exit(0))
 				})
@@ -161,7 +168,7 @@ var _ = Describe("Service Backup Binary", func() {
 
 					By("Downloading the uploaded file from the blobstore")
 					verifySession, err := downloadRemoteFile(
-						remotePath(destBucket, destPath, sourceFileName),
+						remotePath(destBucket, pathWithDate(destPath), sourceFileName),
 						filepath.Join(sourceFolder, "downloaded_file"),
 					)
 					Expect(err).ToNot(HaveOccurred())
@@ -239,7 +246,7 @@ var _ = Describe("Service Backup Binary", func() {
 
 			Context("when cleanup-cmd is provided", func() {
 				AfterEach(func() {
-					session, err := deleteRemoteFile(remotePath(destBucket, destPath, sourceFileName))
+					session, err := deleteRemoteFile(remotePath(destBucket, pathWithDate(destPath), sourceFileName))
 					Expect(err).ToNot(HaveOccurred())
 					Eventually(session, awsTimeout).Should(gexec.Exit(0))
 				})
@@ -300,7 +307,7 @@ var _ = Describe("Service Backup Binary", func() {
 				const emptyCleanupCmd = ""
 
 				AfterEach(func() {
-					session, err := deleteRemoteFile(remotePath(destBucket, destPath, sourceFileName))
+					session, err := deleteRemoteFile(remotePath(destBucket, pathWithDate(destPath), sourceFileName))
 					Expect(err).ToNot(HaveOccurred())
 					Eventually(session, awsTimeout).Should(gexec.Exit(0))
 				})
@@ -353,7 +360,7 @@ var _ = Describe("Service Backup Binary", func() {
 
 				By("Verifying that the file was never uploaded")
 				verifySession, err := downloadRemoteFile(
-					remotePath(destBucket, destPath, sourceFileName),
+					remotePath(destBucket, pathWithDate(destPath), sourceFileName),
 					filepath.Join(sourceFolder, "downloaded_file"),
 				)
 				Expect(err).ToNot(HaveOccurred())

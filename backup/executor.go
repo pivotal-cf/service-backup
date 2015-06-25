@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os/exec"
 	"strings"
+	"time"
 
 	"github.com/pivotal-cf-experimental/service-backup/s3"
 	"github.com/pivotal-golang/lager"
@@ -126,9 +127,13 @@ func (b *backup) performCleanup() error {
 func (b *backup) uploadBackup() error {
 	b.logger.Info("Upload backup started")
 
+	today := time.Now()
+	datePath := fmt.Sprintf("%d/%02d/%02d", today.Year(), today.Month(), today.Day())
+	destPathWithDate := b.destPath + "/" + datePath
+
 	err := b.s3Client.Sync(
 		b.sourceFolder,
-		fmt.Sprintf("%s/%s", b.destBucket, b.destPath),
+		fmt.Sprintf("%s/%s", b.destBucket, destPathWithDate),
 	)
 
 	if err != nil {
