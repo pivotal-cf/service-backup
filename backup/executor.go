@@ -133,7 +133,8 @@ func (b *backup) uploadBackup() error {
 
 	err := b.s3Client.Sync(
 		b.sourceFolder,
-		fmt.Sprintf("%s/%s", b.destBucket, destPathWithDate),
+		b.destBucket,
+		destPathWithDate,
 	)
 
 	if err != nil {

@@ -2,16 +2,21 @@ package s3
 
 import (
 	"fmt"
+	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 
+	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/service/s3"
+	"github.com/aws/aws-sdk-go/service/s3/s3manager"
 	"github.com/pivotal-golang/lager"
 )
 
 type S3Client interface {
 	BucketExists(bucketName string) (bool, error)
 	CreateBucket(bucketName string) error
-	Sync(localPath, remotePath string) error
+	Sync(localPath, bucketName, remotePath string) error
 }
 
 type awsCLIClient struct {
@@ -99,22 +104,71 @@ func (c awsCLIClient) CreateBucket(bucketName string) error {
 	return nil
 }
 
-func (c awsCLIClient) Sync(localPath, remotePath string) error {
-	cmd := c.createS3Command(
-		"sync",
-		localPath,
-		fmt.Sprintf("s3://%s", remotePath),
-		"--endpoint-url",
-		c.endpointURL,
-	)
+func (c awsCLIClient) Sync(localPath, bucketName, remotePath string) error {
+	s3Config := &aws.Config{
+		Region:     "us-east-1",
+		MaxRetries: 50,
+	}
 
-	out, err := cmd.CombinedOutput()
+	s3Client := s3.New(s3Config)
 
+	uploadOptions := &s3manager.UploadOptions{
+		S3: s3Client,
+	}
+	uploader := s3manager.NewUploader(uploadOptions)
+
+	return c.uploadDirectory(localPath, bucketName, remotePath, uploader)
+}
+
+func (c awsCLIClient) uploadDirectory(localPath, bucketName, remotePath string, uploader *s3manager.Uploader) error {
+	directoryContents, err := filepath.Glob(localPath + "/*")
+	if err != nil {
+		return err
+	}
+
+	for _, filePath := range directoryContents {
+		fileInfo, err := os.Stat(filePath)
+		if err != nil {
+			return err
+		}
+
+		if fileInfo.IsDir() {
+			remotePath := remotePath + "/" + filepath.Base(filePath)
+			err := c.uploadDirectory(filePath, bucketName, remotePath, uploader)
+			if err != nil {
+				return err
+			}
+		} else {
+			err := c.uploadFile(filePath, bucketName, remotePath, uploader)
+			if err != nil {
+				return err
+			}
+		}
+	}
+
+	return nil
+}
+
+func (c awsCLIClient) uploadFile(filePath, bucketName, remotePath string, uploader *s3manager.Uploader) error {
+	source, err := os.Open(filePath)
+	if err != nil {
+		return err
+	}
+
+	key := remotePath + "/" + filepath.Base(filePath)
+
+	uploadInput := &s3manager.UploadInput{
+		Bucket: &bucketName,
+		Key:    &key,
+		Body:   source,
+	}
+
+	out, err := uploader.Upload(uploadInput)
 	if err != nil {
 		c.logger.Error(
-			"Syncing failed",
+			"Uploading failed",
 			err,
-			lager.Data{"localPath": localPath, "remotePath": remotePath, "out": string(out)},
+			lager.Data{"localPath": filePath, "remotePath": remotePath, "out": out},
 		)
 		return err
 	}
