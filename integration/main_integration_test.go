@@ -47,6 +47,10 @@ func performBackup(
 	return gexec.Start(backupCmd, GinkgoWriter, GinkgoWriter)
 }
 
+func remoteDirectoryPath(bucket, path string) string {
+	return fmt.Sprintf("s3://%s/%s", bucket, path)
+}
+
 func remotePath(bucket, path, filename string) string {
 	return fmt.Sprintf("s3://%s/%s/%s", bucket, path, filename)
 }
@@ -57,19 +61,66 @@ func pathWithDate(path string) string {
 	return path + "/" + datePath
 }
 
-func downloadRemoteFile(remoteFilePath, localFilePath string) (*gexec.Session, error) {
+func downloadRemoteDirectory(remotePath, localPath string) (*gexec.Session, error) {
 	return runS3Command(
-		"cp",
-		remoteFilePath,
-		localFilePath,
+		"sync",
+		remotePath,
+		localPath,
+		"--endpoint-url",
+		endpointURL,
 	)
 }
 
-func deleteRemoteFile(remoteFilePath string) (*gexec.Session, error) {
+func remotePathExists(remotePath string) bool {
+	session, err := runS3Command(
+		"ls",
+		remotePath,
+		"--endpoint-url",
+		endpointURL,
+	)
+
+	Expect(err).ToNot(HaveOccurred())
+	session.Wait(awsTimeout)
+	return session.ExitCode() == 0
+}
+
+func deleteRemoteDirectory(remoteDirectory string) (*gexec.Session, error) {
 	return runS3Command(
 		"rm",
-		remoteFilePath,
+		"--recursive",
+		remoteDirectory,
 	)
+}
+
+func createFilesToUpload(sourceFolder string) map[string]string {
+	createdFiles := map[string]string{}
+
+	sourceFile, err := ioutil.TempFile(sourceFolder, "file1.txt")
+	Expect(err).ToNot(HaveOccurred())
+
+	fileContentsUUID, err := uuid.NewV4()
+	Expect(err).ToNot(HaveOccurred())
+	fileContents := fileContentsUUID.String()
+	_, err = sourceFile.Write([]byte(fileContents))
+	Expect(err).ToNot(HaveOccurred())
+
+	sourceFileName := getFilenameFromPath(sourceFile.Name())
+
+	createdFiles[sourceFileName] = fileContents
+
+	return createdFiles
+}
+
+func getFilenameFromPath(sourceFilePath string) string {
+	sourceFilePathSplit := strings.Split(sourceFilePath, "/")
+	return sourceFilePathSplit[len(sourceFilePathSplit)-1]
+}
+
+func verifyDeleteRemoteBucket(destBucket string) {
+	session, err := deleteRemoteDirectory(remoteDirectoryPath(destBucket, pathWithDate(destPath)))
+	Expect(err).ToNot(HaveOccurred())
+	Eventually(session, awsTimeout).Should(gexec.Exit(0))
+
 }
 
 var _ = Describe("Service Backup Binary", func() {
@@ -77,7 +128,6 @@ var _ = Describe("Service Backup Binary", func() {
 		destBucket       string
 		backupCreatorCmd string
 		cleanupCmd       string
-		fileContents     string
 	)
 
 	BeforeEach(func() {
@@ -92,11 +142,10 @@ var _ = Describe("Service Backup Binary", func() {
 		var (
 			sourceFolder    string
 			downloadFolder  string
-			sourceFileName  string
 			filesToContents map[string]string
 		)
 
-		var createFileToUpload = func() string {
+		BeforeEach(func() {
 			var err error
 
 			sourceFolder, err = ioutil.TempDir("", "")
@@ -105,39 +154,18 @@ var _ = Describe("Service Backup Binary", func() {
 			downloadFolder, err = ioutil.TempDir("", "")
 			Expect(err).ToNot(HaveOccurred())
 
-			sourceFile, err := ioutil.TempFile(sourceFolder, "temp-file.txt")
-			Expect(err).ToNot(HaveOccurred())
-
-			return sourceFile.Name()
-		}
-
-		var getFilenameFromPath = func(sourceFilePath string) string {
-			sourceFilePathSplit := strings.Split(sourceFilePath, "/")
-			return sourceFilePathSplit[len(sourceFilePathSplit)-1]
-		}
-
-		BeforeEach(func() {
-			sourceFilePath := createFileToUpload()
-			sourceFileName = getFilenameFromPath(sourceFilePath)
-
-			fileContentsUUID, err := uuid.NewV4()
-			Expect(err).ToNot(HaveOccurred())
-			fileContents = fileContentsUUID.String()
+			filesToContents = createFilesToUpload(sourceFolder)
 
 			backupCreatorCmd = fmt.Sprintf(
-				"%s %s %s",
+				"%s %s",
 				assetPath("create-fake-backup"),
-				sourceFilePath,
-				fileContents,
+				sourceFolder,
 			)
 
 			cleanupCmd = fmt.Sprintf(
 				"rm -rf %s",
 				sourceFolder,
 			)
-
-			filesToContents := map[string]string{}
-			filesToContents[sourceFileName] = fileContents
 		})
 
 		AfterEach(func() {
@@ -149,9 +177,7 @@ var _ = Describe("Service Backup Binary", func() {
 
 			Context("when the bucket already exists", func() {
 				AfterEach(func() {
-					session, err := deleteRemoteFile(remotePath(destBucket, pathWithDate(destPath), sourceFileName))
-					Expect(err).ToNot(HaveOccurred())
-					Eventually(session, awsTimeout).Should(gexec.Exit(0))
+					verifyDeleteRemoteBucket(destBucket)
 				})
 
 				It("recursively uploads the contents of a directory successfully", func() {
@@ -175,14 +201,12 @@ var _ = Describe("Service Backup Binary", func() {
 					Eventually(session).Should(gexec.Exit())
 
 					By("Downloading the uploaded files from the blobstore")
-					for fileName, _ := range filesToContents {
-						verifySession, err := downloadRemoteFile(
-							remotePath(destBucket, pathWithDate(destPath), sourceFileName),
-							filepath.Join(downloadFolder, fileName),
-						)
-						Expect(err).ToNot(HaveOccurred())
-						Eventually(verifySession, awsTimeout).Should(gexec.Exit(0))
-					}
+					verifySession, err := downloadRemoteDirectory(
+						remoteDirectoryPath(destBucket, pathWithDate(destPath)),
+						downloadFolder,
+					)
+					Expect(err).ToNot(HaveOccurred())
+					Eventually(verifySession, awsTimeout).Should(gexec.Exit(0))
 
 					By("Validating the contents of the downloaded files")
 					for fileName, contents := range filesToContents {
@@ -260,9 +284,7 @@ var _ = Describe("Service Backup Binary", func() {
 
 			Context("when cleanup-cmd is provided", func() {
 				AfterEach(func() {
-					session, err := deleteRemoteFile(remotePath(destBucket, pathWithDate(destPath), sourceFileName))
-					Expect(err).ToNot(HaveOccurred())
-					Eventually(session, awsTimeout).Should(gexec.Exit(0))
+					verifyDeleteRemoteBucket(destBucket)
 				})
 
 				Context("when the cleanup command fails with non-zero exit code", func() {
@@ -321,9 +343,7 @@ var _ = Describe("Service Backup Binary", func() {
 				const emptyCleanupCmd = ""
 
 				AfterEach(func() {
-					session, err := deleteRemoteFile(remotePath(destBucket, pathWithDate(destPath), sourceFileName))
-					Expect(err).ToNot(HaveOccurred())
-					Eventually(session, awsTimeout).Should(gexec.Exit(0))
+					verifyDeleteRemoteBucket(destBucket)
 				})
 
 				It("logs and exits without error", func() {
@@ -354,6 +374,10 @@ var _ = Describe("Service Backup Binary", func() {
 			)
 
 			It("fails to upload a directory", func() {
+
+				destPathUUID, err := uuid.NewV4()
+				Expect(err).ToNot(HaveOccurred())
+				destPath = destPathUUID.String()
 				By("Trying to upload the file to the blobstore")
 				session, err := performBackup(
 					awsCLIPath,
@@ -372,13 +396,8 @@ var _ = Describe("Service Backup Binary", func() {
 				session.Terminate().Wait()
 				Eventually(session).Should(gexec.Exit())
 
-				By("Verifying that the file was never uploaded")
-				verifySession, err := downloadRemoteFile(
-					remotePath(destBucket, pathWithDate(destPath), sourceFileName),
-					filepath.Join(sourceFolder, "downloaded_file"),
-				)
-				Expect(err).ToNot(HaveOccurred())
-				Eventually(verifySession, awsTimeout).Should(gexec.Exit(1))
+				By("Verifying that the destPath was never created")
+				Expect(remotePathExists(destPath)).To(BeFalse())
 			})
 		})
 

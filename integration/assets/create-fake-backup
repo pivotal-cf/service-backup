@@ -1,6 +1,5 @@
 #!/bin/bash
 
-FILE_NAME=${1:?}
-CONTENTS=${2:?}
+SOURCE_PATH=${1:?}
 
-echo -n "${CONTENTS}" > "${FILE_NAME}"
+touch $SOURCE_PATH/*
