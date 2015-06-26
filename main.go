@@ -63,6 +63,9 @@ func main() {
 	validateFlag(backupCreatorCmd, backupCreatorCmdFlagName)
 	validateFlag(cronSchedule, cronScheduleFlagName)
 
+	os.Setenv("AWS_ACCESS_KEY_ID", *awsAccessKeyID)
+	os.Setenv("AWS_SECRET_ACCESS_KEY", *awsSecretAccessKey)
+
 	s3Client := s3.NewAWSCLIClient(
 		*awsAccessKeyID,
 		*awsSecretAccessKey,
