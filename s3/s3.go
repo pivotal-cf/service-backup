@@ -1,9 +1,7 @@
 package s3
 
 import (
-	"fmt"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strings"
 
@@ -52,23 +50,6 @@ func NewAWSCLIClient(
 	}
 }
 
-func (c awsCLIClient) createS3Command(args ...string) *exec.Cmd {
-	cmd := exec.Command(
-		c.awsCLIPath,
-		append([]string{
-			"s3",
-			"--region",
-			"us-east-1",
-		}, args...)...,
-	)
-	cmd.Env = []string{}
-	cmd.Env = append(cmd.Env, fmt.Sprintf("AWS_ACCESS_KEY_ID=%s", c.awsAccessKeyID))
-	c.logger.Debug("S3 command debug info", lager.Data{"command": cmd})
-	cmd.Env = append(cmd.Env, fmt.Sprintf("AWS_SECRET_ACCESS_KEY=%s", c.awsSecretAccessKey))
-
-	return cmd
-}
-
 func (c awsCLIClient) BucketExists(bucketName string) (bool, error) {
 	params := &s3.HeadBucketInput{
 		Bucket: aws.String(bucketName),
@@ -92,18 +73,16 @@ func (c awsCLIClient) BucketExists(bucketName string) (bool, error) {
 }
 
 func (c awsCLIClient) CreateBucket(bucketName string) error {
-	cmd := c.createS3Command(
-		"mb",
-		fmt.Sprintf("s3://%s", bucketName),
-	)
-
-	out, err := cmd.CombinedOutput()
+	params := &s3.CreateBucketInput{
+		Bucket: aws.String(bucketName),
+	}
+	resp, err := c.s3Client.CreateBucket(params)
 
 	if err != nil {
 		c.logger.Error(
 			"Create bucket failed",
 			err,
-			lager.Data{"bucketName": bucketName, "out": string(out)},
+			lager.Data{"bucketName": bucketName, "resp": resp},
 		)
 		return err
 	}
