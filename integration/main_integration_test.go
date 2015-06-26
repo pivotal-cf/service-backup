@@ -6,7 +6,6 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"strings"
 	"time"
 
 	"github.com/nu7hatch/gouuid"
@@ -95,32 +94,45 @@ func deleteRemoteDirectory(remoteDirectory string) (*gexec.Session, error) {
 func createFilesToUpload(sourceFolder string) map[string]string {
 	createdFiles := map[string]string{}
 
-	sourceFile, err := ioutil.TempFile(sourceFolder, "file1.txt")
+	rootFile, contents := createFileIn(sourceFolder)
+	createdFiles[rootFile] = contents
+
+	dir1 := filepath.Join(sourceFolder, "dir1")
+	err := os.Mkdir(dir1, 0777)
 	Expect(err).ToNot(HaveOccurred())
 
-	fileContentsUUID, err := uuid.NewV4()
-	Expect(err).ToNot(HaveOccurred())
-	fileContents := fileContentsUUID.String()
-	_, err = sourceFile.Write([]byte(fileContents))
+	dir1File, contents := createFileIn(dir1)
+	createdFiles["dir1/"+dir1File] = contents
+
+	dir2 := filepath.Join(dir1, "dir2")
+	err = os.Mkdir(dir2, 0777)
 	Expect(err).ToNot(HaveOccurred())
 
-	sourceFileName := getFilenameFromPath(sourceFile.Name())
-
-	createdFiles[sourceFileName] = fileContents
+	dir2File, contents := createFileIn(dir2)
+	createdFiles["dir1/dir2/"+dir2File] = contents
 
 	return createdFiles
 }
 
-func getFilenameFromPath(sourceFilePath string) string {
-	sourceFilePathSplit := strings.Split(sourceFilePath, "/")
-	return sourceFilePathSplit[len(sourceFilePathSplit)-1]
+func createFileIn(sourceFolder string) (string, string) {
+	file, err := ioutil.TempFile(sourceFolder, "")
+	Expect(err).ToNot(HaveOccurred())
+
+	fileContentsUUID, err := uuid.NewV4()
+	Expect(err).ToNot(HaveOccurred())
+
+	fileContents := fileContentsUUID.String()
+	_, err = file.Write([]byte(fileContents))
+	Expect(err).ToNot(HaveOccurred())
+
+	fileName := filepath.Base(file.Name())
+	return fileName, fileContents
 }
 
 func verifyDeleteRemoteBucket(destBucket string) {
 	session, err := deleteRemoteDirectory(remoteDirectoryPath(destBucket, pathWithDate(destPath)))
 	Expect(err).ToNot(HaveOccurred())
 	Eventually(session, awsTimeout).Should(gexec.Exit(0))
-
 }
 
 var _ = Describe("Service Backup Binary", func() {
