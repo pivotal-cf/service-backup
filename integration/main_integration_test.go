@@ -90,14 +90,19 @@ var _ = Describe("Service Backup Binary", func() {
 
 	Context("when credentials are provided", func() {
 		var (
-			sourceFolder   string
-			sourceFileName string
+			sourceFolder    string
+			downloadFolder  string
+			sourceFileName  string
+			filesToContents map[string]string
 		)
 
 		var createFileToUpload = func() string {
 			var err error
 
 			sourceFolder, err = ioutil.TempDir("", "")
+			Expect(err).ToNot(HaveOccurred())
+
+			downloadFolder, err = ioutil.TempDir("", "")
 			Expect(err).ToNot(HaveOccurred())
 
 			sourceFile, err := ioutil.TempFile(sourceFolder, "temp-file.txt")
@@ -130,12 +135,17 @@ var _ = Describe("Service Backup Binary", func() {
 				"rm -rf %s",
 				sourceFolder,
 			)
+
+			filesToContents := map[string]string{}
+			filesToContents[sourceFileName] = fileContents
+		})
+
+		AfterEach(func() {
+			_ = os.Remove(sourceFolder)
+			_ = os.Remove(downloadFolder)
 		})
 
 		Context("when all required inputs are valid", func() {
-			AfterEach(func() {
-				_ = os.Remove(sourceFolder)
-			})
 
 			Context("when the bucket already exists", func() {
 				AfterEach(func() {
@@ -144,8 +154,8 @@ var _ = Describe("Service Backup Binary", func() {
 					Eventually(session, awsTimeout).Should(gexec.Exit(0))
 				})
 
-				It("uploads a directory successfully", func() {
-					By("Uploading the file to the blobstore")
+				It("recursively uploads the contents of a directory successfully", func() {
+					By("Uploading the directory contents to the blobstore")
 					session, err := performBackup(
 						awsCLIPath,
 						awsAccessKeyID,
@@ -164,28 +174,32 @@ var _ = Describe("Service Backup Binary", func() {
 					session.Terminate().Wait()
 					Eventually(session).Should(gexec.Exit())
 
-					targetFilePath := filepath.Join(sourceFolder, "downloaded_file")
+					By("Downloading the uploaded files from the blobstore")
+					for fileName, _ := range filesToContents {
+						verifySession, err := downloadRemoteFile(
+							remotePath(destBucket, pathWithDate(destPath), sourceFileName),
+							filepath.Join(downloadFolder, fileName),
+						)
+						Expect(err).ToNot(HaveOccurred())
+						Eventually(verifySession, awsTimeout).Should(gexec.Exit(0))
+					}
 
-					By("Downloading the uploaded file from the blobstore")
-					verifySession, err := downloadRemoteFile(
-						remotePath(destBucket, pathWithDate(destPath), sourceFileName),
-						filepath.Join(sourceFolder, "downloaded_file"),
-					)
-					Expect(err).ToNot(HaveOccurred())
-					Eventually(verifySession, awsTimeout).Should(gexec.Exit(0))
+					By("Validating the contents of the downloaded files")
+					for fileName, contents := range filesToContents {
+						downloadedFilePath := filepath.Join(downloadFolder, fileName)
 
-					By("Validating the contents of the downloaded file")
-					downloadedFile, err := os.Open(targetFilePath)
-					Expect(err).ToNot(HaveOccurred())
-					defer downloadedFile.Close()
+						downloadedFile, err := os.Open(downloadedFilePath)
+						Expect(err).ToNot(HaveOccurred())
+						defer downloadedFile.Close()
 
-					actualData := make([]byte, len(fileContents))
-					_, err = downloadedFile.Read(actualData)
-					Expect(err).ToNot(HaveOccurred())
+						actualData := make([]byte, len(contents))
+						_, err = downloadedFile.Read(actualData)
+						Expect(err).ToNot(HaveOccurred())
 
-					actualString := string(actualData)
+						actualString := string(actualData)
 
-					Expect(actualString).To(Equal(fileContents))
+						Expect(actualString).To(Equal(contents))
+					}
 				})
 			})
 
