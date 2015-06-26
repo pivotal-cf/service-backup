@@ -24,6 +24,7 @@ type awsCLIClient struct {
 	awsSecretAccessKey string
 	awsCLIPath         string
 	endpointURL        string
+	s3Client           *s3.S3
 	logger             lager.Logger
 }
 
@@ -34,11 +35,19 @@ func NewAWSCLIClient(
 	awsCLIPath string,
 	logger lager.Logger,
 ) S3Client {
+
+	s3Config := &aws.Config{
+		Region:     "us-east-1",
+		MaxRetries: 50,
+	}
+
+	s3Client := s3.New(s3Config)
 	return &awsCLIClient{
 		awsAccessKeyID:     awsAccessKeyID,
 		awsSecretAccessKey: awsSecretAccessKey,
 		endpointURL:        endpointURL,
 		awsCLIPath:         awsCLIPath,
+		s3Client:           s3Client,
 		logger:             logger,
 	}
 }
@@ -61,28 +70,25 @@ func (c awsCLIClient) createS3Command(args ...string) *exec.Cmd {
 }
 
 func (c awsCLIClient) BucketExists(bucketName string) (bool, error) {
-	cmd := c.createS3Command(
-		"ls",
-		bucketName,
-	)
-
-	out, err := cmd.CombinedOutput()
-	if err == nil {
-		c.logger.Info("Checking for bucket - bucket exists")
-		return true, nil
+	params := &s3.HeadBucketInput{
+		Bucket: aws.String(bucketName),
 	}
+	resp, err := c.s3Client.HeadBucket(params)
 
-	errOut := string(out)
+	if err != nil {
+		if strings.Contains(err.Error(), "status code: 404") {
+			return false, nil
+		}
 
-	if !strings.Contains(errOut, "NoSuchBucket") {
 		c.logger.Error(
 			"Checking for bucket failed",
 			err,
-			lager.Data{"bucketName": bucketName},
+			lager.Data{"bucketName": bucketName, "resp": resp},
 		)
 		return false, err
 	}
-	return false, nil
+
+	return true, nil
 }
 
 func (c awsCLIClient) CreateBucket(bucketName string) error {
@@ -105,15 +111,8 @@ func (c awsCLIClient) CreateBucket(bucketName string) error {
 }
 
 func (c awsCLIClient) Sync(localPath, bucketName, remotePath string) error {
-	s3Config := &aws.Config{
-		Region:     "us-east-1",
-		MaxRetries: 50,
-	}
-
-	s3Client := s3.New(s3Config)
-
 	uploadOptions := &s3manager.UploadOptions{
-		S3: s3Client,
+		S3: c.s3Client,
 	}
 	uploader := s3manager.NewUploader(uploadOptions)
 
