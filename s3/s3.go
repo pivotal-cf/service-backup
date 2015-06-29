@@ -29,12 +29,13 @@ func NewAWSSDKClient(
 	awsAccessKeyID string,
 	awsSecretAccessKey string,
 	endpointURL string,
+	maxRetries int,
 	logger lager.Logger,
 ) S3Client {
 
 	s3Config := &aws.Config{
 		Region:     "us-east-1",
-		MaxRetries: 50,
+		MaxRetries: maxRetries,
 	}
 
 	s3Client := s3.New(s3Config)

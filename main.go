@@ -23,6 +23,7 @@ const (
 	backupCreatorCmdFlagName = "backup-creator-cmd"
 	cleanupCmdFlagName       = "cleanup-cmd"
 	cronScheduleFlagName     = "cron-schedule"
+	maxRetriesFlagName       = "max-retries"
 )
 
 var (
@@ -41,6 +42,7 @@ func main() {
 	backupCreatorCmd := flags.String(backupCreatorCmdFlagName, "", "Command for creating backup")
 	cleanupCmd := flags.String(cleanupCmdFlagName, "", "Command for cleaning backup")
 	cronSchedule := flags.String(cronScheduleFlagName, "", "Cron schedule for running backup. Leave empty to run only once.")
+	maxRetries := flags.Int(maxRetriesFlagName, 50, "Max retries when uploading a S3 part.")
 
 	cf_lager.AddFlags(flags)
 	flags.Parse(os.Args[1:])
@@ -67,6 +69,7 @@ func main() {
 		*awsAccessKeyID,
 		*awsSecretAccessKey,
 		*endpointURL,
+		*maxRetries,
 		logger,
 	)
 
