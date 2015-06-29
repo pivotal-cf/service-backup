@@ -16,7 +16,6 @@ import (
 )
 
 func performBackup(
-	awsCLIPath,
 	awsAccessKeyID,
 	awsSecretAccessKey,
 	sourceFolder,
@@ -30,7 +29,6 @@ func performBackup(
 
 	backupCmd := exec.Command(
 		pathToServiceBackupBinary,
-		"--aws-cli", awsCLIPath,
 		"--aws-access-key-id", awsAccessKeyID,
 		"--aws-secret-access-key", awsSecretAccessKey,
 		"--source-folder", sourceFolder,
@@ -195,7 +193,6 @@ var _ = Describe("Service Backup Binary", func() {
 				It("recursively uploads the contents of a directory successfully", func() {
 					By("Uploading the directory contents to the blobstore")
 					session, err := performBackup(
-						awsCLIPath,
 						awsAccessKeyID,
 						awsSecretAccessKey,
 						sourceFolder,
@@ -267,7 +264,6 @@ var _ = Describe("Service Backup Binary", func() {
 				It("makes the bucket", func() {
 					By("Uploading the file to the blobstore")
 					session, err := performBackup(
-						awsCLIPath,
 						awsAccessKeyID,
 						awsSecretAccessKey,
 						sourceFolder,
@@ -304,7 +300,6 @@ var _ = Describe("Service Backup Binary", func() {
 
 					It("logs and exits without error", func() {
 						session, err := performBackup(
-							awsCLIPath,
 							awsAccessKeyID,
 							awsSecretAccessKey,
 							sourceFolder,
@@ -327,7 +322,6 @@ var _ = Describe("Service Backup Binary", func() {
 					It("executes the cleanup command and returns without error", func() {
 						By("Uploading the file to the blobstore")
 						session, err := performBackup(
-							awsCLIPath,
 							awsAccessKeyID,
 							awsSecretAccessKey,
 							sourceFolder,
@@ -360,7 +354,6 @@ var _ = Describe("Service Backup Binary", func() {
 
 				It("logs and exits without error", func() {
 					session, err := performBackup(
-						awsCLIPath,
 						awsAccessKeyID,
 						awsSecretAccessKey,
 						sourceFolder,
@@ -392,7 +385,6 @@ var _ = Describe("Service Backup Binary", func() {
 				destPath = destPathUUID.String()
 				By("Trying to upload the file to the blobstore")
 				session, err := performBackup(
-					awsCLIPath,
 					invalidAwsAccessKeyID,
 					invalidAwsSecretAccessKey,
 					sourceFolder,
@@ -413,35 +405,11 @@ var _ = Describe("Service Backup Binary", func() {
 			})
 		})
 
-		Context("when the AWS CLI path flag is not provided", func() {
-			const invalidAWSCLIPath = ""
-
-			It("gracefully fails to perform the upload", func() {
-				session, err := performBackup(
-					invalidAWSCLIPath,
-					awsAccessKeyID,
-					awsSecretAccessKey,
-					sourceFolder,
-					destBucket,
-					destPath,
-					endpointURL,
-					backupCreatorCmd,
-					cleanupCmd,
-					cronSchedule,
-				)
-
-				Expect(err).ToNot(HaveOccurred())
-				Eventually(session, awsTimeout).Should(gexec.Exit(2))
-				Eventually(session.Out).Should(gbytes.Say("Flag aws-cli not provided"))
-			})
-		})
-
 		Context("when the source folder flag is not provided", func() {
 			const invalidSourceFolder = ""
 
 			It("gracefully fails to perform the upload", func() {
 				session, err := performBackup(
-					awsCLIPath,
 					awsAccessKeyID,
 					awsSecretAccessKey,
 					invalidSourceFolder,
@@ -464,7 +432,6 @@ var _ = Describe("Service Backup Binary", func() {
 
 			It("gracefully fails to perform the upload", func() {
 				session, err := performBackup(
-					awsCLIPath,
 					awsAccessKeyID,
 					awsSecretAccessKey,
 					sourceFolder,
@@ -487,7 +454,6 @@ var _ = Describe("Service Backup Binary", func() {
 
 			It("gracefully fails to perform the upload", func() {
 				session, err := performBackup(
-					awsCLIPath,
 					awsAccessKeyID,
 					awsSecretAccessKey,
 					sourceFolder,
@@ -510,7 +476,6 @@ var _ = Describe("Service Backup Binary", func() {
 
 			It("gracefully fails to perform the upload", func() {
 				session, err := performBackup(
-					awsCLIPath,
 					awsAccessKeyID,
 					awsSecretAccessKey,
 					sourceFolder,
@@ -533,7 +498,6 @@ var _ = Describe("Service Backup Binary", func() {
 
 			It("gracefully fails to perform the upload", func() {
 				session, err := performBackup(
-					awsCLIPath,
 					awsAccessKeyID,
 					awsSecretAccessKey,
 					sourceFolder,
@@ -556,7 +520,6 @@ var _ = Describe("Service Backup Binary", func() {
 
 			It("gracefully fails to perform the upload", func() {
 				session, err := performBackup(
-					awsCLIPath,
 					awsAccessKeyID,
 					awsSecretAccessKey,
 					sourceFolder,
@@ -579,7 +542,6 @@ var _ = Describe("Service Backup Binary", func() {
 
 			It("gracefully fails to perform the upload", func() {
 				session, err := performBackup(
-					awsCLIPath,
 					awsAccessKeyID,
 					awsSecretAccessKey,
 					sourceFolder,
@@ -607,7 +569,6 @@ var _ = Describe("Service Backup Binary", func() {
 
 		It("returns without error", func() {
 			session, err := performBackup(
-				awsCLIPath,
 				emptyAWSAccessKeyID,
 				emptyAWSSecretAccessKey,
 				sourceFolder,
@@ -625,7 +586,6 @@ var _ = Describe("Service Backup Binary", func() {
 
 		It("logs that it is skipping", func() {
 			session, err := performBackup(
-				awsCLIPath,
 				emptyAWSAccessKeyID,
 				emptyAWSSecretAccessKey,
 				sourceFolder,

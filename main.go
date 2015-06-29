@@ -14,7 +14,6 @@ import (
 )
 
 const (
-	awsCLIFlagName           = "aws-cli"
 	sourceFolderFlagName     = "source-folder"
 	destBucketFlagName       = "dest-bucket"
 	destPathFlagName         = "dest-path"
@@ -33,7 +32,6 @@ var (
 func main() {
 	flags := flag.NewFlagSet(os.Args[0], flag.ExitOnError)
 
-	awsCLIBinaryPath := flags.String(awsCLIFlagName, "", "Path to AWS CLI")
 	sourceFolder := flags.String(sourceFolderFlagName, "", "Local path to upload from (e.g.: /var/vcap/data)")
 	destBucket := flags.String(destBucketFlagName, "", "Remote bucket to upload. No preceding or trailing slashes. E.g. my-remote-bucket")
 	destPath := flags.String(destPathFlagName, "", "Remote directory path inside bucket to upload to. No preceding or trailing slashes. E.g. remote/path/inside/bucket")
@@ -56,7 +54,6 @@ func main() {
 
 	validateFlag(awsAccessKeyID, awsAccessKeyFlagName)
 	validateFlag(awsSecretAccessKey, awsSecretKeyFlagName)
-	validateFlag(awsCLIBinaryPath, awsCLIFlagName)
 	validateFlag(sourceFolder, sourceFolderFlagName)
 	validateFlag(destBucket, destBucketFlagName)
 	validateFlag(endpointURL, endpointURLFlagName)
@@ -66,11 +63,10 @@ func main() {
 	os.Setenv("AWS_ACCESS_KEY_ID", *awsAccessKeyID)
 	os.Setenv("AWS_SECRET_ACCESS_KEY", *awsSecretAccessKey)
 
-	s3Client := s3.NewAWSCLIClient(
+	s3Client := s3.NewAWSSDKClient(
 		*awsAccessKeyID,
 		*awsSecretAccessKey,
 		*endpointURL,
-		*awsCLIBinaryPath,
 		logger,
 	)
 

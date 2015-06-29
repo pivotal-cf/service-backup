@@ -17,20 +17,18 @@ type S3Client interface {
 	Sync(localPath, bucketName, remotePath string) error
 }
 
-type awsCLIClient struct {
+type awsSDKClient struct {
 	awsAccessKeyID     string
 	awsSecretAccessKey string
-	awsCLIPath         string
 	endpointURL        string
 	s3Client           *s3.S3
 	logger             lager.Logger
 }
 
-func NewAWSCLIClient(
+func NewAWSSDKClient(
 	awsAccessKeyID string,
 	awsSecretAccessKey string,
 	endpointURL string,
-	awsCLIPath string,
 	logger lager.Logger,
 ) S3Client {
 
@@ -40,17 +38,16 @@ func NewAWSCLIClient(
 	}
 
 	s3Client := s3.New(s3Config)
-	return &awsCLIClient{
+	return &awsSDKClient{
 		awsAccessKeyID:     awsAccessKeyID,
 		awsSecretAccessKey: awsSecretAccessKey,
 		endpointURL:        endpointURL,
-		awsCLIPath:         awsCLIPath,
 		s3Client:           s3Client,
 		logger:             logger,
 	}
 }
 
-func (c awsCLIClient) BucketExists(bucketName string) (bool, error) {
+func (c awsSDKClient) BucketExists(bucketName string) (bool, error) {
 	params := &s3.HeadBucketInput{
 		Bucket: aws.String(bucketName),
 	}
@@ -72,7 +69,7 @@ func (c awsCLIClient) BucketExists(bucketName string) (bool, error) {
 	return true, nil
 }
 
-func (c awsCLIClient) CreateBucket(bucketName string) error {
+func (c awsSDKClient) CreateBucket(bucketName string) error {
 	params := &s3.CreateBucketInput{
 		Bucket: aws.String(bucketName),
 	}
@@ -89,7 +86,7 @@ func (c awsCLIClient) CreateBucket(bucketName string) error {
 	return nil
 }
 
-func (c awsCLIClient) Sync(localPath, bucketName, remotePath string) error {
+func (c awsSDKClient) Sync(localPath, bucketName, remotePath string) error {
 	uploadOptions := &s3manager.UploadOptions{
 		S3: c.s3Client,
 	}
@@ -98,7 +95,7 @@ func (c awsCLIClient) Sync(localPath, bucketName, remotePath string) error {
 	return c.uploadDirectory(localPath, bucketName, remotePath, uploader)
 }
 
-func (c awsCLIClient) uploadDirectory(localPath, bucketName, remotePath string, uploader *s3manager.Uploader) error {
+func (c awsSDKClient) uploadDirectory(localPath, bucketName, remotePath string, uploader *s3manager.Uploader) error {
 	directoryContents, err := filepath.Glob(localPath + "/*")
 	if err != nil {
 		return err
@@ -127,7 +124,7 @@ func (c awsCLIClient) uploadDirectory(localPath, bucketName, remotePath string, 
 	return nil
 }
 
-func (c awsCLIClient) uploadFile(filePath, bucketName, remotePath string, uploader *s3manager.Uploader) error {
+func (c awsSDKClient) uploadFile(filePath, bucketName, remotePath string, uploader *s3manager.Uploader) error {
 	source, err := os.Open(filePath)
 	if err != nil {
 		return err
