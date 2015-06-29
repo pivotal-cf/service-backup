@@ -4,14 +4,15 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
 
+	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/service/s3"
+	"github.com/aws/aws-sdk-go/service/s3/s3manager"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	"github.com/onsi/gomega/gbytes"
 	"github.com/onsi/gomega/gexec"
 )
 
@@ -22,7 +23,6 @@ const (
 	existingBucketName = "service-backup-integration-test"
 	awsTimeout         = "20s"
 
-	awsCLIPath   = "aws"
 	endpointURL  = "https://s3.amazonaws.com"
 	cronSchedule = "*/5 * * * * *" // every 5 seconds of every minute of every day etc
 )
@@ -72,48 +72,28 @@ func beforeSuiteFirstNode() []byte {
 }
 
 func createBucketIfNeeded() {
-	session, err := runS3Command(
-		"ls",
-		existingBucketName,
-	)
+	_, err := listRemotePath(existingBucketName, "")
 
-	Expect(err).ToNot(HaveOccurred())
-	Eventually(session, awsTimeout).Should(gexec.Exit())
-
-	exitCode := session.ExitCode()
-	if exitCode != 0 {
-		errOut := string(session.Err.Contents())
+	if err != nil {
+		errOut := err.Error()
 
 		if !strings.Contains(errOut, "NoSuchBucket") {
 			Fail("Unable to list bucket: " + existingBucketName + " - error: " + errOut)
 		}
 
-		session, err := runS3Command(
-			"mb",
-			"s3://"+existingBucketName,
-		)
+		params := &s3.CreateBucketInput{
+			Bucket: aws.String(existingBucketName),
+		}
+
+		_, err := s3Client().CreateBucket(params)
 		Expect(err).ToNot(HaveOccurred())
-		Eventually(session, awsTimeout).Should(gexec.Exit(0))
-		Eventually(session.Out).Should(gbytes.Say("make_bucket: s3://" + existingBucketName))
 	}
 }
 
-func runS3Command(args ...string) (*gexec.Session, error) {
-	env := []string{}
-	env = append(env, fmt.Sprintf("%s=%s", awsAccessKeyIDEnvKey, awsAccessKeyID))
-	env = append(env, fmt.Sprintf("%s=%s", awsSecretAccessKeyEnvKey, awsSecretAccessKey))
-
-	verifyBackupCmd := exec.Command(
-		awsCLIPath,
-		append([]string{
-			"s3",
-			"--region",
-			"us-east-1",
-		}, args...)...,
-	)
-	verifyBackupCmd.Env = env
-
-	return gexec.Start(verifyBackupCmd, GinkgoWriter, GinkgoWriter)
+func assetPath(filename string) string {
+	path, err := filepath.Abs(filepath.Join("assets", filename))
+	Expect(err).ToNot(HaveOccurred())
+	return path
 }
 
 func beforeSuiteOtherNodes(b []byte) {
@@ -134,8 +114,88 @@ var _ = SynchronizedAfterSuite(func() {
 	gexec.CleanupBuildArtifacts()
 })
 
-func assetPath(filename string) string {
-	path, err := filepath.Abs(filepath.Join("assets", filename))
+func s3Client() *s3.S3 {
+	s3Config := &aws.Config{
+		Region:     "us-east-1",
+		MaxRetries: 50,
+	}
+	return s3.New(s3Config)
+}
+
+func downloadRemoteDirectory(bucketName, remotePath, localPath string) error {
+	listResp, err := listRemotePath(bucketName, remotePath)
+	if err != nil {
+		return err
+	}
+
+	downloader := s3manager.NewDownloader(&s3manager.DownloadOptions{
+		S3: s3Client(),
+	})
+
+	for _, remoteFile := range listResp.Contents {
+		filePath, fileName := filepath.Split(*remoteFile.Key)
+
+		pathWithoutTimestamp := strings.Join(strings.Split(filePath, "/")[4:], "/")
+		destPath := filepath.Join(localPath, pathWithoutTimestamp)
+		os.MkdirAll(destPath, 0777)
+
+		output, err := os.Create(filepath.Join(destPath, fileName))
+		if err != nil {
+			return err
+		}
+
+		getObjectInput := &s3.GetObjectInput{
+			Bucket: aws.String(bucketName),
+			Key:    remoteFile.Key,
+		}
+
+		_, err = downloader.Download(output, getObjectInput)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func listRemotePath(bucketName, remotePath string) (*s3.ListObjectsOutput, error) {
+	params := &s3.ListObjectsInput{
+		Bucket: aws.String(bucketName),
+		Prefix: aws.String(remotePath),
+	}
+
+	return s3Client().ListObjects(params)
+}
+
+func isRemotePathEmpty(bucketName, remotePath string) bool {
+	resp, err := listRemotePath(bucketName, remotePath)
 	Expect(err).ToNot(HaveOccurred())
-	return path
+
+	return len(resp.Contents) == 0
+}
+
+func deleteRemotePath(bucketName, remotePath string) error {
+	listResp, err := listRemotePath(bucketName, remotePath)
+	objectsToDelete := []*s3.ObjectIdentifier{}
+
+	for _, key := range listResp.Contents {
+		objectsToDelete = append(objectsToDelete, &s3.ObjectIdentifier{
+			Key: key.Key,
+		})
+	}
+
+	deleteParams := &s3.DeleteObjectsInput{
+		Bucket: aws.String(bucketName),
+		Delete: &s3.Delete{Objects: objectsToDelete},
+	}
+
+	_, err = s3Client().DeleteObjects(deleteParams)
+	return err
+}
+
+func deleteBucket(bucketName string) {
+	err := deleteRemotePath(bucketName, "")
+	Expect(err).ToNot(HaveOccurred())
+	params := &s3.DeleteBucketInput{Bucket: aws.String(bucketName)}
+	_, err = s3Client().DeleteBucket(params)
+	Expect(err).ToNot(HaveOccurred())
 }
