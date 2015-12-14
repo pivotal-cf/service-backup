@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/aws/aws-sdk-go/service/s3/s3manager"
 	"github.com/pivotal-golang/lager"
@@ -23,6 +24,7 @@ type awsSDKClient struct {
 	endpointURL        string
 	s3Client           *s3.S3
 	logger             lager.Logger
+	session            *session.Session
 }
 
 func NewAWSSDKClient(
@@ -33,18 +35,15 @@ func NewAWSSDKClient(
 	logger lager.Logger,
 ) S3Client {
 
-	s3Config := &aws.Config{
-		Region:     "us-east-1",
-		MaxRetries: maxRetries,
-	}
-
-	s3Client := s3.New(s3Config)
+	s3Session := session.New(aws.NewConfig().WithRegion("us-east-1").WithMaxRetries(maxRetries))
+	s3Client := s3.New(s3Session)
 	return &awsSDKClient{
 		awsAccessKeyID:     awsAccessKeyID,
 		awsSecretAccessKey: awsSecretAccessKey,
 		endpointURL:        endpointURL,
 		s3Client:           s3Client,
 		logger:             logger,
+		session:            s3Session,
 	}
 }
 
@@ -88,10 +87,7 @@ func (c awsSDKClient) CreateBucket(bucketName string) error {
 }
 
 func (c awsSDKClient) Sync(localPath, bucketName, remotePath string) error {
-	uploadOptions := &s3manager.UploadOptions{
-		S3: c.s3Client,
-	}
-	uploader := s3manager.NewUploader(uploadOptions)
+	uploader := s3manager.NewUploader(c.session)
 
 	return c.uploadDirectory(localPath, bucketName, remotePath, uploader)
 }
