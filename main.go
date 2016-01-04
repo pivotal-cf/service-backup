@@ -23,7 +23,7 @@ const (
 	backupCreatorCmdFlagName = "backup-creator-cmd"
 	cleanupCmdFlagName       = "cleanup-cmd"
 	cronScheduleFlagName     = "cron-schedule"
-	maxRetriesFlagName       = "max-retries"
+	awsCmdPathFlagName       = "aws-cli-path"
 )
 
 var (
@@ -42,7 +42,7 @@ func main() {
 	backupCreatorCmd := flags.String(backupCreatorCmdFlagName, "", "Command for creating backup")
 	cleanupCmd := flags.String(cleanupCmdFlagName, "", "Command for cleaning backup")
 	cronSchedule := flags.String(cronScheduleFlagName, "", "Cron schedule for running backup. Leave empty to run only once.")
-	maxRetries := flags.Int(maxRetriesFlagName, 50, "Max retries when uploading a S3 part.")
+	awsCmdPath := flags.String(awsCmdPathFlagName, "aws", "Path to AWS CLI binary. Optional. Defaults to looking on $PATH.")
 
 	cf_lager.AddFlags(flags)
 	flags.Parse(os.Args[1:])
@@ -62,15 +62,11 @@ func main() {
 	validateFlag(backupCreatorCmd, backupCreatorCmdFlagName)
 	validateFlag(cronSchedule, cronScheduleFlagName)
 
-	os.Setenv("AWS_ACCESS_KEY_ID", *awsAccessKeyID)
-	os.Setenv("AWS_SECRET_ACCESS_KEY", *awsSecretAccessKey)
-
-	s3Client := s3.NewAWSSDKClient(
+	s3Client := s3.NewCliClient(
+		*awsCmdPath,
+		*endpointURL,
 		*awsAccessKeyID,
 		*awsSecretAccessKey,
-		*endpointURL,
-		*maxRetries,
-		logger,
 	)
 
 	executor := backup.NewExecutor(

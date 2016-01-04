@@ -6,7 +6,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/pivotal-cf-experimental/service-backup/s3"
 	"github.com/pivotal-golang/lager"
 )
 
@@ -14,8 +13,14 @@ type Executor interface {
 	RunOnce() error
 }
 
+type S3Client interface {
+	BucketExists(bucketName string) (bool, error)
+	CreateBucket(bucketName string) error
+	Sync(localPath, bucketName, remotePath string) error
+}
+
 type backup struct {
-	s3Client         s3.S3Client
+	s3Client         S3Client
 	sourceFolder     string
 	destBucket       string
 	destPath         string
@@ -25,7 +30,7 @@ type backup struct {
 }
 
 func NewExecutor(
-	s3Client s3.S3Client,
+	s3Client S3Client,
 	sourceFolder,
 	destBucket,
 	destPath,
