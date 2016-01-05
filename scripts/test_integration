@@ -17,6 +17,7 @@ pushd "${BASE_DIR}"
     -r \
     -p \
     -race \
+    -randomizeSuites \
     -randomizeAllSpecs \
     -slowSpecThreshold=30 \
     "$@" \
