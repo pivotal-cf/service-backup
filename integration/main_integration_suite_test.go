@@ -20,7 +20,7 @@ const (
 	awsAccessKeyIDEnvKey     = "AWS_ACCESS_KEY_ID"
 	awsSecretAccessKeyEnvKey = "AWS_SECRET_ACCESS_KEY"
 
-	existingBucketName = "service-backup-integration-test"
+	existingBucketName = "service-backup-integration-test2"
 	awsTimeout         = "20s"
 
 	endpointURL  = "https://s3.amazonaws.com"
