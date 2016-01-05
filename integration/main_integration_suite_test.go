@@ -9,7 +9,6 @@ import (
 	"testing"
 
 	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/aws/aws-sdk-go/service/s3/s3manager"
 	. "github.com/onsi/ginkgo"
@@ -33,7 +32,6 @@ var (
 	awsAccessKeyID            string
 	awsSecretAccessKey        string
 	destPath                  string
-	sessionAWS                *session.Session
 )
 
 type config struct {
@@ -71,17 +69,6 @@ func beforeSuiteFirstNode() []byte {
 	createBucketIfNeeded()
 
 	return data
-}
-
-func s3Client() *s3.S3 {
-	return s3.New(awsSession())
-}
-
-func awsSession() *session.Session {
-	if sessionAWS == nil {
-		sessionAWS = session.New(aws.NewConfig().WithRegion("us-east-1").WithMaxRetries(50))
-	}
-	return sessionAWS
 }
 
 func createBucketIfNeeded() {
@@ -127,13 +114,23 @@ var _ = SynchronizedAfterSuite(func() {
 	gexec.CleanupBuildArtifacts()
 })
 
+func s3Client() *s3.S3 {
+	s3Config := &aws.Config{
+		Region:     "us-east-1",
+		MaxRetries: 50,
+	}
+	return s3.New(s3Config)
+}
+
 func downloadRemoteDirectory(bucketName, remotePath, localPath string) error {
 	listResp, err := listRemotePath(bucketName, remotePath)
 	if err != nil {
 		return err
 	}
 
-	downloader := s3manager.NewDownloader(awsSession())
+	downloader := s3manager.NewDownloader(&s3manager.DownloadOptions{
+		S3: s3Client(),
+	})
 
 	for _, remoteFile := range listResp.Contents {
 		filePath, fileName := filepath.Split(*remoteFile.Key)
