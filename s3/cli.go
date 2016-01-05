@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"fmt"
 	"os/exec"
+
+	"github.com/pivotal-golang/lager"
 )
 
 type S3CliClient struct {
@@ -11,14 +13,16 @@ type S3CliClient struct {
 	accessKey   string
 	secretKey   string
 	endpointURL string
+	logger      lager.Logger
 }
 
-func NewCliClient(awsCmdPath, endpointURL, accessKey, secretKey string) *S3CliClient {
+func NewCliClient(awsCmdPath, endpointURL, accessKey, secretKey string, logger lager.Logger) *S3CliClient {
 	return &S3CliClient{
 		awsCmdPath:  awsCmdPath,
 		endpointURL: endpointURL,
 		accessKey:   accessKey,
 		secretKey:   secretKey,
+		logger:      logger,
 	}
 }
 
@@ -46,10 +50,20 @@ func (c *S3CliClient) BucketExists(bucketName string) (bool, error) {
 func (c *S3CliClient) CreateBucket(bucketName string) error {
 	cmd := c.s3Cmd()
 	cmd.Args = append(cmd.Args, "mb", fmt.Sprintf("s3://%s", bucketName))
-	return cmd.Run()
+	return c.runCommand(cmd, "create bucket")
 }
+
 func (c *S3CliClient) Sync(localPath, bucketName, remotePath string) error {
 	cmd := c.s3Cmd()
 	cmd.Args = append(cmd.Args, "sync", localPath, fmt.Sprintf("s3://%s/%s", bucketName, remotePath))
-	return cmd.Run()
+	return c.runCommand(cmd, "sync")
+}
+
+func (c *S3CliClient) runCommand(cmd *exec.Cmd, stepName string) error {
+	c.logger.Info(fmt.Sprintf("Running command: %+v\n", cmd))
+	if out, err := cmd.CombinedOutput(); err != nil {
+		return fmt.Errorf("error in %s: %s, output: %s", stepName, err, string(out))
+	}
+
+	return nil
 }

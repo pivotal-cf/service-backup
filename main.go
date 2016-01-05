@@ -67,6 +67,7 @@ func main() {
 		*endpointURL,
 		*awsAccessKeyID,
 		*awsSecretAccessKey,
+		logger,
 	)
 
 	executor := backup.NewExecutor(
