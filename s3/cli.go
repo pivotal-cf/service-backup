@@ -41,7 +41,9 @@ func (c *S3CliClient) BucketExists(bucketName string) (bool, error) {
 			return false, nil
 		}
 
-		return false, fmt.Errorf("unknown s3 error occurred: '%s' with output: '%s'", err, string(out))
+		wrappedErr := fmt.Errorf("unknown s3 error occurred: '%s' with output: '%s'", err, string(out))
+		c.logger.Error("error checking if bucket exists", wrappedErr)
+		return false, wrappedErr
 	}
 
 	return true, nil
