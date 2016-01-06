@@ -5,12 +5,8 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"strings"
 	"testing"
 
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/service/s3"
-	"github.com/aws/aws-sdk-go/service/s3/s3manager"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gexec"
@@ -32,6 +28,8 @@ var (
 	awsAccessKeyID            string
 	awsSecretAccessKey        string
 	destPath                  string
+
+	s3TestClient *S3TestClient
 )
 
 type config struct {
@@ -66,28 +64,10 @@ func beforeSuiteFirstNode() []byte {
 	data, err := json.Marshal(c)
 	Expect(err).ToNot(HaveOccurred())
 
-	createBucketIfNeeded()
+	s3TestClient = NewS3TestClient(endpointURL, awsAccessKeyID, awsSecretAccessKey)
+	s3TestClient.createBucketIfNeeded(existingBucketName)
 
 	return data
-}
-
-func createBucketIfNeeded() {
-	_, err := listRemotePath(existingBucketName, "")
-
-	if err != nil {
-		errOut := err.Error()
-
-		if !strings.Contains(errOut, "NoSuchBucket") {
-			Fail("Unable to list bucket: " + existingBucketName + " - error: " + errOut)
-		}
-
-		params := &s3.CreateBucketInput{
-			Bucket: aws.String(existingBucketName),
-		}
-
-		_, err := s3Client().CreateBucket(params)
-		Expect(err).ToNot(HaveOccurred())
-	}
 }
 
 func assetPath(filename string) string {
@@ -104,6 +84,7 @@ func beforeSuiteOtherNodes(b []byte) {
 	awsAccessKeyID = c.AWSAccessKeyID
 	awsSecretAccessKey = c.AWSSecretAccessKey
 	pathToServiceBackupBinary = c.PathToBackupBinary
+	s3TestClient = NewS3TestClient(endpointURL, awsAccessKeyID, awsSecretAccessKey)
 }
 
 var _ = SynchronizedBeforeSuite(beforeSuiteFirstNode, beforeSuiteOtherNodes)
@@ -113,89 +94,3 @@ var _ = SynchronizedAfterSuite(func() {
 }, func() {
 	gexec.CleanupBuildArtifacts()
 })
-
-func s3Client() *s3.S3 {
-	s3Config := &aws.Config{
-		Region:     "us-east-1",
-		MaxRetries: 50,
-	}
-	return s3.New(s3Config)
-}
-
-func downloadRemoteDirectory(bucketName, remotePath, localPath string) error {
-	listResp, err := listRemotePath(bucketName, remotePath)
-	if err != nil {
-		return err
-	}
-
-	downloader := s3manager.NewDownloader(&s3manager.DownloadOptions{
-		S3: s3Client(),
-	})
-
-	for _, remoteFile := range listResp.Contents {
-		filePath, fileName := filepath.Split(*remoteFile.Key)
-
-		pathWithoutTimestamp := strings.Join(strings.Split(filePath, "/")[4:], "/")
-		destPath := filepath.Join(localPath, pathWithoutTimestamp)
-		os.MkdirAll(destPath, 0777)
-
-		output, err := os.Create(filepath.Join(destPath, fileName))
-		if err != nil {
-			return err
-		}
-
-		getObjectInput := &s3.GetObjectInput{
-			Bucket: aws.String(bucketName),
-			Key:    remoteFile.Key,
-		}
-
-		_, err = downloader.Download(output, getObjectInput)
-		if err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-func listRemotePath(bucketName, remotePath string) (*s3.ListObjectsOutput, error) {
-	params := &s3.ListObjectsInput{
-		Bucket: aws.String(bucketName),
-		Prefix: aws.String(remotePath),
-	}
-
-	return s3Client().ListObjects(params)
-}
-
-func isRemotePathEmpty(bucketName, remotePath string) bool {
-	resp, err := listRemotePath(bucketName, remotePath)
-	Expect(err).ToNot(HaveOccurred())
-
-	return len(resp.Contents) == 0
-}
-
-func deleteRemotePath(bucketName, remotePath string) error {
-	listResp, err := listRemotePath(bucketName, remotePath)
-	objectsToDelete := []*s3.ObjectIdentifier{}
-
-	for _, key := range listResp.Contents {
-		objectsToDelete = append(objectsToDelete, &s3.ObjectIdentifier{
-			Key: key.Key,
-		})
-	}
-
-	deleteParams := &s3.DeleteObjectsInput{
-		Bucket: aws.String(bucketName),
-		Delete: &s3.Delete{Objects: objectsToDelete},
-	}
-
-	_, err = s3Client().DeleteObjects(deleteParams)
-	return err
-}
-
-func deleteBucket(bucketName string) {
-	err := deleteRemotePath(bucketName, "")
-	Expect(err).ToNot(HaveOccurred())
-	params := &s3.DeleteBucketInput{Bucket: aws.String(bucketName)}
-	_, err = s3Client().DeleteBucket(params)
-	Expect(err).ToNot(HaveOccurred())
-}

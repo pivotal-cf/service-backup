@@ -88,11 +88,6 @@ func createFileIn(sourceFolder string) (string, string) {
 	return fileName, fileContents
 }
 
-func verifyDeleteRemoteBucket(destBucket string) {
-	err := deleteRemotePath(destBucket, pathWithDate(destPath))
-	Expect(err).ToNot(HaveOccurred())
-}
-
 var _ = Describe("Service Backup Binary", func() {
 	var (
 		destBucket       string
@@ -147,7 +142,7 @@ var _ = Describe("Service Backup Binary", func() {
 
 			Context("when the bucket already exists", func() {
 				AfterEach(func() {
-					verifyDeleteRemoteBucket(destBucket)
+					Expect(s3TestClient.deleteRemotePath(destBucket, pathWithDate(destPath))).To(Succeed())
 				})
 
 				It("recursively uploads the contents of a directory successfully", func() {
@@ -170,7 +165,7 @@ var _ = Describe("Service Backup Binary", func() {
 					Eventually(session).Should(gexec.Exit())
 
 					By("Downloading the uploaded files from the blobstore")
-					err = downloadRemoteDirectory(
+					err = s3TestClient.downloadRemoteDirectory(
 						destBucket,
 						pathWithDate(destPath),
 						downloadFolder,
@@ -211,7 +206,7 @@ var _ = Describe("Service Backup Binary", func() {
 				})
 
 				AfterEach(func() {
-					deleteBucket(destBucket)
+					s3TestClient.deleteBucket(destBucket)
 				})
 
 				It("makes the bucket", func() {
@@ -233,17 +228,12 @@ var _ = Describe("Service Backup Binary", func() {
 					session.Terminate().Wait()
 					Eventually(session).Should(gexec.Exit())
 
-					resp, err := listRemotePath(destBucket, "")
-					Expect(err).ToNot(HaveOccurred())
-					Expect(resp.Contents).ToNot(BeEmpty())
+					keys, err := s3TestClient.listRemotePath(destBucket, "")
+					Expect(keys).ToNot(BeEmpty())
 				})
 			})
 
 			Context("when cleanup-cmd is provided", func() {
-				AfterEach(func() {
-					verifyDeleteRemoteBucket(destBucket)
-				})
-
 				Context("when the cleanup command fails with non-zero exit code", func() {
 					const failingCleanupCmd = "ls /not/a/valid/directory"
 
@@ -297,10 +287,6 @@ var _ = Describe("Service Backup Binary", func() {
 			Context("when cleanup-cmd is not provided", func() {
 				const emptyCleanupCmd = ""
 
-				AfterEach(func() {
-					verifyDeleteRemoteBucket(destBucket)
-				})
-
 				It("logs and exits without error", func() {
 					session, err := performBackup(
 						awsAccessKeyID,
@@ -328,7 +314,6 @@ var _ = Describe("Service Backup Binary", func() {
 			)
 
 			It("fails to upload a directory", func() {
-
 				destPathUUID, err := uuid.NewV4()
 				Expect(err).ToNot(HaveOccurred())
 				destPath = destPathUUID.String()
@@ -350,7 +335,7 @@ var _ = Describe("Service Backup Binary", func() {
 				Eventually(session).Should(gexec.Exit())
 
 				By("Verifying that the destPath was never created")
-				Expect(isRemotePathEmpty(destBucket, destPath)).To(BeTrue())
+				Expect(s3TestClient.remotePathExistsInBucket(destBucket, destPath)).To(BeFalse())
 			})
 		})
 
