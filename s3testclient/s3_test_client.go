@@ -1,4 +1,4 @@
-package integration
+package s3testclient
 
 import (
 	"flag"
@@ -16,7 +16,7 @@ type S3TestClient struct {
 	*s3.S3CliClient
 }
 
-func NewS3TestClient(endpointURL, accessKeyID, secretAccessKey string) *S3TestClient {
+func New(endpointURL, accessKeyID, secretAccessKey string) *S3TestClient {
 	flags := flag.NewFlagSet(os.Args[0], flag.ExitOnError)
 	cf_lager.AddFlags(flags)
 	logger, _ := cf_lager.New("s3-test-client")
@@ -26,7 +26,7 @@ func NewS3TestClient(endpointURL, accessKeyID, secretAccessKey string) *S3TestCl
 	}
 }
 
-func (c *S3TestClient) listRemotePath(bucketName, remotePath string) ([]string, error) {
+func (c *S3TestClient) ListRemotePath(bucketName, remotePath string) ([]string, error) {
 	cmd := c.S3Cmd()
 	cmd.Args = append(cmd.Args, "ls", "--recursive", fmt.Sprintf("s3://%s/%s", bucketName, remotePath))
 	out, err := cmd.CombinedOutput()
@@ -45,8 +45,8 @@ func (c *S3TestClient) listRemotePath(bucketName, remotePath string) ([]string, 
 	return remoteKeys, nil
 }
 
-func (c *S3TestClient) remotePathExistsInBucket(bucketName, remotePath string) bool {
-	keys, err := c.listRemotePath(bucketName, "")
+func (c *S3TestClient) RemotePathExistsInBucket(bucketName, remotePath string) bool {
+	keys, err := c.ListRemotePath(bucketName, "")
 	Expect(err).ToNot(HaveOccurred())
 
 	for _, key := range keys {
@@ -57,7 +57,7 @@ func (c *S3TestClient) remotePathExistsInBucket(bucketName, remotePath string) b
 	return false
 }
 
-func (c *S3TestClient) createBucketIfNeeded(bucketName string) {
+func (c *S3TestClient) CreateBucketIfNeeded(bucketName string) {
 	exists, err := c.BucketExists(bucketName)
 	Expect(err).NotTo(HaveOccurred())
 	if !exists {
@@ -65,7 +65,7 @@ func (c *S3TestClient) createBucketIfNeeded(bucketName string) {
 	}
 }
 
-func (c *S3TestClient) downloadRemoteDirectory(bucketName, remotePath, localPath string) error {
+func (c *S3TestClient) DownloadRemoteDirectory(bucketName, remotePath, localPath string) error {
 	err := os.MkdirAll(localPath, 0777)
 	if err != nil {
 		return err
@@ -76,13 +76,13 @@ func (c *S3TestClient) downloadRemoteDirectory(bucketName, remotePath, localPath
 	return c.RunCommand(cmd, "download remote")
 }
 
-func (c *S3TestClient) deleteRemotePath(bucketName, remotePath string) error {
+func (c *S3TestClient) DeleteRemotePath(bucketName, remotePath string) error {
 	cmd := c.S3Cmd()
 	cmd.Args = append(cmd.Args, "rm", "--recursive", fmt.Sprintf("s3://%s/%s", bucketName, remotePath))
 	return c.RunCommand(cmd, "delete remote path")
 }
 
-func (c *S3TestClient) deleteBucket(bucketName string) {
+func (c *S3TestClient) DeleteBucket(bucketName string) {
 	cmd := c.S3Cmd()
 	cmd.Args = append(cmd.Args, "rb", "--force", fmt.Sprintf("s3://%s", bucketName))
 

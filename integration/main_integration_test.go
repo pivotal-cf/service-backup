@@ -142,7 +142,7 @@ var _ = Describe("Service Backup Binary", func() {
 
 			Context("when the bucket already exists", func() {
 				AfterEach(func() {
-					Expect(s3TestClient.deleteRemotePath(destBucket, pathWithDate(destPath))).To(Succeed())
+					Expect(s3TestClient.DeleteRemotePath(destBucket, pathWithDate(destPath))).To(Succeed())
 				})
 
 				It("recursively uploads the contents of a directory successfully", func() {
@@ -165,7 +165,7 @@ var _ = Describe("Service Backup Binary", func() {
 					Eventually(session).Should(gexec.Exit())
 
 					By("Downloading the uploaded files from the blobstore")
-					err = s3TestClient.downloadRemoteDirectory(
+					err = s3TestClient.DownloadRemoteDirectory(
 						destBucket,
 						pathWithDate(destPath),
 						downloadFolder,
@@ -206,7 +206,7 @@ var _ = Describe("Service Backup Binary", func() {
 				})
 
 				AfterEach(func() {
-					s3TestClient.deleteBucket(destBucket)
+					s3TestClient.DeleteBucket(destBucket)
 				})
 
 				It("makes the bucket", func() {
@@ -228,7 +228,7 @@ var _ = Describe("Service Backup Binary", func() {
 					session.Terminate().Wait()
 					Eventually(session).Should(gexec.Exit())
 
-					keys, err := s3TestClient.listRemotePath(destBucket, "")
+					keys, err := s3TestClient.ListRemotePath(destBucket, "")
 					Expect(keys).ToNot(BeEmpty())
 				})
 			})
@@ -335,7 +335,7 @@ var _ = Describe("Service Backup Binary", func() {
 				Eventually(session).Should(gexec.Exit())
 
 				By("Verifying that the destPath was never created")
-				Expect(s3TestClient.remotePathExistsInBucket(destBucket, destPath)).To(BeFalse())
+				Expect(s3TestClient.RemotePathExistsInBucket(destBucket, destPath)).To(BeFalse())
 			})
 		})
 

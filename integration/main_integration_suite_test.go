@@ -7,6 +7,8 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/pivotal-cf-experimental/service-backup/s3testclient"
+
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gexec"
@@ -29,7 +31,7 @@ var (
 	awsSecretAccessKey        string
 	destPath                  string
 
-	s3TestClient *S3TestClient
+	s3TestClient *s3testclient.S3TestClient
 )
 
 type config struct {
@@ -64,8 +66,8 @@ func beforeSuiteFirstNode() []byte {
 	data, err := json.Marshal(c)
 	Expect(err).ToNot(HaveOccurred())
 
-	s3TestClient = NewS3TestClient(endpointURL, awsAccessKeyID, awsSecretAccessKey)
-	s3TestClient.createBucketIfNeeded(existingBucketName)
+	s3TestClient = s3testclient.New(endpointURL, awsAccessKeyID, awsSecretAccessKey)
+	s3TestClient.CreateBucketIfNeeded(existingBucketName)
 
 	return data
 }
@@ -84,7 +86,7 @@ func beforeSuiteOtherNodes(b []byte) {
 	awsAccessKeyID = c.AWSAccessKeyID
 	awsSecretAccessKey = c.AWSSecretAccessKey
 	pathToServiceBackupBinary = c.PathToBackupBinary
-	s3TestClient = NewS3TestClient(endpointURL, awsAccessKeyID, awsSecretAccessKey)
+	s3TestClient = s3testclient.New(endpointURL, awsAccessKeyID, awsSecretAccessKey)
 }
 
 var _ = SynchronizedBeforeSuite(beforeSuiteFirstNode, beforeSuiteOtherNodes)
