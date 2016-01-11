@@ -1,4 +1,4 @@
-package integration
+package s3integration_test
 
 import (
 	"fmt"

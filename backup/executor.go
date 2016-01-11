@@ -13,36 +13,33 @@ type Executor interface {
 	RunOnce() error
 }
 
-type S3Client interface {
-	BucketExists(bucketName string) (bool, error)
-	CreateBucket(bucketName string) error
-	Sync(localPath, bucketName, remotePath string) error
+type Backuper interface {
+	RemotePathExists(remotePath string) (bool, error)
+	CreateRemotePath(remotePath string) error
+	Upload(localPath, remotePath string) error
 }
 
 type backup struct {
-	s3Client         S3Client
+	backuper         Backuper
 	sourceFolder     string
-	destBucket       string
-	destPath         string
+	remotePath       string
 	backupCreatorCmd string
 	cleanupCmd       string
 	logger           lager.Logger
 }
 
 func NewExecutor(
-	s3Client S3Client,
+	backuper Backuper,
 	sourceFolder,
-	destBucket,
-	destPath,
+	remotePath,
 	backupCreatorCmd,
 	cleanupCmd string,
 	logger lager.Logger,
 ) Executor {
 	return &backup{
-		s3Client:         s3Client,
+		backuper:         backuper,
 		sourceFolder:     sourceFolder,
-		destBucket:       destBucket,
-		destPath:         destPath,
+		remotePath:       remotePath,
 		backupCreatorCmd: backupCreatorCmd,
 		cleanupCmd:       cleanupCmd,
 		logger:           logger,
@@ -50,43 +47,40 @@ func NewExecutor(
 }
 
 func (b *backup) RunOnce() error {
-	err := b.createBucketIfNeeded()
-	if err != nil {
+	if err := b.performBackup(); err != nil {
 		return err
 	}
 
-	err = b.performBackup()
-	if err != nil {
+	if err := b.CreateRemotePathIfNeeded(); err != nil {
 		return err
 	}
 
-	err = b.uploadBackup()
-	if err != nil {
+	if err := b.uploadBackup(); err != nil {
 		return err
 	}
 
 	// Do not return error if cleanup command failed.
-	_ = b.performCleanup()
+	b.performCleanup()
 	return nil
 }
 
-func (b *backup) createBucketIfNeeded() error {
-	b.logger.Info("Checking for bucket", lager.Data{"destBucket": b.destBucket})
-	bucketExists, err := b.s3Client.BucketExists(b.destBucket)
+func (b *backup) CreateRemotePathIfNeeded() error {
+	b.logger.Info("Checking for remote path", lager.Data{"remotePath": b.remotePath})
+	RemotePathExists, err := b.backuper.RemotePathExists(b.remotePath)
 	if err != nil {
 		return err
 	}
 
-	if bucketExists {
+	if RemotePathExists {
 		return nil
 	}
 
-	b.logger.Info("Checking for bucket - bucket does not exist - making it now")
-	err = b.s3Client.CreateBucket(b.destBucket)
+	b.logger.Info("Checking for remote path - remote path does not exist - making it now")
+	err = b.backuper.CreateRemotePath(b.remotePath)
 	if err != nil {
 		return err
 	}
-	b.logger.Info("Checking for bucket - bucket created ok")
+	b.logger.Info("Checking for remote path - remote path created ok")
 	return nil
 }
 
@@ -132,14 +126,9 @@ func (b *backup) performCleanup() error {
 func (b *backup) uploadBackup() error {
 	b.logger.Info("Upload backup started")
 
-	today := time.Now()
-	datePath := fmt.Sprintf("%d/%02d/%02d", today.Year(), today.Month(), today.Day())
-	destPathWithDate := b.destPath + "/" + datePath
-
-	err := b.s3Client.Sync(
+	err := b.backuper.Upload(
 		b.sourceFolder,
-		b.destBucket,
-		destPathWithDate,
+		b.remotePathWithDate(),
 	)
 
 	if err != nil {
@@ -149,4 +138,10 @@ func (b *backup) uploadBackup() error {
 
 	b.logger.Info("Upload backup completed without error")
 	return nil
+}
+
+func (b *backup) remotePathWithDate() string {
+	today := time.Now()
+	datePath := fmt.Sprintf("%d/%02d/%02d", today.Year(), today.Month(), today.Day())
+	return b.remotePath + "/" + datePath
 }

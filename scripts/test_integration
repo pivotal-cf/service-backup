@@ -20,6 +20,7 @@ pushd "${BASE_DIR}"
     -randomizeSuites \
     -randomizeAllSpecs \
     -slowSpecThreshold=30 \
+    -keepGoing \
     "$@" \
-    integration/
+    s3integration scpintegration
 popd

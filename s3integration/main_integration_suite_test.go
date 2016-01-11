@@ -1,4 +1,4 @@
-package integration
+package s3integration_test
 
 import (
 	"encoding/json"
@@ -42,7 +42,7 @@ type config struct {
 
 func TestServiceBackupBinary(t *testing.T) {
 	RegisterFailHandler(Fail)
-	RunSpecs(t, "Service Backup Binary Suite")
+	RunSpecs(t, "S3 integration Suite")
 }
 
 func beforeSuiteFirstNode() []byte {
@@ -67,7 +67,7 @@ func beforeSuiteFirstNode() []byte {
 	Expect(err).ToNot(HaveOccurred())
 
 	s3TestClient = s3testclient.New(endpointURL, awsAccessKeyID, awsSecretAccessKey)
-	s3TestClient.CreateBucketIfNeeded(existingBucketName)
+	s3TestClient.CreateRemotePathIfNeeded(existingBucketName)
 
 	return data
 }

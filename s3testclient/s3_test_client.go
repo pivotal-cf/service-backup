@@ -57,11 +57,11 @@ func (c *S3TestClient) RemotePathExistsInBucket(bucketName, remotePath string) b
 	return false
 }
 
-func (c *S3TestClient) CreateBucketIfNeeded(bucketName string) {
-	exists, err := c.BucketExists(bucketName)
+func (c *S3TestClient) CreateRemotePathIfNeeded(bucketName string) {
+	exists, err := c.RemotePathExists(bucketName)
 	Expect(err).NotTo(HaveOccurred())
 	if !exists {
-		Expect(c.CreateBucket(bucketName)).To(Succeed())
+		Expect(c.CreateRemotePath(bucketName)).To(Succeed())
 	}
 }
 

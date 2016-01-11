@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"os/exec"
+	"strings"
 
 	"github.com/pivotal-golang/lager"
 )
@@ -33,7 +34,8 @@ func (c *S3CliClient) S3Cmd() *exec.Cmd {
 	return cmd
 }
 
-func (c *S3CliClient) BucketExists(bucketName string) (bool, error) {
+func (c *S3CliClient) RemotePathExists(remotePath string) (bool, error) {
+	bucketName := strings.Split(remotePath, "/")[0]
 	cmd := c.S3Cmd()
 	cmd.Args = append(cmd.Args, "ls", bucketName)
 	if out, err := cmd.CombinedOutput(); err != nil {
@@ -49,15 +51,16 @@ func (c *S3CliClient) BucketExists(bucketName string) (bool, error) {
 	return true, nil
 }
 
-func (c *S3CliClient) CreateBucket(bucketName string) error {
+func (c *S3CliClient) CreateRemotePath(remotePath string) error {
+	bucketName := strings.Split(remotePath, "/")[0]
 	cmd := c.S3Cmd()
 	cmd.Args = append(cmd.Args, "mb", fmt.Sprintf("s3://%s", bucketName))
 	return c.RunCommand(cmd, "create bucket")
 }
 
-func (c *S3CliClient) Sync(localPath, bucketName, remotePath string) error {
+func (c *S3CliClient) Upload(localPath, remotePath string) error {
 	cmd := c.S3Cmd()
-	cmd.Args = append(cmd.Args, "sync", localPath, fmt.Sprintf("s3://%s/%s", bucketName, remotePath))
+	cmd.Args = append(cmd.Args, "sync", localPath, fmt.Sprintf("s3://%s", remotePath))
 	return c.RunCommand(cmd, "sync")
 }
 
