@@ -57,7 +57,8 @@ var _ = Describe("SCP Backup", func() {
 			Expect(exec.Command("ssh-keygen", "-t", "rsa", "-b", "4096", "-C", sshKeyUsername,
 				"-N", "", "-f", privateKeyPath).Run()).To(Succeed())
 
-			authKeys, err := os.OpenFile(filepath.Join(unixUser.HomeDir, ".ssh", "authorized_keys"), os.O_APPEND|os.O_WRONLY, 0600)
+			Expect(os.MkdirAll(filepath.Join(unixUser.HomeDir, ".ssh"), 0700)).To(Succeed())
+			authKeys, err := os.OpenFile(filepath.Join(unixUser.HomeDir, ".ssh", "authorized_keys"), os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0600)
 			Expect(err).ToNot(HaveOccurred())
 			pubKey, err := os.Open(filepath.Join(sshKeys, "id_rsa.pub"))
 			Expect(err).ToNot(HaveOccurred())
