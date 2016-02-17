@@ -37,7 +37,7 @@ func (a *AzureClient) Upload(localPath, remotePath string) error {
 	}
 	azureBlobService := azureClient.GetBlobService()
 
-	a.logger.Info("Uploading blobs", lager.Data{"localPath": localPath, "remotePath": remotePath})
+	a.logger.Info("Uploading blobs", lager.Data{"container": a.container, "localPath": localPath, "remotePath": remotePath})
 	return a.uploadDirectory(azureBlobService, localPath, remotePath)
 }
 
