@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strconv"
 	"time"
 
 	"github.com/Azure/azure-sdk-for-go/storage"
@@ -17,8 +18,25 @@ import (
 )
 
 var (
-	azureContainer = "ci-blobs"
+	azureContainer string
 )
+
+func azureBlobService() storage.BlobStorageClient {
+	azureClient, err := storage.NewBasicClient(azureAccountName, azureAccountKey)
+	Expect(err).ToNot(HaveOccurred())
+	return azureClient.GetBlobService()
+}
+
+func createAzureContainer(name string) {
+	service := azureBlobService()
+	Expect(service.CreateContainer(name, storage.ContainerAccessTypePrivate)).To(Succeed())
+}
+
+func deleteAzureContainer(name string) {
+	service := azureBlobService()
+	_, err := service.DeleteContainerIfExists(name)
+	Expect(err).To(Succeed())
+}
 
 func runBackup(params ...string) *gexec.Session {
 	backupCmd := exec.Command(pathToServiceBackupBinary, params...)
@@ -57,6 +75,15 @@ func downloadBlob(azureBlobService storage.BlobStorageClient, path string) []byt
 var _ = Describe("AzureClient", func() {
 	Context("the client is correctly configured", func() {
 
+		BeforeEach(func() {
+			azureContainer = "ci-blobs-" + strconv.Itoa(int(time.Now().Unix()))
+			createAzureContainer(azureContainer)
+		})
+
+		AfterEach(func() {
+			deleteAzureContainer(azureContainer)
+		})
+
 		It("uploads the backup", func() {
 			sourceFolder, err := ioutil.TempDir("", "azure")
 			Expect(err).ToNot(HaveOccurred())
@@ -78,9 +105,7 @@ var _ = Describe("AzureClient", func() {
 			session.Terminate().Wait()
 			Eventually(session).Should(gexec.Exit())
 
-			azureClient, err := storage.NewBasicClient(azureAccountName, azureAccountKey)
-			Expect(err).ToNot(HaveOccurred())
-			azureBlobService := azureClient.GetBlobService()
+			azureBlobService := azureBlobService()
 
 			firstBackupBlobPath := fmt.Sprintf("%s/%d/%02d/%02d/%s", destinationPath, today.Year(), int(today.Month()), today.Day(), firstBackupFileName)
 			Expect(downloadBlob(azureBlobService, firstBackupBlobPath)).To(Equal([]byte(firstBackupFileContent)))
@@ -92,6 +117,7 @@ var _ = Describe("AzureClient", func() {
 
 	Context("when the client is wrongly configured", func() {
 		It("exits with non-zero", func() {
+
 			session := runBackup(
 				"--source-folder", "does/not/matter",
 				"--dest-path", "does/not/matter_either",
