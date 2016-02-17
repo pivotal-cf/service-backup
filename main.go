@@ -6,6 +6,7 @@ import (
 	"os"
 
 	"github.com/cloudfoundry-incubator/cf-lager"
+	"github.com/pivotal-cf-experimental/service-backup/azure"
 	"github.com/pivotal-cf-experimental/service-backup/backup"
 	"github.com/pivotal-cf-experimental/service-backup/s3"
 	"github.com/pivotal-cf-experimental/service-backup/scp"
@@ -31,6 +32,11 @@ const (
 	sshPortFlagName           = "ssh-port"
 	sshUserFlagName           = "ssh-user"
 	sshPrivateKeyPathFlagName = "ssh-private-key-path"
+
+	// Azure specific
+	azureStorageAccountFlagName   = "azure-storage-account"
+	azureStorageAccessKeyFlagName = "azure-storage-access-key"
+	azureContainerFlagName        = "azure-container"
 )
 
 var (
@@ -59,12 +65,17 @@ func main() {
 	sshUser := flags.String(sshUserFlagName, "", "SCP destination user")
 	sshPrivateKey := flags.String(sshPrivateKeyPathFlagName, "", "SCP destination user identity file")
 
+	// Azure specific
+	azureStorageAccount := flags.String(azureStorageAccountFlagName, "", "Azure storage account name")
+	azureStorageAccessKey := flags.String(azureStorageAccessKeyFlagName, "", "Azure storage account access key")
+	azureContainer := flags.String(azureContainerFlagName, "", "Azure storage account container")
+
 	cf_lager.AddFlags(flags)
 	flags.Parse(os.Args[1:])
 
 	logger, _ = cf_lager.New("ServiceBackup")
 
-	backupType := determineBackupType(*awsAccessKeyID, *sshHost)
+	backupType := determineBackupType(*awsAccessKeyID, *sshHost, *azureStorageAccessKey)
 
 	var backuper backup.Backuper
 	var remotePath string
@@ -92,6 +103,12 @@ func main() {
 
 		remotePath = *destPath
 		backuper = scp.New(*sshHost, *sshPort, *sshUser, *sshPrivateKey, logger)
+
+	case "Azure":
+		//TODO: Validate flags
+
+		remotePath = *destPath
+		backuper = azure.New(*azureStorageAccessKey, *azureStorageAccount, *azureContainer, logger)
 
 	default:
 		logger.Info("Neither AWS credentials nor SCP server provided - skipping backup")
@@ -151,11 +168,13 @@ func validateIntFlag(value *int, flagName string) {
 	}
 }
 
-func determineBackupType(awsAccessKey, sshHost string) string {
+func determineBackupType(awsAccessKey, sshHost, azureStorageAccessKey string) string {
 	if awsAccessKey != "" {
 		return "S3"
 	} else if sshHost != "" {
 		return "SCP"
+	} else if azureStorageAccessKey != "" {
+		return "Azure"
 	}
 
 	return ""
