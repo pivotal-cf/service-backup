@@ -20,9 +20,15 @@ var (
 	azureContainer = "ci-blobs"
 )
 
+func runBackup(params ...string) *gexec.Session {
+	backupCmd := exec.Command(pathToServiceBackupBinary, params...)
+	session, err := gexec.Start(backupCmd, GinkgoWriter, GinkgoWriter)
+	Expect(err).ToNot(HaveOccurred())
+	return session
+}
+
 func performBackup(sourceFolder, destinationPath string) *gexec.Session {
-	backupCmd := exec.Command(
-		pathToServiceBackupBinary,
+	return runBackup(
 		"--source-folder", sourceFolder,
 		"--dest-path", destinationPath,
 		"--azure-storage-access-key", azureAccountKey,
@@ -32,9 +38,6 @@ func performBackup(sourceFolder, destinationPath string) *gexec.Session {
 		"--backup-creator-cmd", "true",
 		"--cleanup-cmd", "true",
 	)
-	session, err := gexec.Start(backupCmd, GinkgoWriter, GinkgoWriter)
-	Expect(err).ToNot(HaveOccurred())
-	return session
 }
 
 func createFakeBackupFile(sourceFolder, fileName, content string) {
@@ -52,7 +55,6 @@ func downloadBlob(azureBlobService storage.BlobStorageClient, path string) []byt
 }
 
 var _ = Describe("AzureClient", func() {
-
 	Context("the client is correctly configured", func() {
 
 		It("uploads the backup", func() {
@@ -89,7 +91,21 @@ var _ = Describe("AzureClient", func() {
 	})
 
 	Context("when the client is wrongly configured", func() {
-		It("exits with non-zero", func() {})
+		It("exits with non-zero", func() {
+			session := runBackup(
+				"--source-folder", "does/not/matter",
+				"--dest-path", "does/not/matter_either",
+				"--azure-storage-access-key", azureAccountKey,
+				"--azure-storage-account", azureAccountName,
+				// --azure-container
+				"--cron-schedule", "*/5 * * * * *", // every 5 seconds
+				"--backup-creator-cmd", "true",
+				"--cleanup-cmd", "true",
+			)
+
+			Expect(session.Wait(time.Second).ExitCode()).ToNot(Equal(0))
+			Expect(string(session.Out.Contents())).To(ContainSubstring("Flag azure-container not provided"))
+		})
 	})
 
 })

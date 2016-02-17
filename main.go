@@ -105,7 +105,9 @@ func main() {
 		backuper = scp.New(*sshHost, *sshPort, *sshUser, *sshPrivateKey, logger)
 
 	case "Azure":
-		//TODO: Validate flags
+		validateFlag(azureStorageAccessKey, azureStorageAccessKeyFlagName)
+		validateFlag(azureStorageAccount, azureStorageAccountFlagName)
+		validateFlag(azureContainer, azureContainerFlagName)
 
 		remotePath = *destPath
 		backuper = azure.New(*azureStorageAccessKey, *azureStorageAccount, *azureContainer, logger)
