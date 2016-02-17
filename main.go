@@ -86,7 +86,6 @@ func main() {
 		validateFlag(awsAccessKeyID, awsAccessKeyFlagName)
 		validateFlag(awsSecretAccessKey, awsSecretKeyFlagName)
 		validateFlag(destBucket, destBucketFlagName)
-		validateFlag(endpointURL, endpointURLFlagName)
 
 		remotePath = fmt.Sprintf("%s/%s", *destBucket, *destPath)
 		backuper = s3.NewCliClient(

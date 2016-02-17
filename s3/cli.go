@@ -18,6 +18,10 @@ type S3CliClient struct {
 }
 
 func NewCliClient(awsCmdPath, endpointURL, accessKey, secretKey string, logger lager.Logger) *S3CliClient {
+	if endpointURL == "" {
+		endpointURL = "https://s3.amazonaws.com"
+	}
+
 	return &S3CliClient{
 		awsCmdPath:  awsCmdPath,
 		endpointURL: endpointURL,
