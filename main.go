@@ -37,6 +37,7 @@ const (
 	azureStorageAccountFlagName   = "azure-storage-account"
 	azureStorageAccessKeyFlagName = "azure-storage-access-key"
 	azureContainerFlagName        = "azure-container"
+	azureBlobStoreBaseUrlFlagName = "azure-blob-store-base-url"
 )
 
 var (
@@ -69,6 +70,7 @@ func main() {
 	azureStorageAccount := flags.String(azureStorageAccountFlagName, "", "Azure storage account name")
 	azureStorageAccessKey := flags.String(azureStorageAccessKeyFlagName, "", "Azure storage account access key")
 	azureContainer := flags.String(azureContainerFlagName, "", "Azure storage account container")
+	azureBlobStoreBaseUrl := flags.String(azureBlobStoreBaseUrlFlagName, "", "Azure blob store base URL (optional)")
 
 	cf_lager.AddFlags(flags)
 	flags.Parse(os.Args[1:])
@@ -110,7 +112,7 @@ func main() {
 		validateFlag(azureContainer, azureContainerFlagName)
 
 		remotePath = *destPath
-		backuper = azure.New(*azureStorageAccessKey, *azureStorageAccount, *azureContainer, logger)
+		backuper = azure.New(*azureStorageAccessKey, *azureStorageAccount, *azureContainer, *azureBlobStoreBaseUrl, logger)
 
 	default:
 		logger.Info("Neither AWS credentials nor SCP server provided - skipping backup")
