@@ -386,7 +386,7 @@ var _ = Describe("Service Backup Binary", func() {
 		Context("when the endpoint URL flag is not provided", func() {
 			const emptyEndpointURL = ""
 
-			It("gracefully fails to perform the upload", func() {
+			It("successfully performs the upload", func() {
 				session, err := performBackup(
 					awsAccessKeyID,
 					awsSecretAccessKey,
@@ -400,8 +400,9 @@ var _ = Describe("Service Backup Binary", func() {
 				)
 
 				Expect(err).ToNot(HaveOccurred())
-				Eventually(session, awsTimeout).Should(gexec.Exit(2))
-				Eventually(session.Out).Should(gbytes.Say("Flag endpoint-url not provided"))
+				Eventually(session.Out, awsTimeout).Should(gbytes.Say("Perform backup completed without error"))
+				session.Terminate().Wait()
+				Eventually(session).Should(gexec.Exit())
 			})
 		})
 
