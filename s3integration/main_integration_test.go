@@ -400,7 +400,7 @@ var _ = Describe("Service Backup Binary", func() {
 				)
 
 				Expect(err).ToNot(HaveOccurred())
-				Eventually(session.Out, awsTimeout).Should(gbytes.Say("Perform backup completed without error"))
+				Eventually(session.Out, awsTimeout).Should(gbytes.Say("Upload backup completed without error"))
 				session.Terminate().Wait()
 				Eventually(session).Should(gexec.Exit())
 			})
