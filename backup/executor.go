@@ -14,8 +14,6 @@ type Executor interface {
 }
 
 type Backuper interface {
-	RemotePathExists(remotePath string) (bool, error)
-	CreateRemotePath(remotePath string) error
 	Upload(localPath, remotePath string) error
 }
 
@@ -51,36 +49,12 @@ func (b *backup) RunOnce() error {
 		return err
 	}
 
-	if err := b.CreateRemotePathIfNeeded(); err != nil {
-		return err
-	}
-
 	if err := b.uploadBackup(); err != nil {
 		return err
 	}
 
 	// Do not return error if cleanup command failed.
 	b.performCleanup()
-	return nil
-}
-
-func (b *backup) CreateRemotePathIfNeeded() error {
-	b.logger.Info("Checking for remote path", lager.Data{"remotePath": b.remotePath})
-	RemotePathExists, err := b.backuper.RemotePathExists(b.remotePath)
-	if err != nil {
-		return err
-	}
-
-	if RemotePathExists {
-		return nil
-	}
-
-	b.logger.Info("Checking for remote path - remote path does not exist - making it now")
-	err = b.backuper.CreateRemotePath(b.remotePath)
-	if err != nil {
-		return err
-	}
-	b.logger.Info("Checking for remote path - remote path created ok")
 	return nil
 }
 

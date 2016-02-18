@@ -57,14 +57,6 @@ func (c *S3TestClient) RemotePathExistsInBucket(bucketName, remotePath string) b
 	return false
 }
 
-func (c *S3TestClient) CreateRemotePathIfNeeded(bucketName string) {
-	exists, err := c.RemotePathExists(bucketName)
-	Expect(err).NotTo(HaveOccurred())
-	if !exists {
-		Expect(c.CreateRemotePath(bucketName)).To(Succeed())
-	}
-}
-
 func (c *S3TestClient) DownloadRemoteDirectory(bucketName, remotePath, localPath string) error {
 	err := os.MkdirAll(localPath, 0777)
 	if err != nil {

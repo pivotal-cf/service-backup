@@ -25,14 +25,6 @@ func New(host string, port int, username, privateKeyPath string, logger lager.Lo
 	}
 }
 
-func (client *SCPClient) RemotePathExists(remotePath string) (bool, error) {
-	return true, nil
-}
-
-func (client *SCPClient) CreateRemotePath(remotePath string) error {
-	return nil
-}
-
 func (client *SCPClient) Upload(localPath, remotePath string) error {
 	if err := client.ensureRemoteDirectoryExists(remotePath); err != nil {
 		return err

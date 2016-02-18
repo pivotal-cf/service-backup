@@ -38,7 +38,27 @@ func (c *S3CliClient) S3Cmd() *exec.Cmd {
 	return cmd
 }
 
-func (c *S3CliClient) RemotePathExists(remotePath string) (bool, error) {
+func (c *S3CliClient) CreateRemotePathIfNeeded(remotePath string) error {
+	c.logger.Info("Checking for remote path", lager.Data{"remotePath": remotePath})
+	remotePathExists, err := c.remotePathExists(remotePath)
+	if err != nil {
+		return err
+	}
+
+	if remotePathExists {
+		return nil
+	}
+
+	c.logger.Info("Checking for remote path - remote path does not exist - making it now")
+	err = c.createRemotePath(remotePath)
+	if err != nil {
+		return err
+	}
+	c.logger.Info("Checking for remote path - remote path created ok")
+	return nil
+}
+
+func (c *S3CliClient) remotePathExists(remotePath string) (bool, error) {
 	bucketName := strings.Split(remotePath, "/")[0]
 	cmd := c.S3Cmd()
 	cmd.Args = append(cmd.Args, "ls", bucketName)
@@ -55,7 +75,7 @@ func (c *S3CliClient) RemotePathExists(remotePath string) (bool, error) {
 	return true, nil
 }
 
-func (c *S3CliClient) CreateRemotePath(remotePath string) error {
+func (c *S3CliClient) createRemotePath(remotePath string) error {
 	bucketName := strings.Split(remotePath, "/")[0]
 	cmd := c.S3Cmd()
 	cmd.Args = append(cmd.Args, "mb", fmt.Sprintf("s3://%s", bucketName))
@@ -63,6 +83,8 @@ func (c *S3CliClient) CreateRemotePath(remotePath string) error {
 }
 
 func (c *S3CliClient) Upload(localPath, remotePath string) error {
+	c.CreateRemotePathIfNeeded(remotePath)
+
 	cmd := c.S3Cmd()
 	cmd.Args = append(cmd.Args, "sync", localPath, fmt.Sprintf("s3://%s", remotePath))
 	return c.RunCommand(cmd, "sync")

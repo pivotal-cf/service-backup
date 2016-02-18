@@ -67,7 +67,7 @@ func beforeSuiteFirstNode() []byte {
 	Expect(err).ToNot(HaveOccurred())
 
 	s3TestClient = s3testclient.New(endpointURL, awsAccessKeyID, awsSecretAccessKey)
-	s3TestClient.CreateRemotePathIfNeeded(existingBucketName)
+	Expect(s3TestClient.CreateRemotePathIfNeeded(existingBucketName)).To(Succeed())
 
 	return data
 }

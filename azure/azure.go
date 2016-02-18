@@ -23,16 +23,6 @@ func New(accountKey, accountName, container, blobStoreBaseUrl string, logger lag
 	return &AzureClient{accountKey: accountKey, accountName: accountName, container: container, blobStoreBaseUrl: blobStoreBaseUrl, logger: logger}
 }
 
-// Azure doesn't have directories, so RemotePathExists and CreateRemotePath are no-ops
-
-func (*AzureClient) RemotePathExists(remotePath string) (bool, error) {
-	return true, nil
-}
-
-func (*AzureClient) CreateRemotePath(remotePath string) error {
-	return nil
-}
-
 func (a *AzureClient) Upload(localPath, remotePath string) error {
 	a.logger.Info("Creating Azure client", lager.Data{"accountName": a.accountName})
 	azureClient, err := storage.NewClient(a.accountName, a.accountKey, a.blobStoreBaseUrl, storage.DefaultAPIVersion, true)
