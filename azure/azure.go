@@ -31,6 +31,12 @@ func (a *AzureClient) Upload(localPath, remotePath string) error {
 	}
 	azureBlobService := azureClient.GetBlobService()
 
+	a.logger.Info("Ensuring container exists", lager.Data{"container": a.container})
+	_, err = azureBlobService.CreateContainerIfNotExists(a.container, storage.ContainerAccessTypePrivate)
+	if err != nil {
+		return err
+	}
+
 	a.logger.Info("Uploading blobs", lager.Data{"container": a.container, "localPath": localPath, "remotePath": remotePath})
 	return a.uploadDirectory(azureBlobService, localPath, remotePath)
 }

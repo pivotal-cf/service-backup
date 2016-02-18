@@ -74,17 +74,15 @@ func downloadBlob(azureBlobService storage.BlobStorageClient, path string) []byt
 
 var _ = Describe("AzureClient", func() {
 	Context("the client is correctly configured", func() {
-
 		BeforeEach(func() {
-			azureContainer = "ci-blobs-" + strconv.Itoa(int(time.Now().Unix()))
-			createAzureContainer(azureContainer)
+			azureContainer = "ci-blobs-" + strconv.Itoa(int(time.Now().UnixNano()))
 		})
 
 		AfterEach(func() {
 			deleteAzureContainer(azureContainer)
 		})
 
-		It("uploads the backup", func() {
+		uploadsTheBackup := func() {
 			sourceFolder, err := ioutil.TempDir("", "azure")
 			Expect(err).ToNot(HaveOccurred())
 
@@ -112,6 +110,18 @@ var _ = Describe("AzureClient", func() {
 
 			secondBackupBlobPath := fmt.Sprintf("%s/%d/%02d/%02d/%s", destinationPath, today.Year(), int(today.Month()), today.Day(), secondBackupFileName)
 			Expect(downloadBlob(azureBlobService, secondBackupBlobPath)).To(Equal([]byte(secondBackupFileContent)))
+		}
+
+		Context("and the container already exists", func() {
+			BeforeEach(func() {
+				createAzureContainer(azureContainer)
+			})
+
+			It("uploads the backup", uploadsTheBackup)
+		})
+
+		Context("and the container doesn't exist", func() {
+			It("uploads the backup", uploadsTheBackup)
 		})
 	})
 
