@@ -29,6 +29,7 @@ func performBackup(
 
 	backupCmd := exec.Command(
 		pathToServiceBackupBinary,
+		"s3",
 		"--aws-access-key-id", awsAccessKeyID,
 		"--aws-secret-access-key", awsSecretAccessKey,
 		"--source-folder", sourceFolder,
@@ -495,44 +496,26 @@ var _ = Describe("Service Backup Binary", func() {
 		})
 	})
 
-	Context("when credentials are not provided", func() {
-		const (
-			emptyAWSAccessKeyID     = ""
-			emptyAWSSecretAccessKey = ""
-			sourceFolder            = "/path/to/source-folder"
-		)
+	Context("when no destination is specified", func() {
+		var session *gexec.Session
 
-		It("returns without error", func() {
-			session, err := performBackup(
-				emptyAWSAccessKeyID,
-				emptyAWSSecretAccessKey,
-				sourceFolder,
-				destBucket,
-				destPath,
-				endpointURL,
-				backupCreatorCmd,
-				cleanupCmd,
-				cronSchedule,
+		BeforeEach(func() {
+			backupCmd := exec.Command(
+				pathToServiceBackupBinary,
+				"skip",
 			)
 
+			var err error
+			session, err = gexec.Start(backupCmd, GinkgoWriter, GinkgoWriter)
+
 			Expect(err).ToNot(HaveOccurred())
+		})
+
+		It("returns without error", func() {
 			Eventually(session, awsTimeout).Should(gexec.Exit(0))
 		})
 
 		It("logs that it is skipping", func() {
-			session, err := performBackup(
-				emptyAWSAccessKeyID,
-				emptyAWSSecretAccessKey,
-				sourceFolder,
-				destBucket,
-				destPath,
-				endpointURL,
-				backupCreatorCmd,
-				cleanupCmd,
-				cronSchedule,
-			)
-
-			Expect(err).ToNot(HaveOccurred())
 			Eventually(session, awsTimeout).Should(gexec.Exit())
 			Eventually(session.Out).Should(gbytes.Say("skipping"))
 		})

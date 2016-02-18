@@ -47,6 +47,8 @@ var (
 func main() {
 	flags := flag.NewFlagSet(os.Args[0], flag.ExitOnError)
 
+	backupType := os.Args[1]
+
 	sourceFolder := flags.String(sourceFolderFlagName, "", "Local path to upload from (e.g.: /var/vcap/data)")
 	backupCreatorCmd := flags.String(backupCreatorCmdFlagName, "", "Command for creating backup")
 	cleanupCmd := flags.String(cleanupCmdFlagName, "", "Command for cleaning backup")
@@ -73,16 +75,14 @@ func main() {
 	azureBlobStoreBaseUrl := flags.String(azureBlobStoreBaseUrlFlagName, "", "Azure blob store base URL (optional)")
 
 	cf_lager.AddFlags(flags)
-	flags.Parse(os.Args[1:])
+	flags.Parse(os.Args[2:])
 
 	logger, _ = cf_lager.New("ServiceBackup")
-
-	backupType := determineBackupType(*awsAccessKeyID, *sshHost, *azureStorageAccessKey)
 
 	var backuper backup.Backuper
 	var remotePath string
 	switch backupType {
-	case "S3":
+	case "s3":
 		validateFlag(awsAccessKeyID, awsAccessKeyFlagName)
 		validateFlag(awsSecretAccessKey, awsSecretKeyFlagName)
 		validateFlag(destBucket, destBucketFlagName)
@@ -96,7 +96,7 @@ func main() {
 			logger,
 		)
 
-	case "SCP":
+	case "scp":
 		validateFlag(sshHost, sshHostFlagName)
 		validateIntFlag(sshPort, sshPortFlagName)
 		validateFlag(sshUser, sshUserFlagName)
@@ -105,7 +105,7 @@ func main() {
 		remotePath = *destPath
 		backuper = scp.New(*sshHost, *sshPort, *sshUser, *sshPrivateKey, logger)
 
-	case "Azure":
+	case "azure":
 		validateFlag(azureStorageAccessKey, azureStorageAccessKeyFlagName)
 		validateFlag(azureStorageAccount, azureStorageAccountFlagName)
 		validateFlag(azureContainer, azureContainerFlagName)
@@ -113,9 +113,12 @@ func main() {
 		remotePath = *destPath
 		backuper = azure.New(*azureStorageAccessKey, *azureStorageAccount, *azureContainer, *azureBlobStoreBaseUrl, logger)
 
-	default:
-		logger.Info("Neither AWS credentials nor SCP server provided - skipping backup")
+	case "skip":
+		logger.Info("No destination provided - skipping backup")
 		return
+
+	default:
+		logger.Fatal(fmt.Sprintf("Unknown destination type: %s", backupType), nil)
 	}
 
 	validateFlag(sourceFolder, sourceFolderFlagName)
@@ -169,16 +172,4 @@ func validateIntFlag(value *int, flagName string) {
 	if *value == 0 {
 		logger.Fatal("main.validation", fmt.Errorf("Flag %s not provided", flagName))
 	}
-}
-
-func determineBackupType(awsAccessKey, sshHost, azureStorageAccessKey string) string {
-	if awsAccessKey != "" {
-		return "S3"
-	} else if sshHost != "" {
-		return "SCP"
-	} else if azureStorageAccessKey != "" {
-		return "Azure"
-	}
-
-	return ""
 }

@@ -47,6 +47,7 @@ func runBackup(params ...string) *gexec.Session {
 
 func performBackup(sourceFolder, destinationPath string) *gexec.Session {
 	return runBackup(
+		"azure",
 		"--source-folder", sourceFolder,
 		"--dest-path", destinationPath,
 		"--azure-storage-access-key", azureAccountKey,
@@ -129,6 +130,7 @@ var _ = Describe("AzureClient", func() {
 		It("exits with non-zero", func() {
 
 			session := runBackup(
+				"azure",
 				"--source-folder", "does/not/matter",
 				"--dest-path", "does/not/matter_either",
 				"--azure-storage-access-key", azureAccountKey,

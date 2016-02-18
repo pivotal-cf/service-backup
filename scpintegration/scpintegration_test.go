@@ -46,9 +46,16 @@ var _ = Describe("SCP Backup", func() {
 			Expect(ioutil.WriteFile(filepath.Join(dirToBackup, "subdir", "2.txt"), []byte("2"), 0644)).To(Succeed())
 
 			flags = []string{
-				"-source-folder", dirToBackup, "-backup-creator-cmd", "ls", "-cleanup-cmd", "", "-cron-schedule", "*/5 * * * * *",
-				"-ssh-host", "localhost", "-ssh-port", "22", "-ssh-user", unixUser.Username,
-				"-ssh-private-key-path", privateKeyPath, "-dest-path", destPath,
+				"scp",
+				"-source-folder", dirToBackup,
+				"-backup-creator-cmd", "ls",
+				"-cleanup-cmd", "",
+				"-cron-schedule", "*/5 * * * * *",
+				"-ssh-host", "localhost",
+				"-ssh-port", "22",
+				"-ssh-user", unixUser.Username,
+				"-ssh-private-key-path", privateKeyPath,
+				"-dest-path", destPath,
 			}
 		})
 
@@ -78,8 +85,14 @@ var _ = Describe("SCP Backup", func() {
 		Context("when not all mandatory flags are supplied for SCP to work", func() {
 			BeforeEach(func() {
 				flags = []string{
-					"-source-folder", "somedir", "-backup-creator-cmd", "ls", "-cleanup-cmd", "", "-cron-schedule", "*/5 * * * * *",
-					"-ssh-host", "localhost", "-ssh-port", "22", "-ssh-user", unixUser.Username,
+					"scp",
+					"-source-folder", "somedir",
+					"-backup-creator-cmd", "ls",
+					"-cleanup-cmd", "",
+					"-cron-schedule", "*/5 * * * * *",
+					"-ssh-host", "localhost",
+					"-ssh-port", "22",
+					"-ssh-user", unixUser.Username,
 					"-dest-path", destPath,
 				}
 			})
