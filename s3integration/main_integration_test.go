@@ -384,29 +384,6 @@ var _ = Describe("Service Backup Binary", func() {
 			})
 		})
 
-		Context("when the endpoint URL flag is not provided", func() {
-			const emptyEndpointURL = ""
-
-			It("successfully performs the upload", func() {
-				session, err := performBackup(
-					awsAccessKeyID,
-					awsSecretAccessKey,
-					sourceFolder,
-					destBucket,
-					destPath,
-					emptyEndpointURL,
-					backupCreatorCmd,
-					cleanupCmd,
-					cronSchedule,
-				)
-
-				Expect(err).ToNot(HaveOccurred())
-				Eventually(session.Out, awsTimeout).Should(gbytes.Say("Upload backup completed without error"))
-				session.Terminate().Wait()
-				Eventually(session).Should(gexec.Exit())
-			})
-		})
-
 		Context("when backup-creator-cmd is not provided", func() {
 			const invalidBackupCreatorCmd = ""
 

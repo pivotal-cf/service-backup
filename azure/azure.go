@@ -17,9 +17,6 @@ type AzureClient struct {
 }
 
 func New(accountKey, accountName, container, blobStoreBaseUrl string, logger lager.Logger) *AzureClient {
-	if blobStoreBaseUrl == "" {
-		blobStoreBaseUrl = storage.DefaultBaseURL
-	}
 	return &AzureClient{accountKey: accountKey, accountName: accountName, container: container, blobStoreBaseUrl: blobStoreBaseUrl, logger: logger}
 }
 

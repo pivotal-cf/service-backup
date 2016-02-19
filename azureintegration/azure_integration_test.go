@@ -56,6 +56,7 @@ func performBackup(sourceFolder, destinationPath string) *gexec.Session {
 		"--cron-schedule", "*/5 * * * * *", // every 5 seconds
 		"--backup-creator-cmd", "true",
 		"--cleanup-cmd", "true",
+		"--azure-blob-store-base-url", "core.windows.net",
 	)
 }
 
