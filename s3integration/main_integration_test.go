@@ -45,6 +45,35 @@ func performBackup(
 	return gexec.Start(backupCmd, GinkgoWriter, GinkgoWriter)
 }
 
+func performManualBackup(
+	awsAccessKeyID,
+	awsSecretAccessKey,
+	sourceFolder,
+	destBucket,
+	destPath,
+	endpointURL,
+	backupCreatorCmd,
+	cleanupCmd string,
+) (*gexec.Session, error) {
+
+	manualBackupCmd := exec.Command(
+		pathToManualBackupBinary,
+		"s3",
+		"--aws-access-key-id", awsAccessKeyID,
+		"--aws-secret-access-key", awsSecretAccessKey,
+		"--source-folder", sourceFolder,
+		"--dest-bucket", destBucket,
+		"--dest-path", destPath,
+		"--endpoint-url", endpointURL,
+		"--logLevel", "debug",
+		"--backup-creator-cmd", backupCreatorCmd,
+		"--cleanup-cmd", cleanupCmd,
+	)
+
+	return gexec.Start(manualBackupCmd, GinkgoWriter, GinkgoWriter)
+
+}
+
 func pathWithDate(path string) string {
 	today := time.Now()
 	datePath := fmt.Sprintf("%d/%02d/%02d", today.Year(), today.Month(), today.Day())
@@ -146,49 +175,97 @@ var _ = Describe("Service Backup Binary", func() {
 					Expect(s3TestClient.DeleteRemotePath(destBucket, pathWithDate(destPath))).To(Succeed())
 				})
 
-				It("recursively uploads the contents of a directory successfully", func() {
-					By("Uploading the directory contents to the blobstore")
-					session, err := performBackup(
-						awsAccessKeyID,
-						awsSecretAccessKey,
-						sourceFolder,
-						destBucket,
-						destPath,
-						endpointURL,
-						backupCreatorCmd,
-						cleanupCmd,
-						cronSchedule,
-					)
-					Expect(err).ToNot(HaveOccurred())
-					Eventually(session.Out, awsTimeout).Should(gbytes.Say("Cleanup completed"))
+				Context("using cron scheduled backup", func() {
 
-					session.Terminate().Wait()
-					Eventually(session).Should(gexec.Exit())
-
-					By("Downloading the uploaded files from the blobstore")
-					err = s3TestClient.DownloadRemoteDirectory(
-						destBucket,
-						pathWithDate(destPath),
-						downloadFolder,
-					)
-					Expect(err).ToNot(HaveOccurred())
-
-					By("Validating the contents of the downloaded files")
-					for fileName, contents := range filesToContents {
-						downloadedFilePath := filepath.Join(downloadFolder, fileName)
-
-						downloadedFile, err := os.Open(downloadedFilePath)
+					It("recursively uploads the contents of a directory successfully", func() {
+						By("Uploading the directory contents to the blobstore")
+						session, err := performBackup(
+							awsAccessKeyID,
+							awsSecretAccessKey,
+							sourceFolder,
+							destBucket,
+							destPath,
+							endpointURL,
+							backupCreatorCmd,
+							cleanupCmd,
+							cronSchedule,
+						)
 						Expect(err).ToNot(HaveOccurred())
-						defer downloadedFile.Close()
+						Eventually(session.Out, awsTimeout).Should(gbytes.Say("Cleanup completed"))
 
-						actualData := make([]byte, len(contents))
-						_, err = downloadedFile.Read(actualData)
+						session.Terminate().Wait()
+						Eventually(session).Should(gexec.Exit())
+
+						By("Downloading the uploaded files from the blobstore")
+						err = s3TestClient.DownloadRemoteDirectory(
+							destBucket,
+							pathWithDate(destPath),
+							downloadFolder,
+						)
 						Expect(err).ToNot(HaveOccurred())
 
-						actualString := string(actualData)
+						By("Validating the contents of the downloaded files")
+						for fileName, contents := range filesToContents {
+							downloadedFilePath := filepath.Join(downloadFolder, fileName)
 
-						Expect(actualString).To(Equal(contents))
-					}
+							downloadedFile, err := os.Open(downloadedFilePath)
+							Expect(err).ToNot(HaveOccurred())
+							defer downloadedFile.Close()
+
+							actualData := make([]byte, len(contents))
+							_, err = downloadedFile.Read(actualData)
+							Expect(err).ToNot(HaveOccurred())
+
+							actualString := string(actualData)
+
+							Expect(actualString).To(Equal(contents))
+						}
+					})
+				})
+
+				Context("using manually triggered backup", func() {
+					It("uploads a snapshot that has been manually generated", func() {
+						session, err := performManualBackup(
+							awsAccessKeyID,
+							awsSecretAccessKey,
+							sourceFolder,
+							destBucket,
+							destPath,
+							endpointURL,
+							backupCreatorCmd,
+							cleanupCmd,
+						)
+						Expect(err).ToNot(HaveOccurred())
+						Eventually(session.Out, awsTimeout).Should(gbytes.Say("Cleanup completed"))
+
+						session.Terminate().Wait()
+						Eventually(session).Should(gexec.Exit())
+
+						By("Downloading the uploaded files from the blobstore")
+						err = s3TestClient.DownloadRemoteDirectory(
+							destBucket,
+							pathWithDate(destPath),
+							downloadFolder,
+						)
+						Expect(err).ToNot(HaveOccurred())
+
+						By("Validating the contents of the downloaded files")
+						for fileName, contents := range filesToContents {
+							downloadedFilePath := filepath.Join(downloadFolder, fileName)
+
+							downloadedFile, err := os.Open(downloadedFilePath)
+							Expect(err).ToNot(HaveOccurred())
+							defer downloadedFile.Close()
+
+							actualData := make([]byte, len(contents))
+							_, err = downloadedFile.Read(actualData)
+							Expect(err).ToNot(HaveOccurred())
+
+							actualString := string(actualData)
+
+							Expect(actualString).To(Equal(contents))
+						}
+					})
 				})
 			})
 

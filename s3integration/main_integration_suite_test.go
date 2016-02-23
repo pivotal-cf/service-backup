@@ -27,6 +27,7 @@ const (
 
 var (
 	pathToServiceBackupBinary string
+	pathToManualBackupBinary  string
 	awsAccessKeyID            string
 	awsSecretAccessKey        string
 	destPath                  string
@@ -38,6 +39,7 @@ type config struct {
 	AWSAccessKeyID     string `json:"awsAccessKeyID"`
 	AWSSecretAccessKey string `json:"awsSecretAccessKey"`
 	PathToBackupBinary string `json:"pathToBackupBinary"`
+	PathToManualBinary string `json:"pathToManualBinary"`
 }
 
 func TestServiceBackupBinary(t *testing.T) {
@@ -56,11 +58,14 @@ func beforeSuiteFirstNode() []byte {
 	var err error
 	pathToServiceBackupBinary, err = gexec.Build("github.com/pivotal-cf-experimental/service-backup")
 	Expect(err).ToNot(HaveOccurred())
+	pathToManualBackupBinary, err = gexec.Build("github.com/pivotal-cf-experimental/service-backup/cmd/manual-backup")
+	Expect(err).ToNot(HaveOccurred())
 
 	c := config{
 		AWSAccessKeyID:     awsAccessKeyID,
 		AWSSecretAccessKey: awsSecretAccessKey,
 		PathToBackupBinary: pathToServiceBackupBinary,
+		PathToManualBinary: pathToManualBackupBinary,
 	}
 
 	data, err := json.Marshal(c)
@@ -86,6 +91,7 @@ func beforeSuiteOtherNodes(b []byte) {
 	awsAccessKeyID = c.AWSAccessKeyID
 	awsSecretAccessKey = c.AWSSecretAccessKey
 	pathToServiceBackupBinary = c.PathToBackupBinary
+	pathToManualBackupBinary = c.PathToManualBinary
 	s3TestClient = s3testclient.New(endpointURL, awsAccessKeyID, awsSecretAccessKey)
 }
 
