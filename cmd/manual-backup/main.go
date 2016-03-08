@@ -1,6 +1,7 @@
 package main
 
 import (
+	"log"
 	"os"
 
 	"github.com/pivotal-cf-experimental/service-backup/parseargs"
@@ -18,5 +19,7 @@ func main() {
 		return
 	}
 
-	executor.RunOnce()
+	if err := executor.RunOnce(); err != nil {
+		log.Fatalf("error running backup: %s\n", err)
+	}
 }

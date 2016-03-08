@@ -266,6 +266,24 @@ var _ = Describe("Service Backup Binary", func() {
 							Expect(actualString).To(Equal(contents))
 						}
 					})
+
+					Context("when backup fails", func() {
+						It("exits with non-zero status", func() {
+							session, err := performManualBackup(
+								"wrong-access-key",
+								awsSecretAccessKey,
+								sourceFolder,
+								destBucket,
+								destPath,
+								endpointURL,
+								backupCreatorCmd,
+								cleanupCmd,
+							)
+							Expect(err).ToNot(HaveOccurred())
+							session.Wait(time.Second * 3)
+							Expect(session.ExitCode()).NotTo(Equal(0))
+						})
+					})
 				})
 			})
 
