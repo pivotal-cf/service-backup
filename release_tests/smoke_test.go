@@ -32,7 +32,7 @@ var _ = Describe("smoke tests", func() {
 	BeforeEach(func() {
 		boshHost = envMustHave("BOSH_HOST")
 		boshPrivateKeyFile = envMustHave("BOSH_PRIVATE_KEY_FILE")
-		boshManifest = envMustHave("BOSH_MANIFEST")
+		boshManifest = envMustHave("S3_BOSH_MANIFEST")
 		boshUsername = envMustHave("BOSH_USERNAME")
 		boshPassword = envMustHave("BOSH_PASSWORD")
 		awsAccessKeyID := envMustHave("AWS_ACCESS_KEY_ID")
@@ -50,12 +50,23 @@ var _ = Describe("smoke tests", func() {
 		cwd, err := os.Getwd()
 		Expect(err).NotTo(HaveOccurred())
 		pathToFile := filepath.Join(cwd, "test_assets", toBackup)
-		cmd := exec.Command("bosh", "-n", "-d", boshManifest, "-t", fmt.Sprintf("https://%s:25555", boshHost), "-u", boshUsername, "-p", boshPassword, "scp",
-			"--gateway_host", boshHost, "--gateway_user", "vcap", "--gateway_identity_file", boshPrivateKeyFile, "--upload",
-			"service-backup", "0", pathToFile, "/tmp")
+		cmd := exec.Command(
+			"bosh",
+			"-n",
+			"-d", boshManifest,
+			"-t", fmt.Sprintf("https://%s:25555", boshHost),
+			"-u", boshUsername,
+			"-p", boshPassword,
+			"scp",
+			"--gateway_host", boshHost,
+			"--gateway_user", "vcap",
+			"--gateway_identity_file", boshPrivateKeyFile,
+			"--upload", "service-backup/0", pathToFile, "/tmp")
 		cmd.Stdout = GinkgoWriter
 		cmd.Stderr = GinkgoWriter
 		Expect(cmd.Run()).To(Succeed())
+
+		// now, on the service-backups deployment, the file will be backed up to S3
 
 		Eventually(func() bool {
 			return client.RemotePathExistsInBucket(bucketName, fmt.Sprintf("%s/%s", pathWithDate(testPath), toBackup))
