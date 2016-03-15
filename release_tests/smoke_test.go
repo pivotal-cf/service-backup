@@ -1,10 +1,14 @@
 package release_tests_test
 
 import (
+	"bytes"
 	"fmt"
+	"io"
+	"io/ioutil"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/Azure/azure-sdk-for-go/storage"
@@ -38,7 +42,7 @@ var _ = Describe("smoke tests", func() {
 		toBackup = "to_backup.txt"
 	})
 
-	boshSSH := func(command string, args ...string) {
+	boshCmdWithGateway := func(stdout io.Writer, command string, args ...string) {
 		commonArgs := []string{
 			"-n",
 			"-d", boshManifest,
@@ -51,17 +55,30 @@ var _ = Describe("smoke tests", func() {
 			"--gateway_identity_file", boshPrivateKeyFile,
 		}
 		allArgs := append(commonArgs, args...)
+		GinkgoWriter.Write([]byte(fmt.Sprintf("running BOSH SSH command %s\n", allArgs)))
 		cmd := exec.Command("bosh", allArgs...)
-		cmd.Stdout = GinkgoWriter
+		cmd.Stdout = stdout
 		cmd.Stderr = GinkgoWriter
 		Expect(cmd.Run()).To(Succeed())
+	}
+
+	boshSSH := func(args ...string) string {
+		buf := new(bytes.Buffer)
+		writer := io.MultiWriter(GinkgoWriter, buf)
+
+		boshCmdWithGateway(writer, "ssh", append([]string{"service-backup", "0"}, args...)...)
+		return buf.String()
+	}
+
+	boshSCP := func(source, destination string) {
+		boshCmdWithGateway(GinkgoWriter, "scp", "--upload", "service-backup/0", source, destination)
 	}
 
 	JustBeforeEach(func() {
 		cwd, err := os.Getwd()
 		Expect(err).NotTo(HaveOccurred())
 		pathToFile := filepath.Join(cwd, "test_assets", toBackup)
-		boshSSH("scp", "--upload", "service-backup/0", pathToFile, "/tmp")
+		boshSCP(pathToFile, "/tmp")
 	})
 
 	Context("backing up to S3", func() {
@@ -78,7 +95,7 @@ var _ = Describe("smoke tests", func() {
 		})
 
 		AfterEach(func() {
-			boshSSH("ssh", "service-backup", "0", "rm", "/tmp/"+toBackup)
+			boshSSH("rm", "/tmp/"+toBackup)
 
 			Expect(client.DeleteRemotePath(bucketName, testPath)).To(Succeed())
 		})
@@ -105,7 +122,7 @@ var _ = Describe("smoke tests", func() {
 		})
 
 		AfterEach(func() {
-			boshSSH("ssh", "service-backup", "0", "rm", "/tmp/"+toBackup)
+			boshSSH("rm", "/tmp/"+toBackup)
 
 			_, err := azureBlobService.DeleteBlobIfExists(bucketName, fmt.Sprintf("%s/%s", pathWithDate(testPath), toBackup))
 			Expect(err).NotTo(HaveOccurred())
@@ -119,11 +136,34 @@ var _ = Describe("smoke tests", func() {
 			}, time.Minute).Should(BeTrue())
 		})
 	})
+
+	Context("backing up to SCP", func() {
+		BeforeEach(func() {
+			boshManifest = envMustHave("SCP_BOSH_MANIFEST")
+
+			publicKeyFile := strings.Replace(boshManifest, ".yml", ".pub", -1)
+			publicKeyBytes, err := ioutil.ReadFile(publicKeyFile)
+			Expect(err).NotTo(HaveOccurred())
+			publicKey := strings.TrimSpace(string(publicKeyBytes))
+
+			boshSSH(fmt.Sprintf("echo %s | sudo tee -a ~vcap/.ssh/authorized_keys", publicKey))
+		})
+
+		AfterEach(func() {
+			boshSSH("rm", "/tmp/"+toBackup)
+		})
+
+		It("Uploads files in the backup directory", func() {
+			Eventually(func() bool {
+				return strings.Contains(boshSSH("find", "/home/vcap/backups", "'-type'", "f"), toBackup)
+			}, time.Minute).Should(BeTrue())
+		})
+	})
 })
 
 func envMustHave(key string) string {
 	value := os.Getenv(key)
-	Expect(value).ToNot(BeEmpty())
+	Expect(value).ToNot(BeEmpty(), key)
 	return value
 }
 
