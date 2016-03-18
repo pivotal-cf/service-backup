@@ -27,8 +27,7 @@ var _ = Describe("smoke tests", func() {
 	var (
 		boshHost           string
 		boshPrivateKeyFile string
-		boshUsername       string
-		boshPassword       string
+		boshCACertFile     string
 		toBackup           string
 
 		boshManifest string
@@ -36,19 +35,19 @@ var _ = Describe("smoke tests", func() {
 
 	BeforeEach(func() {
 		boshHost = envMustHave("BOSH_HOST")
+		boshCACertFile = envMustHave("BOSH_CA_CERT_PATH")
+		envMustHave("BOSH_CLIENT")
+		envMustHave("BOSH_CLIENT_SECRET")
 		boshPrivateKeyFile = envMustHave("BOSH_PRIVATE_KEY_FILE")
-		boshUsername = envMustHave("BOSH_USERNAME")
-		boshPassword = envMustHave("BOSH_PASSWORD")
 		toBackup = "to_backup.txt"
 	})
 
 	boshCmdWithGateway := func(stdout io.Writer, command string, args ...string) {
 		commonArgs := []string{
+			"--ca-cert", boshCACertFile,
 			"-n",
 			"-d", boshManifest,
 			"-t", fmt.Sprintf("https://%s:25555", boshHost),
-			"-u", boshUsername,
-			"-p", boshPassword,
 			command,
 			"--gateway_host", boshHost,
 			"--gateway_user", "vcap",
@@ -96,7 +95,6 @@ var _ = Describe("smoke tests", func() {
 
 		AfterEach(func() {
 			boshSSH("rm", "/tmp/"+toBackup)
-
 			Expect(client.DeleteRemotePath(bucketName, testPath)).To(Succeed())
 		})
 
