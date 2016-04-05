@@ -7,6 +7,7 @@ import (
 	"github.com/cloudfoundry-incubator/cf-lager"
 	"github.com/pivotal-cf-experimental/service-backup/azure"
 	"github.com/pivotal-cf-experimental/service-backup/backup"
+	"github.com/pivotal-cf-experimental/service-backup/dummy"
 	"github.com/pivotal-cf-experimental/service-backup/s3"
 	"github.com/pivotal-cf-experimental/service-backup/scp"
 	"github.com/pivotal-golang/lager"
@@ -21,8 +22,9 @@ const (
 	awsSecretKeyFlagName     = "aws-secret-access-key"
 	backupCreatorCmdFlagName = "backup-creator-cmd"
 	cleanupCmdFlagName       = "cleanup-cmd"
-	CronScheduleFlagName     = "cron-schedule"
-	awsCmdPathFlagName       = "aws-cli-path"
+	//CronScheduleFlagName ...
+	CronScheduleFlagName = "cron-schedule"
+	awsCmdPathFlagName   = "aws-cli-path"
 
 	// SCP specific
 	sshHostFlagName           = "ssh-host"
@@ -111,7 +113,13 @@ func Parse(osArgs []string) (backup.Executor, *string, lager.Logger) {
 
 	case "skip":
 		logger.Info("No destination provided - skipping backup")
-		return nil, nil, nil
+		dummyExecutor := dummy.NewDummyExecutor(logger)
+		// Default cronSchedule to monthly if not provided when destination is also not provided
+		// This is needed to successfully run the dummy executor and not exit
+		if *cronSchedule == "" {
+			*cronSchedule = "@monthly"
+		}
+		return dummyExecutor, cronSchedule, logger
 
 	default:
 		logger.Fatal(fmt.Sprintf("Unknown destination type: %s", backupType), nil)

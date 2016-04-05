@@ -324,7 +324,7 @@ var _ = Describe("Service Backup Binary", func() {
 					session.Terminate().Wait()
 					Eventually(session).Should(gexec.Exit())
 
-					keys, err := s3TestClient.ListRemotePath(destBucket, "")
+					keys, _ := s3TestClient.ListRemotePath(destBucket, "")
 					Expect(keys).ToNot(BeEmpty())
 				})
 			})
@@ -575,6 +575,7 @@ var _ = Describe("Service Backup Binary", func() {
 			backupCmd := exec.Command(
 				pathToServiceBackupBinary,
 				"skip",
+				"--cron-schedule", cronSchedule,
 			)
 
 			var err error
@@ -583,13 +584,16 @@ var _ = Describe("Service Backup Binary", func() {
 			Expect(err).ToNot(HaveOccurred())
 		})
 
-		It("returns without error", func() {
-			Eventually(session, awsTimeout).Should(gexec.Exit(0))
+		It("logs that backups are not enabled", func() {
+			Eventually(session.Out, awsTimeout).Should(gbytes.Say("Backups Disabled"))
+			session.Terminate().Wait()
+			Eventually(session).Should(gexec.Exit())
 		})
 
-		It("logs that it is skipping", func() {
-			Eventually(session, awsTimeout).Should(gexec.Exit())
-			Eventually(session.Out).Should(gbytes.Say("skipping"))
+		It("doesn't exit until terminated", func() {
+			Consistently(session, "10s").ShouldNot(gexec.Exit())
+			session.Terminate().Wait()
+			Eventually(session).Should(gexec.Exit())
 		})
 	})
 })
