@@ -3,6 +3,7 @@ package parseargs
 import (
 	"flag"
 	"fmt"
+	"os/exec"
 
 	"github.com/cloudfoundry-incubator/cf-lager"
 	"github.com/pivotal-cf-experimental/service-backup/azure"
@@ -14,14 +15,15 @@ import (
 )
 
 const (
-	sourceFolderFlagName     = "source-folder"
-	destBucketFlagName       = "dest-bucket"
-	destPathFlagName         = "dest-path"
-	endpointURLFlagName      = "endpoint-url"
-	awsAccessKeyFlagName     = "aws-access-key-id"
-	awsSecretKeyFlagName     = "aws-secret-access-key"
-	backupCreatorCmdFlagName = "backup-creator-cmd"
-	cleanupCmdFlagName       = "cleanup-cmd"
+	sourceFolderFlagName         = "source-folder"
+	destBucketFlagName           = "dest-bucket"
+	destPathFlagName             = "dest-path"
+	endpointURLFlagName          = "endpoint-url"
+	awsAccessKeyFlagName         = "aws-access-key-id"
+	awsSecretKeyFlagName         = "aws-secret-access-key"
+	backupCreatorCmdFlagName     = "backup-creator-cmd"
+	cleanupCmdFlagName           = "cleanup-cmd"
+	serviceIdentifierCmdFlagName = "service-identifier-cmd"
 	//CronScheduleFlagName ...
 	CronScheduleFlagName = "cron-schedule"
 	awsCmdPathFlagName   = "aws-cli-path"
@@ -50,6 +52,7 @@ func Parse(osArgs []string) (backup.Executor, *string, lager.Logger) {
 	sourceFolder := flags.String(sourceFolderFlagName, "", "Local path to upload from (e.g.: /var/vcap/data)")
 	backupCreatorCmd := flags.String(backupCreatorCmdFlagName, "", "Command for creating backup")
 	cleanupCmd := flags.String(cleanupCmdFlagName, "", "Command for cleaning backup")
+	serviceIdentifierCmd := flags.String(serviceIdentifierCmdFlagName, "", "Optional command for identifying service for backup")
 	cronSchedule := flags.String(CronScheduleFlagName, "", "Cron schedule for running backup. Leave empty to run only once.")
 	destPath := flags.String(destPathFlagName, "", "Remote directory path inside bucket to upload to. No preceding or trailing slashes. E.g. remote/path/inside/bucket")
 
@@ -134,7 +137,9 @@ func Parse(osArgs []string) (backup.Executor, *string, lager.Logger) {
 		remotePath,
 		*backupCreatorCmd,
 		*cleanupCmd,
+		*serviceIdentifierCmd,
 		logger,
+		exec.Command,
 	)
 
 	return executor, cronSchedule, logger

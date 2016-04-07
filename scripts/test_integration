@@ -24,5 +24,5 @@ pushd "${BASE_DIR}"
     -slowSpecThreshold=30 \
     -keepGoing \
     "$@" \
-    s3integration scpintegration azureintegration
+    s3integration scpintegration azureintegration backup
 popd

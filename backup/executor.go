@@ -2,6 +2,7 @@ package backup
 
 import (
 	"fmt"
+	"os"
 	"os/exec"
 	"strings"
 	"time"
@@ -9,42 +10,63 @@ import (
 	"github.com/pivotal-golang/lager"
 )
 
+//ProviderFactory counterfeiter . ProviderFactory
+type ProviderFactory interface {
+	ExecCommand(string, ...string) *exec.Cmd
+}
+
+//ExecCommand fakeable exec.Command
+type ExecCommand func(string, ...string) *exec.Cmd
+
+//Executor ...
 type Executor interface {
 	RunOnce() error
 }
 
+//Backuper ...
 type Backuper interface {
 	Upload(localPath, remotePath string) error
 }
 
 type backup struct {
-	backuper         Backuper
-	sourceFolder     string
-	remotePath       string
-	backupCreatorCmd string
-	cleanupCmd       string
-	logger           lager.Logger
+	backuper             Backuper
+	sourceFolder         string
+	remotePath           string
+	backupCreatorCmd     string
+	cleanupCmd           string
+	serviceIdentifierCmd string
+	logger               lager.Logger
+	execCommand          ExecCommand
 }
 
+//NewExecutor ...
 func NewExecutor(
 	backuper Backuper,
 	sourceFolder,
 	remotePath,
 	backupCreatorCmd,
-	cleanupCmd string,
+	cleanupCmd,
+	serviceIdentifierCmd string,
 	logger lager.Logger,
+	execCommand ExecCommand,
 ) Executor {
 	return &backup{
-		backuper:         backuper,
-		sourceFolder:     sourceFolder,
-		remotePath:       remotePath,
-		backupCreatorCmd: backupCreatorCmd,
-		cleanupCmd:       cleanupCmd,
-		logger:           logger,
+		backuper:             backuper,
+		sourceFolder:         sourceFolder,
+		remotePath:           remotePath,
+		backupCreatorCmd:     backupCreatorCmd,
+		cleanupCmd:           cleanupCmd,
+		serviceIdentifierCmd: serviceIdentifierCmd,
+		logger:               logger,
+		execCommand:          execCommand,
 	}
 }
 
 func (b *backup) RunOnce() error {
+	if b.serviceIdentifierCmd != "" {
+		b.identifyService()
+	}
+
 	if err := b.performBackup(); err != nil {
 		return err
 	}
@@ -56,6 +78,29 @@ func (b *backup) RunOnce() error {
 	// Do not return error if cleanup command failed.
 	b.performCleanup()
 	return nil
+}
+
+func (b *backup) identifyService() {
+	args := strings.Split(b.serviceIdentifierCmd, " ")
+
+	_, err := os.Stat(args[0])
+	if err != nil {
+		b.logger.Error("Service identifier command not found", err)
+		return
+	}
+
+	cmd := b.execCommand(args[0], args[1:]...)
+	out, err := cmd.CombinedOutput()
+
+	if err != nil {
+		b.logger.Error("Service identifier command returned error", err)
+		return
+	}
+
+	b.logger = b.logger.Session(
+		b.logger.SessionName(),
+		lager.Data{"identifier": strings.TrimSpace(string(out))},
+	)
 }
 
 func (b *backup) performBackup() error {

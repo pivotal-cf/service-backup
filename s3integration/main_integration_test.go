@@ -74,6 +74,38 @@ func performManualBackup(
 
 }
 
+func performBackupWithServiceIdentifier(
+	awsAccessKeyID,
+	awsSecretAccessKey,
+	sourceFolder,
+	destBucket,
+	destPath,
+	endpointURL,
+	backupCreatorCmd,
+	cleanupCmd,
+	cronSchedule,
+	serviceIdentifierCmd string,
+) (*gexec.Session, error) {
+
+	backupCmd := exec.Command(
+		pathToServiceBackupBinary,
+		"s3",
+		"--aws-access-key-id", awsAccessKeyID,
+		"--aws-secret-access-key", awsSecretAccessKey,
+		"--source-folder", sourceFolder,
+		"--dest-bucket", destBucket,
+		"--dest-path", destPath,
+		"--endpoint-url", endpointURL,
+		"--logLevel", "debug",
+		"--backup-creator-cmd", backupCreatorCmd,
+		"--cleanup-cmd", cleanupCmd,
+		"--cron-schedule", cronSchedule,
+		"--service-identifier-cmd", serviceIdentifierCmd,
+	)
+
+	return gexec.Start(backupCmd, GinkgoWriter, GinkgoWriter)
+}
+
 func pathWithDate(path string) string {
 	today := time.Now()
 	datePath := fmt.Sprintf("%d/%02d/%02d", today.Year(), today.Month(), today.Day())
@@ -220,6 +252,36 @@ var _ = Describe("Service Backup Binary", func() {
 
 							Expect(actualString).To(Equal(contents))
 						}
+					})
+
+					Context("when service identifier binary is provided", func() {
+						var serviceIdentifierCmd string
+
+						BeforeEach(func() {
+							serviceIdentifierCmd = assetPath("fake-service-identifier")
+						})
+
+						It("logs events with the data element including an identifier", func() {
+							By("Uploading the directory contents to the blobstore")
+							session, err := performBackupWithServiceIdentifier(
+								awsAccessKeyID,
+								awsSecretAccessKey,
+								sourceFolder,
+								destBucket,
+								destPath,
+								endpointURL,
+								backupCreatorCmd,
+								cleanupCmd,
+								cronSchedule,
+								serviceIdentifierCmd,
+							)
+							Expect(err).ToNot(HaveOccurred())
+							Eventually(session.Out, awsTimeout).Should(gbytes.Say(`"identifier":"FakeIdentifier"`))
+							Eventually(session.Out, awsTimeout).Should(gbytes.Say("Cleanup completed"))
+
+							session.Terminate().Wait()
+							Eventually(session).Should(gexec.Exit())
+						})
 					})
 				})
 
