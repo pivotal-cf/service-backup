@@ -1,7 +1,6 @@
 package azureintegration_test
 
 import (
-	"crypto/rand"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -115,42 +114,12 @@ var _ = Describe("AzureClient", func() {
 			Expect(downloadBlob(azureBlobService, secondBackupBlobPath)).To(Equal([]byte(secondBackupFileContent)))
 		}
 
-		uploadsTheLargeBackup := func() {
-			sourceFolder, err := ioutil.TempDir("", "azure")
-			Expect(err).ToNot(HaveOccurred())
-
-			fileName := "bigfile.dat"
-			fileContent := make([]byte, 100*1000*1024)
-			_, err = rand.Read(fileContent)
-
-			Expect(ioutil.WriteFile(filepath.Join(sourceFolder, fileName), fileContent, os.ModePerm)).To(Succeed())
-
-			Expect(err).NotTo(HaveOccurred())
-
-			today := time.Now()
-			destinationPath := fmt.Sprintf("path/to/blobs/%d", today.Unix())
-
-			session := performBackup(sourceFolder, destinationPath)
-
-			Eventually(session.Out, azureTimeout).Should(gbytes.Say("Cleanup completed without error"))
-			session.Terminate().Wait()
-			Eventually(session).Should(gexec.Exit())
-
-			azureBlobService := azureBlobService()
-
-			backupBlobPath := fmt.Sprintf("%s/%d/%02d/%02d/%s", destinationPath, today.Year(), int(today.Month()), today.Day(), fileName)
-
-			Expect(downloadBlob(azureBlobService, backupBlobPath)).To(Equal([]byte(fileContent)))
-		}
-
 		Context("and the container already exists", func() {
 			BeforeEach(func() {
 				createAzureContainer(azureContainer)
 			})
 
 			It("uploads the backup", uploadsTheBackup)
-
-			It("uploads the large backup", uploadsTheLargeBackup)
 		})
 
 		Context("and the container doesn't exist", func() {
@@ -167,6 +136,7 @@ var _ = Describe("AzureClient", func() {
 				"--dest-path", "does/not/matter_either",
 				"--azure-storage-access-key", azureAccountKey,
 				"--azure-storage-account", azureAccountName,
+				// --azure-container
 				"--cron-schedule", "*/5 * * * * *", // every 5 seconds
 				"--backup-creator-cmd", "true",
 				"--cleanup-cmd", "true",
