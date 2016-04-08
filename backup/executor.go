@@ -36,6 +36,7 @@ type backup struct {
 	cleanupCmd           string
 	serviceIdentifierCmd string
 	logger               lager.Logger
+	sessionLogger        lager.Logger
 	execCommand          ExecCommand
 }
 
@@ -58,6 +59,7 @@ func NewExecutor(
 		cleanupCmd:           cleanupCmd,
 		serviceIdentifierCmd: serviceIdentifierCmd,
 		logger:               logger,
+		sessionLogger:        logger,
 		execCommand:          execCommand,
 	}
 }
@@ -77,6 +79,8 @@ func (b *backup) RunOnce() error {
 
 	// Do not return error if cleanup command failed.
 	b.performCleanup()
+
+	b.sessionLogger = b.logger
 	return nil
 }
 
@@ -97,8 +101,8 @@ func (b *backup) identifyService() {
 		return
 	}
 
-	b.logger = b.logger.Session(
-		"",
+	b.sessionLogger = b.logger.Session(
+		"WithIdentifier",
 		lager.Data{"identifier": strings.TrimSpace(string(out))},
 	)
 }
@@ -109,41 +113,41 @@ func (b *backup) performBackup() error {
 	cmd := exec.Command(args[0], args[1:]...)
 
 	out, err := cmd.CombinedOutput()
-	b.logger.Debug("Perform backup debug info", lager.Data{"cmd": b.backupCreatorCmd, "out": string(out)})
+	b.sessionLogger.Debug("Perform backup debug info", lager.Data{"cmd": b.backupCreatorCmd, "out": string(out)})
 
 	if err != nil {
-		b.logger.Error("Perform backup completed with error", err)
+		b.sessionLogger.Error("Perform backup completed with error", err)
 		return err
 	}
 
-	b.logger.Info("Perform backup completed without error")
+	b.sessionLogger.Info("Perform backup completed without error")
 	return nil
 }
 
 func (b *backup) performCleanup() error {
 	if b.cleanupCmd == "" {
-		b.logger.Info("Cleanup command not provided")
+		b.sessionLogger.Info("Cleanup command not provided")
 		return nil
 	}
-	b.logger.Info("Cleanup started")
+	b.sessionLogger.Info("Cleanup started")
 
 	args := strings.Split(b.cleanupCmd, " ")
 	cmd := exec.Command(args[0], args[1:]...)
 
 	out, err := cmd.CombinedOutput()
-	b.logger.Debug("Cleanup debug info", lager.Data{"cmd": b.cleanupCmd, "out": string(out)})
+	b.sessionLogger.Debug("Cleanup debug info", lager.Data{"cmd": b.cleanupCmd, "out": string(out)})
 
 	if err != nil {
-		b.logger.Error("Cleanup completed with error", err)
+		b.sessionLogger.Error("Cleanup completed with error", err)
 		return err
 	}
 
-	b.logger.Info("Cleanup completed without error")
+	b.sessionLogger.Info("Cleanup completed without error")
 	return nil
 }
 
 func (b *backup) uploadBackup() error {
-	b.logger.Info("Upload backup started")
+	b.sessionLogger.Info("Upload backup started")
 
 	err := b.backuper.Upload(
 		b.sourceFolder,
@@ -151,11 +155,11 @@ func (b *backup) uploadBackup() error {
 	)
 
 	if err != nil {
-		b.logger.Error("Upload backup completed with error", err)
+		b.sessionLogger.Error("Upload backup completed with error", err)
 		return err
 	}
 
-	b.logger.Info("Upload backup completed without error")
+	b.sessionLogger.Info("Upload backup completed without error")
 	return nil
 }
 
