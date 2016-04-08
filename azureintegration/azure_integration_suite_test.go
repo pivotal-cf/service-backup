@@ -15,6 +15,7 @@ const (
 	azureTimeout           = "20s"
 	azureAccountNameEnvKey = "AZURE_STORAGE_ACCOUNT"
 	azureAccountKeyEnvKey  = "AZURE_STORAGE_ACCESS_KEY"
+	azureCmd               = ""
 )
 
 var (

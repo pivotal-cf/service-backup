@@ -1,10 +1,11 @@
 package azure
 
 import (
+	"fmt"
 	"io/ioutil"
 	"os"
+	"os/exec"
 
-	"github.com/Azure/azure-sdk-for-go/storage"
 	"github.com/pivotal-golang/lager"
 )
 
@@ -13,32 +14,21 @@ type AzureClient struct {
 	accountKey       string
 	container        string
 	blobStoreBaseUrl string
+	azureCmd         string
 	logger           lager.Logger
 }
 
 func New(accountKey, accountName, container, blobStoreBaseUrl, azureCmd string, logger lager.Logger) *AzureClient {
-	return &AzureClient{accountKey: accountKey, accountName: accountName, container: container, blobStoreBaseUrl: blobStoreBaseUrl, logger: logger}
+	return &AzureClient{accountKey: accountKey, accountName: accountName, container: container, blobStoreBaseUrl: blobStoreBaseUrl, logger: logger, azureCmd: azureCmd}
 }
 
 func (a *AzureClient) Upload(localPath, remotePath string) error {
-	a.logger.Info("Creating Azure client", lager.Data{"accountName": a.accountName})
-	azureClient, err := storage.NewClient(a.accountName, a.accountKey, a.blobStoreBaseUrl, storage.DefaultAPIVersion, true)
-	if err != nil {
-		return err
-	}
-	azureBlobService := azureClient.GetBlobService()
-
-	a.logger.Info("Ensuring container exists", lager.Data{"container": a.container})
-	_, err = azureBlobService.CreateContainerIfNotExists(a.container, storage.ContainerAccessTypePrivate)
-	if err != nil {
-		return err
-	}
-
-	a.logger.Info("Uploading blobs", lager.Data{"container": a.container, "localPath": localPath, "remotePath": remotePath})
-	return a.uploadDirectory(azureBlobService, localPath, remotePath)
+	a.logger.Info("Uploading azure blobs", lager.Data{"container": a.container, "localPath": localPath, "remotePath": remotePath})
+	a.logger.Info("The container and remote path will be created if they don't already exist", lager.Data{"container": a.container, "remotePath": remotePath})
+	return a.uploadDirectory(localPath, remotePath)
 }
 
-func (a *AzureClient) uploadDirectory(azureBlobService storage.BlobStorageClient, localDirPath, remoteDirPath string) error {
+func (a *AzureClient) uploadDirectory(localDirPath, remoteDirPath string) error {
 	localFiles, err := ioutil.ReadDir(localDirPath)
 	if err != nil {
 		return err
@@ -50,10 +40,10 @@ func (a *AzureClient) uploadDirectory(azureBlobService storage.BlobStorageClient
 		remoteFilePath := remoteDirPath + "/" + fileName
 
 		if localFile.IsDir() {
-			err = a.uploadDirectory(azureBlobService, localFilePath, remoteFilePath)
+			err = a.uploadDirectory(localFilePath, remoteFilePath)
 		} else {
 			length := uint64(localFile.Size())
-			err = a.uploadFile(azureBlobService, localFilePath, remoteFilePath, length)
+			err = a.uploadFile(localFilePath, remoteFilePath, length)
 		}
 		if err != nil {
 			return err
@@ -62,13 +52,14 @@ func (a *AzureClient) uploadDirectory(azureBlobService storage.BlobStorageClient
 	return nil
 }
 
-func (a *AzureClient) uploadFile(azureBlobService storage.BlobStorageClient, localFilePath, remoteFilePath string, length uint64) error {
+func (a *AzureClient) uploadFile(localFilePath, remoteFilePath string, length uint64) error {
 	file, err := os.Open(localFilePath)
 	if err != nil {
 		return err
 	}
+
 	defer file.Close()
 
 	a.logger.Info("Uploading blob", lager.Data{"localPath": localFilePath, "remotePath": remoteFilePath, "length": length})
-	return azureBlobService.CreateBlockBlobFromReader(a.container, remoteFilePath, length, file, nil)
+	return exec.Command(a.azureCmd, fmt.Sprintf("--storageaccountkey=%s", a.accountKey), fmt.Sprintf("--remoteresource=%s", remoteFilePath), a.accountName, a.container, localFilePath).Run()
 }
