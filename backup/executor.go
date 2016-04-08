@@ -98,7 +98,7 @@ func (b *backup) identifyService() {
 	}
 
 	b.logger = b.logger.Session(
-		b.logger.SessionName(),
+		"",
 		lager.Data{"identifier": strings.TrimSpace(string(out))},
 	)
 }
