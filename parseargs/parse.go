@@ -38,6 +38,7 @@ const (
 	azureStorageAccountFlagName   = "azure-storage-account"
 	azureStorageAccessKeyFlagName = "azure-storage-access-key"
 	azureContainerFlagName        = "azure-container"
+	azureCliPath                  = "azure-cli-path"
 	azureBlobStoreBaseURLFlagName = "azure-blob-store-base-url"
 )
 
@@ -73,6 +74,8 @@ func Parse(osArgs []string) (backup.Executor, *string, lager.Logger) {
 	azureStorageAccount := flags.String(azureStorageAccountFlagName, "", "Azure storage account name")
 	azureStorageAccessKey := flags.String(azureStorageAccessKeyFlagName, "", "Azure storage account access key")
 	azureContainer := flags.String(azureContainerFlagName, "", "Azure storage account container")
+	azureCmdPath := flags.String(azureCliPath, "blobxfer", "Azure storage account container")
+
 	azureBlobStoreBaseURL := flags.String(azureBlobStoreBaseURLFlagName, "", "Azure blob store base URL (optional)")
 
 	cf_lager.AddFlags(flags)
@@ -112,7 +115,7 @@ func Parse(osArgs []string) (backup.Executor, *string, lager.Logger) {
 		validateFlag(azureContainer, azureContainerFlagName)
 
 		remotePath = *destPath
-		backuper = azure.New(*azureStorageAccessKey, *azureStorageAccount, *azureContainer, *azureBlobStoreBaseURL, logger)
+		backuper = azure.New(*azureStorageAccessKey, *azureStorageAccount, *azureContainer, *azureBlobStoreBaseURL, *azureCmdPath, logger)
 
 	case "skip":
 		logger.Info("No destination provided - skipping backup")

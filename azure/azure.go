@@ -16,7 +16,7 @@ type AzureClient struct {
 	logger           lager.Logger
 }
 
-func New(accountKey, accountName, container, blobStoreBaseUrl string, logger lager.Logger) *AzureClient {
+func New(accountKey, accountName, container, blobStoreBaseUrl, azureCmd string, logger lager.Logger) *AzureClient {
 	return &AzureClient{accountKey: accountKey, accountName: accountName, container: container, blobStoreBaseUrl: blobStoreBaseUrl, logger: logger}
 }
 
