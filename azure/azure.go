@@ -20,7 +20,7 @@ type AzureClient struct {
 }
 
 func New(accountKey, accountName, container, blobStoreBaseUrl, azureCmd string, logger lager.Logger) *AzureClient {
-	return &AzureClient{accountKey: accountKey, accountName: accountName, container: container, blobStoreBaseUrl: blobStoreBaseUrl, logger: logger, azureCmd: azureCmd}
+	return &AzureClient{accountKey: accountKey, accountName: accountName, container: container, blobStoreBaseUrl: blobStoreBaseUrl, logger: logger, sessionLogger: logger, azureCmd: azureCmd}
 }
 
 func (a *AzureClient) Upload(localPath, remotePath string) error {

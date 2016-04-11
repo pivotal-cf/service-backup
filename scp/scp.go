@@ -23,6 +23,7 @@ func New(host string, port int, username, privateKeyPath string, logger lager.Lo
 		username:       username,
 		privateKeyPath: privateKeyPath,
 		logger:         logger,
+		sessionLogger:  logger,
 	}
 }
 
