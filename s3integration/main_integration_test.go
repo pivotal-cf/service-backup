@@ -275,9 +275,26 @@ var _ = Describe("Service Backup Binary", func() {
 								cronSchedule,
 								serviceIdentifierCmd,
 							)
+
+							identifier := `"identifier":"FakeIdentifier"`
+
 							Expect(err).ToNot(HaveOccurred())
-							Eventually(session.Out, awsTimeout).Should(gbytes.Say(`"identifier":"FakeIdentifier"`))
+							Eventually(session.Out, awsTimeout).Should(gbytes.Say("Perform backup started"))
+							Eventually(session.Out, awsTimeout).Should(gbytes.Say(identifier))
+							Eventually(session.Out, awsTimeout).Should(gbytes.Say("Perform backup debug info"))
+							Eventually(session.Out, awsTimeout).Should(gbytes.Say(identifier))
+							Eventually(session.Out, awsTimeout).Should(gbytes.Say("Perform backup completed without error"))
+							Eventually(session.Out, awsTimeout).Should(gbytes.Say(identifier))
+							Eventually(session.Out, awsTimeout).Should(gbytes.Say("Upload backup started"))
+							Eventually(session.Out, awsTimeout).Should(gbytes.Say(identifier))
+							Eventually(session.Out, awsTimeout).Should(gbytes.Say("Checking for remote path"))
+							Eventually(session.Out, awsTimeout).Should(gbytes.Say(identifier))
+							Eventually(session.Out, awsTimeout).Should(gbytes.Say("Running command"))
+							Eventually(session.Out, awsTimeout).Should(gbytes.Say(identifier))
+							Eventually(session.Out, awsTimeout).Should(gbytes.Say("Upload backup completed without error"))
+							Eventually(session.Out, awsTimeout).Should(gbytes.Say(identifier))
 							Eventually(session.Out, awsTimeout).Should(gbytes.Say("Cleanup completed"))
+							Eventually(session.Out, awsTimeout).Should(gbytes.Say(identifier))
 
 							session.Terminate().Wait()
 							Eventually(session).Should(gexec.Exit())

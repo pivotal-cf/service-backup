@@ -17,6 +17,15 @@ type FakeBackuper struct {
 	uploadReturns struct {
 		result1 error
 	}
+	SetLogSessionStub        func(sessionName, sessionIdentifier string)
+	setLogSessionMutex       sync.RWMutex
+	setLogSessionArgsForCall []struct {
+		sessionName       string
+		sessionIdentifier string
+	}
+	CloseLogSessionStub        func()
+	closeLogSessionMutex       sync.RWMutex
+	closeLogSessionArgsForCall []struct{}
 }
 
 func (fake *FakeBackuper) Upload(localPath string, remotePath string) error {
@@ -50,6 +59,45 @@ func (fake *FakeBackuper) UploadReturns(result1 error) {
 	fake.uploadReturns = struct {
 		result1 error
 	}{result1}
+}
+
+func (fake *FakeBackuper) SetLogSession(sessionName string, sessionIdentifier string) {
+	fake.setLogSessionMutex.Lock()
+	fake.setLogSessionArgsForCall = append(fake.setLogSessionArgsForCall, struct {
+		sessionName       string
+		sessionIdentifier string
+	}{sessionName, sessionIdentifier})
+	fake.setLogSessionMutex.Unlock()
+	if fake.SetLogSessionStub != nil {
+		fake.SetLogSessionStub(sessionName, sessionIdentifier)
+	}
+}
+
+func (fake *FakeBackuper) SetLogSessionCallCount() int {
+	fake.setLogSessionMutex.RLock()
+	defer fake.setLogSessionMutex.RUnlock()
+	return len(fake.setLogSessionArgsForCall)
+}
+
+func (fake *FakeBackuper) SetLogSessionArgsForCall(i int) (string, string) {
+	fake.setLogSessionMutex.RLock()
+	defer fake.setLogSessionMutex.RUnlock()
+	return fake.setLogSessionArgsForCall[i].sessionName, fake.setLogSessionArgsForCall[i].sessionIdentifier
+}
+
+func (fake *FakeBackuper) CloseLogSession() {
+	fake.closeLogSessionMutex.Lock()
+	fake.closeLogSessionArgsForCall = append(fake.closeLogSessionArgsForCall, struct{}{})
+	fake.closeLogSessionMutex.Unlock()
+	if fake.CloseLogSessionStub != nil {
+		fake.CloseLogSessionStub()
+	}
+}
+
+func (fake *FakeBackuper) CloseLogSessionCallCount() int {
+	fake.closeLogSessionMutex.RLock()
+	defer fake.closeLogSessionMutex.RUnlock()
+	return len(fake.closeLogSessionArgsForCall)
 }
 
 var _ backup.Backuper = new(FakeBackuper)

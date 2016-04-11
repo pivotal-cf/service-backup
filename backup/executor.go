@@ -26,6 +26,8 @@ type Executor interface {
 //Backuper ...
 type Backuper interface {
 	Upload(localPath, remotePath string) error
+	SetLogSession(sessionName, sessionIdentifier string)
+	CloseLogSession()
 }
 
 type backup struct {
@@ -81,6 +83,7 @@ func (b *backup) RunOnce() error {
 	b.performCleanup()
 
 	b.sessionLogger = b.logger
+	b.backuper.CloseLogSession()
 	return nil
 }
 
@@ -89,7 +92,7 @@ func (b *backup) identifyService() {
 
 	_, err := os.Stat(args[0])
 	if err != nil {
-		b.logger.Error("Service identifier command not found", err)
+		b.sessionLogger.Error("Service identifier command not found", err)
 		return
 	}
 
@@ -97,18 +100,22 @@ func (b *backup) identifyService() {
 	out, err := cmd.CombinedOutput()
 
 	if err != nil {
-		b.logger.Error("Service identifier command returned error", err)
+		b.sessionLogger.Error("Service identifier command returned error", err)
 		return
 	}
 
+	sessionName := "WithIdentifier"
+	sessionIdentifier := strings.TrimSpace(string(out))
+
 	b.sessionLogger = b.logger.Session(
-		"WithIdentifier",
-		lager.Data{"identifier": strings.TrimSpace(string(out))},
+		sessionName,
+		lager.Data{"identifier": sessionIdentifier},
 	)
+	b.backuper.SetLogSession(sessionName, sessionIdentifier)
 }
 
 func (b *backup) performBackup() error {
-	b.logger.Info("Perform backup started")
+	b.sessionLogger.Info("Perform backup started")
 	args := strings.Split(b.backupCreatorCmd, " ")
 	cmd := exec.Command(args[0], args[1:]...)
 

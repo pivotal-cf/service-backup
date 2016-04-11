@@ -13,6 +13,7 @@ type SCPClient struct {
 	username       string
 	privateKeyPath string
 	logger         lager.Logger
+	sessionLogger  lager.Logger
 }
 
 func New(host string, port int, username, privateKeyPath string, logger lager.Logger) *SCPClient {
@@ -36,11 +37,11 @@ func (client *SCPClient) Upload(localPath, remotePath string) error {
 	scpCommandOutput, err := cmd.CombinedOutput()
 	if err != nil {
 		wrappedErr := fmt.Errorf("error performing SCP: '%s', output: '%s'", err, scpCommandOutput)
-		client.logger.Error("scp", wrappedErr)
+		client.sessionLogger.Error("scp", wrappedErr)
 		return wrappedErr
 	}
 
-	client.logger.Info("scp completed")
+	client.sessionLogger.Info("scp completed")
 	return nil
 }
 
@@ -51,9 +52,22 @@ func (client *SCPClient) ensureRemoteDirectoryExists(remotePath string) error {
 	output, err := cmd.CombinedOutput()
 	if err != nil {
 		wrappedErr := fmt.Errorf("error checking if remote path exists: '%s', output: '%s'", err, output)
-		client.logger.Error("ssh", wrappedErr)
+		client.sessionLogger.Error("ssh", wrappedErr)
 		return wrappedErr
 	}
 
 	return nil
+}
+
+//SetLogSession adds an identifier to all log messages for the duration of the session
+func (client *SCPClient) SetLogSession(sessionName, sessionIdentifier string) {
+	client.sessionLogger = client.logger.Session(
+		sessionName,
+		lager.Data{"identifier": sessionIdentifier},
+	)
+}
+
+//CloseLogSession removes any previously added identifier from future log messages
+func (client *SCPClient) CloseLogSession() {
+	client.sessionLogger = client.logger
 }

@@ -10,20 +10,22 @@ import (
 )
 
 type S3CliClient struct {
-	awsCmdPath  string
-	accessKey   string
-	secretKey   string
-	endpointURL string
-	logger      lager.Logger
+	awsCmdPath    string
+	accessKey     string
+	secretKey     string
+	endpointURL   string
+	logger        lager.Logger
+	sessionLogger lager.Logger
 }
 
 func NewCliClient(awsCmdPath, endpointURL, accessKey, secretKey string, logger lager.Logger) *S3CliClient {
 	return &S3CliClient{
-		awsCmdPath:  awsCmdPath,
-		endpointURL: endpointURL,
-		accessKey:   accessKey,
-		secretKey:   secretKey,
-		logger:      logger,
+		awsCmdPath:    awsCmdPath,
+		endpointURL:   endpointURL,
+		accessKey:     accessKey,
+		secretKey:     secretKey,
+		logger:        logger,
+		sessionLogger: logger,
 	}
 }
 
@@ -35,7 +37,7 @@ func (c *S3CliClient) S3Cmd() *exec.Cmd {
 }
 
 func (c *S3CliClient) CreateRemotePathIfNeeded(remotePath string) error {
-	c.logger.Info("Checking for remote path", lager.Data{"remotePath": remotePath})
+	c.sessionLogger.Info("Checking for remote path", lager.Data{"remotePath": remotePath})
 	remotePathExists, err := c.remotePathExists(remotePath)
 	if err != nil {
 		return err
@@ -45,12 +47,12 @@ func (c *S3CliClient) CreateRemotePathIfNeeded(remotePath string) error {
 		return nil
 	}
 
-	c.logger.Info("Checking for remote path - remote path does not exist - making it now")
+	c.sessionLogger.Info("Checking for remote path - remote path does not exist - making it now")
 	err = c.createRemotePath(remotePath)
 	if err != nil {
 		return err
 	}
-	c.logger.Info("Checking for remote path - remote path created ok")
+	c.sessionLogger.Info("Checking for remote path - remote path created ok")
 	return nil
 }
 
@@ -64,7 +66,7 @@ func (c *S3CliClient) remotePathExists(remotePath string) (bool, error) {
 		}
 
 		wrappedErr := fmt.Errorf("unknown s3 error occurred: '%s' with output: '%s'", err, string(out))
-		c.logger.Error("error checking if bucket exists", wrappedErr)
+		c.sessionLogger.Error("error checking if bucket exists", wrappedErr)
 		return false, wrappedErr
 	}
 
@@ -87,10 +89,23 @@ func (c *S3CliClient) Upload(localPath, remotePath string) error {
 }
 
 func (c *S3CliClient) RunCommand(cmd *exec.Cmd, stepName string) error {
-	c.logger.Info(fmt.Sprintf("Running command: %+v\n", cmd))
+	c.sessionLogger.Info(fmt.Sprintf("Running command: %+v\n", cmd))
 	if out, err := cmd.CombinedOutput(); err != nil {
 		return fmt.Errorf("error in %s: %s, output: %s", stepName, err, string(out))
 	}
 
 	return nil
+}
+
+//SetLogSession adds an identifier to all log messages for the duration of the session
+func (c *S3CliClient) SetLogSession(sessionName, sessionIdentifier string) {
+	c.sessionLogger = c.logger.Session(
+		sessionName,
+		lager.Data{"identifier": sessionIdentifier},
+	)
+}
+
+//CloseLogSession removes any previously added identifier from future log messages
+func (c *S3CliClient) CloseLogSession() {
+	c.sessionLogger = c.logger
 }
