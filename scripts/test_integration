@@ -23,6 +23,12 @@ pushd "${BASE_DIR}"
     -randomizeAllSpecs \
     -slowSpecThreshold=30 \
     -keepGoing \
+    - cover \
     "$@" \
     s3integration scpintegration azureintegration backup
+
+  go tool cover -func=s3integration/s3integration.coverprofile
+  go tool cover -func=scpintegration/scpintegration.coverprofile
+  go tool cover -func=azureintegration/azureintegration.coverprofile
+  go tool cover -func=backup/backup.coverprofile
 popd
