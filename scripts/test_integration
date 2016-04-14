@@ -26,4 +26,7 @@ pushd "${BASE_DIR}"
     -cover \
     "$@" \
     s3integration scpintegration azureintegration backup
+
+    go tool cover -func=backup/backup.coverprofile
+
 popd
