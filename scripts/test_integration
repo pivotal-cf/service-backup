@@ -25,12 +25,6 @@ pushd "${BASE_DIR}"
     -keepGoing \
     -cover \
     "$@" \
-    # s3integration scpintegration azureintegration backup
-    backup
+    s3integration scpintegration azureintegration backup
 
-  # go tool cover -func=s3integration/s3integration.coverprofile
-  # go tool cover -func=scpintegration/scpintegration.coverprofile
-  # go tool cover -func=azureintegration/azureintegration.coverprofile
-
-  go tool cover -func=/tmp/build/get/src/github.com/pivotal-cf-experimental/service-backup/backup/backup.coverprofile
 popd
