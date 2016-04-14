@@ -26,5 +26,4 @@ pushd "${BASE_DIR}"
     -cover \
     "$@" \
     s3integration scpintegration azureintegration backup
-
 popd
