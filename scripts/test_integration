@@ -17,19 +17,20 @@ pushd "${BASE_DIR}"
   go install github.com/onsi/ginkgo/ginkgo
   ginkgo \
     -r \
-    # -p \
-    # -race \
-    # -randomizeSuites \
-    # -randomizeAllSpecs \
-    # -slowSpecThreshold=30 \
-    # -keepGoing \
+    -p \
+    -race \
+    -randomizeSuites \
+    -randomizeAllSpecs \
+    -slowSpecThreshold=30 \
+    -keepGoing \
     -cover \
-    # "$@" \
+    "$@" \
     # s3integration scpintegration azureintegration backup
+    backup
 
   # go tool cover -func=s3integration/s3integration.coverprofile
   # go tool cover -func=scpintegration/scpintegration.coverprofile
   # go tool cover -func=azureintegration/azureintegration.coverprofile
-popd
 
   go tool cover -func=/tmp/build/get/src/github.com/pivotal-cf-experimental/service-backup/backup/backup.coverprofile
+popd
