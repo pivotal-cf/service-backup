@@ -196,8 +196,8 @@ var _ = Describe("Service Backup Binary", func() {
 		})
 
 		AfterEach(func() {
-			_ = os.Remove(sourceFolder)
-			_ = os.Remove(downloadFolder)
+			os.Remove(sourceFolder)
+			os.Remove(downloadFolder)
 		})
 
 		Context("when all required inputs are valid", func() {
@@ -403,7 +403,8 @@ var _ = Describe("Service Backup Binary", func() {
 					session.Terminate().Wait()
 					Eventually(session).Should(gexec.Exit())
 
-					keys, _ := s3TestClient.ListRemotePath(destBucket, "")
+					keys, err := s3TestClient.ListRemotePath(destBucket, "")
+					Expect(err).ToNot(HaveOccurred())
 					Expect(keys).ToNot(BeEmpty())
 				})
 			})
