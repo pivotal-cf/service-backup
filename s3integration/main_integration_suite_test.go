@@ -17,6 +17,8 @@ import (
 const (
 	awsAccessKeyIDEnvKey               = "AWS_ACCESS_KEY_ID"
 	awsSecretAccessKeyEnvKey           = "AWS_SECRET_ACCESS_KEY"
+	awsAccessKeyIDEnvKeyRestricted     = "AWS_ACCESS_KEY_ID_RESTRICTED"
+	awsSecretAccessKeyEnvKeyRestricted = "AWS_SECRET_ACCESS_KEY_RESTRICTED"
 	cephAccessKeyIDEnvKey              = "CEPH_ACCESS_KEY_ID"
 	cephSecretAccessKeyEnvKey          = "CEPH_SECRET_ACCESS_KEY"
 	cephEndpointURLEnvKey              = "CEPH_ENDPOINT_URL"
@@ -33,6 +35,8 @@ var (
 	pathToManualBackupBinary     string
 	awsAccessKeyID               string
 	awsSecretAccessKey           string
+	awsAccessKeyIDRestricted     string
+	awsSecretAccessKeyRestricted string
 	cephAccessKeyID              string
 	cephSecretAccessKey          string
 	cephEndpointURL              string
@@ -45,6 +49,8 @@ var (
 type config struct {
 	AWSAccessKeyID               string `json:"awsAccessKeyID"`
 	AWSSecretAccessKey           string `json:"awsSecretAccessKey"`
+	AWSAccessKeyIDRestricted     string `json:"awsAccessKeyIDRestricted"`
+	AWSSecretAccessKeyRestricted string `json:"awsSecretAccessKeyRestricted"`
 	CephAccessKeyID              string `json:"cephAccessKeyID"`
 	CephSecretAccessKey          string `json:"cephSecretAccessKey"`
 	CephEndpointURL              string `json:"cephEndpointURL"`
@@ -60,12 +66,17 @@ func TestServiceBackupBinary(t *testing.T) {
 func beforeSuiteFirstNode() []byte {
 	awsAccessKeyID = os.Getenv(awsAccessKeyIDEnvKey)
 	awsSecretAccessKey = os.Getenv(awsSecretAccessKeyEnvKey)
+	awsAccessKeyIDRestricted = os.Getenv(awsAccessKeyIDEnvKeyRestricted)
+	awsSecretAccessKeyRestricted = os.Getenv(awsSecretAccessKeyEnvKeyRestricted)
 	cephAccessKeyID = os.Getenv(cephAccessKeyIDEnvKey)
 	cephSecretAccessKey = os.Getenv(cephSecretAccessKeyEnvKey)
 	cephEndpointURL = os.Getenv(cephEndpointURLEnvKey)
 
 	if awsAccessKeyID == "" || awsSecretAccessKey == "" {
 		Fail(fmt.Sprintf("Specify valid AWS credentials using the env variables %s and %s", awsAccessKeyIDEnvKey, awsSecretAccessKeyEnvKey))
+	}
+	if awsAccessKeyIDRestricted == "" || awsSecretAccessKeyRestricted == "" {
+		Fail(fmt.Sprintf("Specify valid AWS credentials using the env variables %s and %s", awsAccessKeyIDEnvKeyRestricted, awsSecretAccessKeyEnvKeyRestricted))
 	}
 	if cephAccessKeyID == "" || cephSecretAccessKey == "" || cephEndpointURL == "" {
 		Fail(fmt.Sprintf("Specify valid Ceph credentials and endpoint using the env variables %s, %s and %s", cephAccessKeyIDEnvKey, cephSecretAccessKeyEnvKey, cephEndpointURLEnvKey))
@@ -80,6 +91,8 @@ func beforeSuiteFirstNode() []byte {
 	c := config{
 		AWSAccessKeyID:               awsAccessKeyID,
 		AWSSecretAccessKey:           awsSecretAccessKey,
+		AWSAccessKeyIDRestricted:     awsAccessKeyIDRestricted,
+		AWSSecretAccessKeyRestricted: awsSecretAccessKeyRestricted,
 		CephAccessKeyID:              cephAccessKeyID,
 		CephSecretAccessKey:          cephSecretAccessKey,
 		CephEndpointURL:              cephEndpointURL,
@@ -112,6 +125,8 @@ func beforeSuiteOtherNodes(b []byte) {
 
 	awsAccessKeyID = c.AWSAccessKeyID
 	awsSecretAccessKey = c.AWSSecretAccessKey
+	awsAccessKeyIDRestricted = c.AWSAccessKeyIDRestricted
+	awsSecretAccessKeyRestricted = c.AWSSecretAccessKeyRestricted
 	cephAccessKeyID = c.CephAccessKeyID
 	cephSecretAccessKey = c.CephSecretAccessKey
 	cephEndpointURL = c.CephEndpointURL
