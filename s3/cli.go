@@ -29,8 +29,16 @@ func NewCliClient(awsCmdPath, endpointURL, accessKey, secretKey string, logger l
 	}
 }
 
-func (c *S3CliClient) S3Cmd() *exec.Cmd {
-	cmd := exec.Command(c.awsCmdPath, "--endpoint-url", c.endpointURL, "s3")
+func (c *S3CliClient) S3Cmd(args ...string) *exec.Cmd {
+	var cmdArgs []string
+
+	if c.endpointURL != "" {
+		cmdArgs = append(cmdArgs, "--endpoint-url", c.endpointURL)
+	}
+	cmdArgs = append(cmdArgs, "s3")
+	cmdArgs = append(cmdArgs, args...)
+
+	cmd := exec.Command(c.awsCmdPath, cmdArgs...)
 	cmd.Env = append(cmd.Env, fmt.Sprintf("AWS_ACCESS_KEY_ID=%s", c.accessKey))
 	cmd.Env = append(cmd.Env, fmt.Sprintf("AWS_SECRET_ACCESS_KEY=%s", c.secretKey))
 	return cmd
@@ -58,8 +66,9 @@ func (c *S3CliClient) CreateRemotePathIfNeeded(remotePath string) error {
 
 func (c *S3CliClient) remotePathExists(remotePath string) (bool, error) {
 	bucketName := strings.Split(remotePath, "/")[0]
-	cmd := c.S3Cmd()
-	cmd.Args = append(cmd.Args, "ls", bucketName)
+
+	cmd := c.S3Cmd("ls", bucketName)
+
 	if out, err := cmd.CombinedOutput(); err != nil {
 		if bytes.Contains(out, []byte("NoSuchBucket")) {
 			return false, nil
@@ -75,16 +84,17 @@ func (c *S3CliClient) remotePathExists(remotePath string) (bool, error) {
 
 func (c *S3CliClient) createRemotePath(remotePath string) error {
 	bucketName := strings.Split(remotePath, "/")[0]
-	cmd := c.S3Cmd()
-	cmd.Args = append(cmd.Args, "mb", fmt.Sprintf("s3://%s", bucketName))
+	cmd := c.S3Cmd("mb", fmt.Sprintf("s3://%s", bucketName))
 	return c.RunCommand(cmd, "create bucket")
 }
 
 func (c *S3CliClient) Upload(localPath, remotePath string) error {
-	c.CreateRemotePathIfNeeded(remotePath)
+	err := c.CreateRemotePathIfNeeded(remotePath)
+	if err != nil {
+		return err
+	}
 
-	cmd := c.S3Cmd()
-	cmd.Args = append(cmd.Args, "sync", localPath, fmt.Sprintf("s3://%s", remotePath))
+	cmd := c.S3Cmd("sync", localPath, fmt.Sprintf("s3://%s", remotePath))
 	return c.RunCommand(cmd, "sync")
 }
 

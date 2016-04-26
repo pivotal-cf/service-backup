@@ -196,8 +196,8 @@ var _ = Describe("Service Backup Binary", func() {
 		})
 
 		AfterEach(func() {
-			_ = os.Remove(sourceFolder)
-			_ = os.Remove(downloadFolder)
+			os.Remove(sourceFolder)
+			os.Remove(downloadFolder)
 		})
 
 		Context("when all required inputs are valid", func() {
@@ -403,7 +403,8 @@ var _ = Describe("Service Backup Binary", func() {
 					session.Terminate().Wait()
 					Eventually(session).Should(gexec.Exit())
 
-					keys, _ := s3TestClient.ListRemotePath(destBucket, "")
+					keys, err := s3TestClient.ListRemotePath(destBucket, "")
+					Expect(err).ToNot(HaveOccurred())
 					Expect(keys).ToNot(BeEmpty())
 				})
 			})
@@ -673,6 +674,98 @@ var _ = Describe("Service Backup Binary", func() {
 			Consistently(session, "10s").ShouldNot(gexec.Exit())
 			session.Terminate().Wait()
 			Eventually(session).Should(gexec.Exit())
+		})
+	})
+
+	Context("when endpointURL is provided", func() {
+		var (
+			sourceFolder    string
+			downloadFolder  string
+			filesToContents map[string]string
+		)
+
+		BeforeEach(func() {
+			var err error
+
+			sourceFolder, err = ioutil.TempDir("", "")
+			Expect(err).ToNot(HaveOccurred())
+
+			downloadFolder, err = ioutil.TempDir("", "")
+			Expect(err).ToNot(HaveOccurred())
+
+			filesToContents = createFilesToUpload(sourceFolder)
+
+			backupCreatorCmd = fmt.Sprintf(
+				"%s %s",
+				assetPath("create-fake-backup"),
+				sourceFolder,
+			)
+
+			cleanupCmd = fmt.Sprintf(
+				"rm -rf %s",
+				sourceFolder,
+			)
+		})
+
+		AfterEach(func() {
+			os.Remove(sourceFolder)
+			os.Remove(downloadFolder)
+		})
+
+		Context("when all required inputs are valid", func() {
+			Context("when the bucket already exists", func() {
+				AfterEach(func() {
+					Expect(cephTestClient.DeleteRemotePath(destBucket, pathWithDate(destPath))).To(Succeed())
+				})
+
+				Context("using cron scheduled backup", func() {
+
+					It("recursively uploads the contents of a directory successfully", func() {
+						By("Uploading the directory contents to the blobstore")
+						session, err := performBackup(
+							cephAccessKeyID,
+							cephSecretAccessKey,
+							sourceFolder,
+							destBucket,
+							destPath,
+							cephEndpointURL,
+							backupCreatorCmd,
+							cleanupCmd,
+							cronSchedule,
+						)
+						Expect(err).ToNot(HaveOccurred())
+						Eventually(session.Out, awsTimeout).Should(gbytes.Say("Cleanup completed"))
+
+						session.Terminate().Wait()
+						Eventually(session).Should(gexec.Exit())
+
+						By("Downloading the uploaded files from the blobstore")
+						err = cephTestClient.DownloadRemoteDirectory(
+							destBucket,
+							pathWithDate(destPath),
+							downloadFolder,
+						)
+						Expect(err).ToNot(HaveOccurred())
+
+						By("Validating the contents of the downloaded files")
+						for fileName, contents := range filesToContents {
+							downloadedFilePath := filepath.Join(downloadFolder, fileName)
+
+							downloadedFile, err := os.Open(downloadedFilePath)
+							Expect(err).ToNot(HaveOccurred())
+							defer downloadedFile.Close()
+
+							actualData := make([]byte, len(contents))
+							_, err = downloadedFile.Read(actualData)
+							Expect(err).ToNot(HaveOccurred())
+
+							actualString := string(actualData)
+
+							Expect(actualString).To(Equal(contents))
+						}
+					})
+				})
+			})
 		})
 	})
 })

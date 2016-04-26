@@ -27,8 +27,7 @@ func New(endpointURL, accessKeyID, secretAccessKey string) *S3TestClient {
 }
 
 func (c *S3TestClient) ListRemotePath(bucketName, remotePath string) ([]string, error) {
-	cmd := c.S3Cmd()
-	cmd.Args = append(cmd.Args, "ls", "--recursive", fmt.Sprintf("s3://%s/%s", bucketName, remotePath))
+	cmd := c.S3Cmd("ls", "--recursive", fmt.Sprintf("s3://%s/%s", bucketName, remotePath))
 	out, err := cmd.CombinedOutput()
 	if err != nil {
 		return []string{}, fmt.Errorf("command failed: %s\nwith error:%s", string(out), err)
@@ -75,8 +74,7 @@ func (c *S3TestClient) DeleteRemotePath(bucketName, remotePath string) error {
 }
 
 func (c *S3TestClient) DeleteBucket(bucketName string) {
-	cmd := c.S3Cmd()
-	cmd.Args = append(cmd.Args, "rb", "--force", fmt.Sprintf("s3://%s", bucketName))
+	cmd := c.S3Cmd("rb", "--force", fmt.Sprintf("s3://%s", bucketName))
 
 	err := c.RunCommand(cmd, "delete bucket")
 	Expect(err).ToNot(HaveOccurred())
