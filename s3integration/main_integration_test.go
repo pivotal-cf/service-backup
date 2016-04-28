@@ -158,7 +158,8 @@ var _ = Describe("Service Backup Binary", func() {
 	)
 
 	BeforeEach(func() {
-		destBucket = existingBucketName
+		endpointURL = "https://s3.amazonaws.com"
+		destBucket = existingBucketInDefaultRegion
 
 		destPathUUID, err := uuid.NewV4()
 		Expect(err).ToNot(HaveOccurred())
@@ -202,7 +203,7 @@ var _ = Describe("Service Backup Binary", func() {
 
 		Context("when all required inputs are valid", func() {
 
-			Context("when the bucket already exists", func() {
+			Context("when the bucket already exists in the default region", func() {
 				AfterEach(func() {
 					Expect(s3TestClient.DeleteRemotePath(destBucket, pathWithDate(destPath))).To(Succeed())
 				})
@@ -366,17 +367,81 @@ var _ = Describe("Service Backup Binary", func() {
 				})
 			})
 
+			Context("when the bucket already exists in a different region", func() {
+				BeforeEach(func() {
+					By("Not specifing a endpoint url")
+					endpointURL = ""
+					destBucket = existingBucketInNonDefaultRegion
+				})
+
+				AfterEach(func() {
+					Expect(s3TestClient.DeleteRemotePath(destBucket, pathWithDate(destPath))).To(Succeed())
+				})
+
+				Context("using cron scheduled backup", func() {
+
+					It("recursively uploads the contents of a directory successfully", func() {
+						By("Uploading the directory contents to the blobstore")
+						session, err := performBackup(
+							awsAccessKeyID,
+							awsSecretAccessKey,
+							sourceFolder,
+							destBucket,
+							destPath,
+							endpointURL,
+							backupCreatorCmd,
+							cleanupCmd,
+							cronSchedule,
+						)
+						Expect(err).ToNot(HaveOccurred())
+
+						Consistently(session.Out, awsTimeout).ShouldNot(gbytes.Say("The bucket you are attempting to access must be addressed using the specified endpoint."))
+						Eventually(session.Out, awsTimeout).Should(gbytes.Say("Cleanup completed"))
+						session.Terminate().Wait()
+
+						Eventually(session).Should(gexec.Exit())
+
+						By("Downloading the uploaded files from the blobstore")
+						err = s3TestClient.DownloadRemoteDirectory(
+							destBucket,
+							pathWithDate(destPath),
+							downloadFolder,
+						)
+						Expect(err).ToNot(HaveOccurred())
+
+						By("Validating the contents of the downloaded files")
+						for fileName, contents := range filesToContents {
+							downloadedFilePath := filepath.Join(downloadFolder, fileName)
+
+							downloadedFile, err := os.Open(downloadedFilePath)
+							Expect(err).ToNot(HaveOccurred())
+							defer downloadedFile.Close()
+
+							actualData := make([]byte, len(contents))
+							_, err = downloadedFile.Read(actualData)
+							Expect(err).ToNot(HaveOccurred())
+
+							actualString := string(actualData)
+
+							Expect(actualString).To(Equal(contents))
+						}
+					})
+
+				})
+			})
+
 			Context("when the bucket does not already exist", func() {
 				var strippedUUID string
 
 				BeforeEach(func() {
+					endpointURL = ""
 					bucketUUID, err := uuid.NewV4()
 					Expect(err).ToNot(HaveOccurred())
 
 					strippedUUID = bucketUUID.String()
 					strippedUUID = strippedUUID[:10]
 
-					destBucket = existingBucketName + strippedUUID
+					destBucket = existingBucketInDefaultRegion + strippedUUID
 					destPath = strippedUUID
 				})
 
@@ -534,6 +599,30 @@ var _ = Describe("Service Backup Binary", func() {
 				Expect(err).ToNot(HaveOccurred())
 				Eventually(session, awsTimeout).Should(gexec.Exit(2))
 				Eventually(session.Out).Should(gbytes.Say("Flag source-folder not provided"))
+			})
+		})
+
+		Context("when the endpointURL is invalid", func() {
+			const invalidEndpointURL = "http://0.0.0.0:1234/"
+			It("gracefully fails to perform the upload", func() {
+				session, err := performBackup(
+					awsAccessKeyID,
+					awsSecretAccessKey,
+					sourceFolder,
+					destBucket,
+					destPath,
+					invalidEndpointURL,
+					backupCreatorCmd,
+					cleanupCmd,
+					cronSchedule,
+				)
+
+				Expect(err).ToNot(HaveOccurred())
+				Expect(err).ToNot(HaveOccurred())
+				Eventually(session.Out, awsTimeout).Should(gbytes.Say("Connection aborted"))
+
+				session.Terminate().Wait()
+				Eventually(session).Should(gexec.Exit())
 			})
 		})
 

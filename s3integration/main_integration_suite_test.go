@@ -18,14 +18,15 @@ const (
 	awsAccessKeyIDEnvKey     = "AWS_ACCESS_KEY_ID"
 	awsSecretAccessKeyEnvKey = "AWS_SECRET_ACCESS_KEY"
 
-	existingBucketName = "service-backup-integration-test2"
-	awsTimeout         = "20s"
+	existingBucketInNonDefaultRegion = "service-backup-integration-test"
+	existingBucketInDefaultRegion    = "service-backup-integration-test2"
+	awsTimeout                       = "20s"
 
-	endpointURL  = "https://s3.amazonaws.com"
 	cronSchedule = "*/5 * * * * *" // every 5 seconds of every minute of every day etc
 )
 
 var (
+	endpointURL               string
 	pathToServiceBackupBinary string
 	pathToManualBackupBinary  string
 	awsAccessKeyID            string
@@ -71,8 +72,9 @@ func beforeSuiteFirstNode() []byte {
 	data, err := json.Marshal(c)
 	Expect(err).ToNot(HaveOccurred())
 
-	s3TestClient = s3testclient.New(endpointURL, awsAccessKeyID, awsSecretAccessKey)
-	Expect(s3TestClient.CreateRemotePathIfNeeded(existingBucketName)).To(Succeed())
+	s3TestClient = s3testclient.New("", awsAccessKeyID, awsSecretAccessKey)
+	Expect(s3TestClient.CreateRemotePathIfNeeded(existingBucketInDefaultRegion)).To(Succeed())
+	Expect(s3TestClient.CreateRemotePathIfNeeded(existingBucketInNonDefaultRegion)).To(Succeed())
 
 	return data
 }
