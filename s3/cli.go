@@ -30,14 +30,8 @@ func NewCliClient(awsCmdPath, endpointURL, accessKey, secretKey string, logger l
 }
 
 func (c *S3CliClient) S3Cmd(args ...string) *exec.Cmd {
-	var cmdArgs []string
-
-	if c.endpointURL != "" {
-		cmdArgs = append(cmdArgs, "--endpoint-url", c.endpointURL)
-	}
-	cmdArgs = append(cmdArgs, "s3")
+	cmdArgs := []string{"s3"}
 	cmdArgs = append(cmdArgs, args...)
-
 	cmd := exec.Command(c.awsCmdPath, cmdArgs...)
 	cmd.Env = append(cmd.Env, fmt.Sprintf("AWS_ACCESS_KEY_ID=%s", c.accessKey))
 	cmd.Env = append(cmd.Env, fmt.Sprintf("AWS_SECRET_ACCESS_KEY=%s", c.secretKey))

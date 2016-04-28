@@ -15,41 +15,31 @@ import (
 )
 
 const (
-	awsAccessKeyIDEnvKey               = "AWS_ACCESS_KEY_ID"
-	awsSecretAccessKeyEnvKey           = "AWS_SECRET_ACCESS_KEY"
-	cephAccessKeyIDEnvKey              = "CEPH_ACCESS_KEY_ID"
-	cephSecretAccessKeyEnvKey          = "CEPH_SECRET_ACCESS_KEY"
-	cephEndpointURLEnvKey              = "CEPH_ENDPOINT_URL"
+	awsAccessKeyIDEnvKey     = "AWS_ACCESS_KEY_ID"
+	awsSecretAccessKeyEnvKey = "AWS_SECRET_ACCESS_KEY"
 
 	existingBucketName = "service-backup-integration-test2"
 	awsTimeout         = "20s"
 
-	endpointURL  = ""
+	endpointURL  = "https://s3.amazonaws.com"
 	cronSchedule = "*/5 * * * * *" // every 5 seconds of every minute of every day etc
 )
 
 var (
-	pathToServiceBackupBinary    string
-	pathToManualBackupBinary     string
-	awsAccessKeyID               string
-	awsSecretAccessKey           string
-	cephAccessKeyID              string
-	cephSecretAccessKey          string
-	cephEndpointURL              string
-	destPath                     string
+	pathToServiceBackupBinary string
+	pathToManualBackupBinary  string
+	awsAccessKeyID            string
+	awsSecretAccessKey        string
+	destPath                  string
 
-	s3TestClient   *s3testclient.S3TestClient
-	cephTestClient *s3testclient.S3TestClient
+	s3TestClient *s3testclient.S3TestClient
 )
 
 type config struct {
-	AWSAccessKeyID               string `json:"awsAccessKeyID"`
-	AWSSecretAccessKey           string `json:"awsSecretAccessKey"`
-	CephAccessKeyID              string `json:"cephAccessKeyID"`
-	CephSecretAccessKey          string `json:"cephSecretAccessKey"`
-	CephEndpointURL              string `json:"cephEndpointURL"`
-	PathToBackupBinary           string `json:"pathToBackupBinary"`
-	PathToManualBinary           string `json:"pathToManualBinary"`
+	AWSAccessKeyID     string `json:"awsAccessKeyID"`
+	AWSSecretAccessKey string `json:"awsSecretAccessKey"`
+	PathToBackupBinary string `json:"pathToBackupBinary"`
+	PathToManualBinary string `json:"pathToManualBinary"`
 }
 
 func TestServiceBackupBinary(t *testing.T) {
@@ -60,15 +50,9 @@ func TestServiceBackupBinary(t *testing.T) {
 func beforeSuiteFirstNode() []byte {
 	awsAccessKeyID = os.Getenv(awsAccessKeyIDEnvKey)
 	awsSecretAccessKey = os.Getenv(awsSecretAccessKeyEnvKey)
-	cephAccessKeyID = os.Getenv(cephAccessKeyIDEnvKey)
-	cephSecretAccessKey = os.Getenv(cephSecretAccessKeyEnvKey)
-	cephEndpointURL = os.Getenv(cephEndpointURLEnvKey)
 
 	if awsAccessKeyID == "" || awsSecretAccessKey == "" {
 		Fail(fmt.Sprintf("Specify valid AWS credentials using the env variables %s and %s", awsAccessKeyIDEnvKey, awsSecretAccessKeyEnvKey))
-	}
-	if cephAccessKeyID == "" || cephSecretAccessKey == "" || cephEndpointURL == "" {
-		Fail(fmt.Sprintf("Specify valid Ceph credentials and endpoint using the env variables %s, %s and %s", cephAccessKeyIDEnvKey, cephSecretAccessKeyEnvKey, cephEndpointURLEnvKey))
 	}
 
 	var err error
@@ -78,13 +62,10 @@ func beforeSuiteFirstNode() []byte {
 	Expect(err).ToNot(HaveOccurred())
 
 	c := config{
-		AWSAccessKeyID:               awsAccessKeyID,
-		AWSSecretAccessKey:           awsSecretAccessKey,
-		CephAccessKeyID:              cephAccessKeyID,
-		CephSecretAccessKey:          cephSecretAccessKey,
-		CephEndpointURL:              cephEndpointURL,
-		PathToBackupBinary:           pathToServiceBackupBinary,
-		PathToManualBinary:           pathToManualBackupBinary,
+		AWSAccessKeyID:     awsAccessKeyID,
+		AWSSecretAccessKey: awsSecretAccessKey,
+		PathToBackupBinary: pathToServiceBackupBinary,
+		PathToManualBinary: pathToManualBackupBinary,
 	}
 
 	data, err := json.Marshal(c)
@@ -92,9 +73,6 @@ func beforeSuiteFirstNode() []byte {
 
 	s3TestClient = s3testclient.New(endpointURL, awsAccessKeyID, awsSecretAccessKey)
 	Expect(s3TestClient.CreateRemotePathIfNeeded(existingBucketName)).To(Succeed())
-
-	cephTestClient = s3testclient.New(cephEndpointURL, cephAccessKeyID, cephSecretAccessKey)
-	Expect(cephTestClient.CreateRemotePathIfNeeded(existingBucketName)).To(Succeed())
 
 	return data
 }
@@ -112,9 +90,6 @@ func beforeSuiteOtherNodes(b []byte) {
 
 	awsAccessKeyID = c.AWSAccessKeyID
 	awsSecretAccessKey = c.AWSSecretAccessKey
-	cephAccessKeyID = c.CephAccessKeyID
-	cephSecretAccessKey = c.CephSecretAccessKey
-	cephEndpointURL = c.CephEndpointURL
 	pathToServiceBackupBinary = c.PathToBackupBinary
 	pathToManualBackupBinary = c.PathToManualBinary
 	s3TestClient = s3testclient.New(endpointURL, awsAccessKeyID, awsSecretAccessKey)
