@@ -288,8 +288,6 @@ var _ = Describe("Service Backup Binary", func() {
 							Eventually(session.Out, awsTimeout).Should(gbytes.Say(identifier))
 							Eventually(session.Out, awsTimeout).Should(gbytes.Say("Upload backup started"))
 							Eventually(session.Out, awsTimeout).Should(gbytes.Say(identifier))
-							Eventually(session.Out, awsTimeout).Should(gbytes.Say("Checking for remote path"))
-							Eventually(session.Out, awsTimeout).Should(gbytes.Say(identifier))
 							Eventually(session.Out, awsTimeout).Should(gbytes.Say("Running command"))
 							Eventually(session.Out, awsTimeout).Should(gbytes.Say(identifier))
 							Eventually(session.Out, awsTimeout).Should(gbytes.Say("Upload backup completed without error"))
@@ -544,6 +542,84 @@ var _ = Describe("Service Backup Binary", func() {
 					Eventually(session.Out, awsTimeout).Should(gbytes.Say("Cleanup command not provided"))
 					session.Terminate().Wait()
 					Eventually(session).Should(gexec.Exit())
+				})
+			})
+
+			Context("when a user does not have the CreateBucket permission", func() {
+
+				Context("when the bucket already exists", func() {
+					It("successfully uploads the backup", func() {
+						By("Uploading the directory contents to the blobstore")
+						session, err := performBackup(
+							awsAccessKeyIDRestricted,
+							awsSecretAccessKeyRestricted,
+							sourceFolder,
+							destBucket,
+							destPath,
+							endpointURL,
+							backupCreatorCmd,
+							cleanupCmd,
+							cronSchedule,
+						)
+						Expect(err).ToNot(HaveOccurred())
+						Eventually(session.Out, awsTimeout).Should(gbytes.Say("Cleanup completed"))
+
+						session.Terminate().Wait()
+						Eventually(session).Should(gexec.Exit())
+
+						By("Downloading the uploaded files from the blobstore")
+						err = s3TestClient.DownloadRemoteDirectory(
+							destBucket,
+							pathWithDate(destPath),
+							downloadFolder,
+						)
+						Expect(err).ToNot(HaveOccurred())
+
+						By("Validating the contents of the downloaded files")
+						for fileName, contents := range filesToContents {
+							downloadedFilePath := filepath.Join(downloadFolder, fileName)
+
+							downloadedFile, err := os.Open(downloadedFilePath)
+							Expect(err).ToNot(HaveOccurred())
+							defer downloadedFile.Close()
+
+							actualData := make([]byte, len(contents))
+							_, err = downloadedFile.Read(actualData)
+							Expect(err).ToNot(HaveOccurred())
+
+							actualString := string(actualData)
+
+							Expect(actualString).To(Equal(contents))
+						}
+					})
+				})
+
+				Context("when the bucket does not exist", func() {
+					BeforeEach(func() {
+						bucketUUID, err := uuid.NewV4()
+						Expect(err).ToNot(HaveOccurred())
+						destBucket = "doesnotexist" + bucketUUID.String()
+
+						By("Not specifing a endpoint url")
+						endpointURL = ""
+					})
+
+					It("logs an error", func() {
+						session, err := performBackup(
+							awsAccessKeyIDRestricted,
+							awsSecretAccessKeyRestricted,
+							sourceFolder,
+							destBucket,
+							destPath,
+							endpointURL,
+							backupCreatorCmd,
+							cleanupCmd,
+							cronSchedule,
+						)
+						Expect(err).ToNot(HaveOccurred())
+						Eventually(session.Out, awsTimeout).Should(gbytes.Say("Checking for remote path - remote path does not exist - making it now"))
+						Eventually(session.Out, awsTimeout).Should(gbytes.Say("Configured S3 user unable to create buckets"))
+					})
 				})
 			})
 		})

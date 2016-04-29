@@ -15,32 +15,37 @@ import (
 )
 
 const (
-	awsAccessKeyIDEnvKey     = "AWS_ACCESS_KEY_ID"
-	awsSecretAccessKeyEnvKey = "AWS_SECRET_ACCESS_KEY"
-
-	existingBucketInNonDefaultRegion = "service-backup-integration-test"
-	existingBucketInDefaultRegion    = "service-backup-integration-test2"
-	awsTimeout                       = "20s"
+	awsAccessKeyIDEnvKey               = "AWS_ACCESS_KEY_ID"
+	awsSecretAccessKeyEnvKey           = "AWS_SECRET_ACCESS_KEY"
+	awsAccessKeyIDEnvKeyRestricted     = "AWS_ACCESS_KEY_ID_RESTRICTED"
+	awsSecretAccessKeyEnvKeyRestricted = "AWS_SECRET_ACCESS_KEY_RESTRICTED"
+	existingBucketInNonDefaultRegion   = "service-backup-integration-test"
+	existingBucketInDefaultRegion      = "service-backup-integration-test2"
+	awsTimeout                         = "20s"
 
 	cronSchedule = "*/5 * * * * *" // every 5 seconds of every minute of every day etc
 )
 
 var (
-	endpointURL               string
-	pathToServiceBackupBinary string
-	pathToManualBackupBinary  string
-	awsAccessKeyID            string
-	awsSecretAccessKey        string
-	destPath                  string
+	endpointURL                  string
+	pathToServiceBackupBinary    string
+	pathToManualBackupBinary     string
+	awsAccessKeyID               string
+	awsSecretAccessKey           string
+	awsAccessKeyIDRestricted     string
+	awsSecretAccessKeyRestricted string
+	destPath                     string
 
 	s3TestClient *s3testclient.S3TestClient
 )
 
 type config struct {
-	AWSAccessKeyID     string `json:"awsAccessKeyID"`
-	AWSSecretAccessKey string `json:"awsSecretAccessKey"`
-	PathToBackupBinary string `json:"pathToBackupBinary"`
-	PathToManualBinary string `json:"pathToManualBinary"`
+	AWSAccessKeyID               string `json:"awsAccessKeyID"`
+	AWSSecretAccessKey           string `json:"awsSecretAccessKey"`
+	AWSAccessKeyIDRestricted     string `json:"awsAccessKeyIDRestricted"`
+	AWSSecretAccessKeyRestricted string `json:"awsSecretAccessKeyRestricted"`
+	PathToBackupBinary           string `json:"pathToBackupBinary"`
+	PathToManualBinary           string `json:"pathToManualBinary"`
 }
 
 func TestServiceBackupBinary(t *testing.T) {
@@ -51,9 +56,14 @@ func TestServiceBackupBinary(t *testing.T) {
 func beforeSuiteFirstNode() []byte {
 	awsAccessKeyID = os.Getenv(awsAccessKeyIDEnvKey)
 	awsSecretAccessKey = os.Getenv(awsSecretAccessKeyEnvKey)
+	awsAccessKeyIDRestricted = os.Getenv(awsAccessKeyIDEnvKeyRestricted)
+	awsSecretAccessKeyRestricted = os.Getenv(awsSecretAccessKeyEnvKeyRestricted)
 
 	if awsAccessKeyID == "" || awsSecretAccessKey == "" {
 		Fail(fmt.Sprintf("Specify valid AWS credentials using the env variables %s and %s", awsAccessKeyIDEnvKey, awsSecretAccessKeyEnvKey))
+	}
+	if awsAccessKeyIDRestricted == "" || awsSecretAccessKeyRestricted == "" {
+		Fail(fmt.Sprintf("Specify valid AWS credentials using the env variables %s and %s", awsAccessKeyIDEnvKeyRestricted, awsSecretAccessKeyEnvKeyRestricted))
 	}
 
 	var err error
@@ -63,10 +73,13 @@ func beforeSuiteFirstNode() []byte {
 	Expect(err).ToNot(HaveOccurred())
 
 	c := config{
-		AWSAccessKeyID:     awsAccessKeyID,
-		AWSSecretAccessKey: awsSecretAccessKey,
-		PathToBackupBinary: pathToServiceBackupBinary,
-		PathToManualBinary: pathToManualBackupBinary,
+
+		AWSAccessKeyID:               awsAccessKeyID,
+		AWSSecretAccessKey:           awsSecretAccessKey,
+		AWSAccessKeyIDRestricted:     awsAccessKeyIDRestricted,
+		AWSSecretAccessKeyRestricted: awsSecretAccessKeyRestricted,
+		PathToBackupBinary:           pathToServiceBackupBinary,
+		PathToManualBinary:           pathToManualBackupBinary,
 	}
 
 	data, err := json.Marshal(c)
@@ -92,6 +105,8 @@ func beforeSuiteOtherNodes(b []byte) {
 
 	awsAccessKeyID = c.AWSAccessKeyID
 	awsSecretAccessKey = c.AWSSecretAccessKey
+	awsAccessKeyIDRestricted = c.AWSAccessKeyIDRestricted
+	awsSecretAccessKeyRestricted = c.AWSSecretAccessKeyRestricted
 	pathToServiceBackupBinary = c.PathToBackupBinary
 	pathToManualBackupBinary = c.PathToManualBinary
 	s3TestClient = s3testclient.New(endpointURL, awsAccessKeyID, awsSecretAccessKey)

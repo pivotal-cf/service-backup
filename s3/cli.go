@@ -58,6 +58,10 @@ func (c *S3CliClient) CreateRemotePathIfNeeded(remotePath string) error {
 	c.sessionLogger.Info("Checking for remote path - remote path does not exist - making it now")
 	err = c.createRemotePath(remotePath)
 	if err != nil {
+		if strings.Contains(err.Error(), "AccessDenied") {
+			c.sessionLogger.Error("Configured S3 user unable to create buckets", err)
+		}
+
 		return err
 	}
 	c.sessionLogger.Info("Checking for remote path - remote path created ok")
@@ -89,12 +93,23 @@ func (c *S3CliClient) createRemotePath(remotePath string) error {
 }
 
 func (c *S3CliClient) Upload(localPath, remotePath string) error {
-	err := c.CreateRemotePathIfNeeded(remotePath)
+	cmd := c.S3Cmd("sync", localPath, fmt.Sprintf("s3://%s", remotePath))
+	c.sessionLogger.Info(fmt.Sprintf("Running command: %+v\n", cmd))
+
+	out, err := cmd.CombinedOutput()
+	if err == nil {
+		return nil
+	}
+	if !bytes.Contains(out, []byte("NoSuchBucket")) {
+		return fmt.Errorf("error in sync: %s, output: %s", err, string(out))
+	}
+
+	err = c.CreateRemotePathIfNeeded(remotePath)
 	if err != nil {
 		return err
 	}
 
-	cmd := c.S3Cmd("sync", localPath, fmt.Sprintf("s3://%s", remotePath))
+	cmd = c.S3Cmd("sync", localPath, fmt.Sprintf("s3://%s", remotePath))
 	return c.RunCommand(cmd, "sync")
 }
 
