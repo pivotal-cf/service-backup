@@ -168,10 +168,12 @@ func (b *backup) performCleanup() error {
 func (b *backup) uploadBackup() error {
 	b.sessionLogger.Info("Upload backup started")
 
+	startTime := time.Now()
 	err := b.backuper.Upload(
 		b.sourceFolder,
 		b.remotePathWithDate(),
 	)
+	duration := time.Since(startTime)
 
 	if err != nil {
 		b.sessionLogger.Error("Upload backup completed with error", err)
@@ -180,6 +182,7 @@ func (b *backup) uploadBackup() error {
 
 	size, err := b.helper.DirSize(b.sourceFolder)
 	b.sessionLogger.Info("Upload backup completed without error", lager.Data{
+		"duration": duration.Seconds(),
 		"size":     size,
 	})
 	return nil
