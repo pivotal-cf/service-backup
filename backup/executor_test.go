@@ -20,6 +20,7 @@ var _ = Describe("Executor", func() {
 		backuper        *backupfakes.FakeBackuper
 		logger          lager.Logger
 		log             *gbytes.Buffer
+		helper          *backupfakes.FakeHelper
 	)
 
 	BeforeEach(func() {
@@ -28,6 +29,8 @@ var _ = Describe("Executor", func() {
 		logger.RegisterSink(lager.NewWriterSink(log, lager.DEBUG))
 
 		backuper = new(backupfakes.FakeBackuper)
+		helper = new(backupfakes.FakeHelper)
+		helper.DirSizeReturns(200, nil)
 	})
 
 	Describe("RunOnce()", func() {
@@ -53,6 +56,7 @@ var _ = Describe("Executor", func() {
 				performIdentifyServiceCmd,
 				logger,
 				providerFactory.ExecCommand,
+				helper,
 			)
 
 			runOnceErr = executor.RunOnce()
@@ -94,6 +98,10 @@ var _ = Describe("Executor", func() {
 						Expect(log).To(gbytes.Say("Cleanup completed"))
 						Expect(log).To(gbytes.Say(`"identifier":"unit-identifier"`))
 					})
+				})
+
+				It("logs upload metadata information", func() {
+					Expect(log).To(gbytes.Say(`"size":200`))
 				})
 
 				Context("returns an error", func() {
