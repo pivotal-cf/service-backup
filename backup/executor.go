@@ -182,8 +182,8 @@ func (b *backup) uploadBackup() error {
 
 	size, err := b.helper.DirSize(b.sourceFolder)
 	b.sessionLogger.Info("Upload backup completed without error", lager.Data{
-		"duration": duration.Seconds(),
-		"size":     size,
+		"duration":      duration.Seconds(),
+		"size_in_bytes": size,
 	})
 	return nil
 }
