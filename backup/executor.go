@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
-	"path/filepath"
 	"strings"
 	"time"
 
@@ -24,14 +23,6 @@ type Executor interface {
 	RunOnce() error
 }
 
-// Helper ...
-type Helper interface {
-	DirSize(localPath string) (int64, error)
-}
-
-// DefaultHelper ...
-type DefaultHelper struct{}
-
 //Backuper ...
 type Backuper interface {
 	Upload(localPath, remotePath string) error
@@ -49,7 +40,7 @@ type backup struct {
 	logger               lager.Logger
 	sessionLogger        lager.Logger
 	execCommand          ExecCommand
-	helper               Helper
+	calculator           SizeCalculator
 }
 
 //NewExecutor ...
@@ -62,7 +53,7 @@ func NewExecutor(
 	serviceIdentifierCmd string,
 	logger lager.Logger,
 	execCommand ExecCommand,
-	helper Helper,
+	calculator SizeCalculator,
 ) Executor {
 	return &backup{
 		backuper:             backuper,
@@ -74,7 +65,7 @@ func NewExecutor(
 		logger:               logger,
 		sessionLogger:        logger,
 		execCommand:          execCommand,
-		helper:               helper,
+		calculator:           calculator,
 	}
 }
 
@@ -180,7 +171,7 @@ func (b *backup) uploadBackup() error {
 		return err
 	}
 
-	size, err := b.helper.DirSize(b.sourceFolder)
+	size, err := b.calculator.DirSize(b.sourceFolder)
 	b.sessionLogger.Info("Upload backup completed without error", lager.Data{
 		"duration":      duration.Seconds(),
 		"size_in_bytes": size,
@@ -192,16 +183,4 @@ func (b *backup) remotePathWithDate() string {
 	today := time.Now()
 	datePath := fmt.Sprintf("%d/%02d/%02d", today.Year(), today.Month(), today.Day())
 	return b.remotePath + "/" + datePath
-}
-
-// DirSize ...
-func (h *DefaultHelper) DirSize(localPath string) (int64, error) {
-	var size int64
-	err := filepath.Walk(localPath, func(_ string, info os.FileInfo, err error) error {
-		if !info.IsDir() {
-			size += info.Size()
-		}
-		return err
-	})
-	return size, err
 }

@@ -2,11 +2,12 @@
 package backupfakes
 
 import (
-	"github.com/pivotal-cf-experimental/service-backup/backup"
 	"sync"
+
+	"github.com/pivotal-cf-experimental/service-backup/backup"
 )
 
-type FakeHelper struct {
+type FakeSizeCalculator struct {
 	DirSizeStub        func(localPath string) (int64, error)
 	dirSizeMutex       sync.RWMutex
 	dirSizeArgsForCall []struct {
@@ -20,7 +21,7 @@ type FakeHelper struct {
 	invocationsMutex sync.RWMutex
 }
 
-func (fake *FakeHelper) DirSize(localPath string) (int64, error) {
+func (fake *FakeSizeCalculator) DirSize(localPath string) (int64, error) {
 	fake.dirSizeMutex.Lock()
 	fake.dirSizeArgsForCall = append(fake.dirSizeArgsForCall, struct {
 		localPath string
@@ -34,19 +35,19 @@ func (fake *FakeHelper) DirSize(localPath string) (int64, error) {
 	}
 }
 
-func (fake *FakeHelper) DirSizeCallCount() int {
+func (fake *FakeSizeCalculator) DirSizeCallCount() int {
 	fake.dirSizeMutex.RLock()
 	defer fake.dirSizeMutex.RUnlock()
 	return len(fake.dirSizeArgsForCall)
 }
 
-func (fake *FakeHelper) DirSizeArgsForCall(i int) string {
+func (fake *FakeSizeCalculator) DirSizeArgsForCall(i int) string {
 	fake.dirSizeMutex.RLock()
 	defer fake.dirSizeMutex.RUnlock()
 	return fake.dirSizeArgsForCall[i].localPath
 }
 
-func (fake *FakeHelper) DirSizeReturns(result1 int64, result2 error) {
+func (fake *FakeSizeCalculator) DirSizeReturns(result1 int64, result2 error) {
 	fake.DirSizeStub = nil
 	fake.dirSizeReturns = struct {
 		result1 int64
@@ -54,7 +55,7 @@ func (fake *FakeHelper) DirSizeReturns(result1 int64, result2 error) {
 	}{result1, result2}
 }
 
-func (fake *FakeHelper) Invocations() map[string][][]interface{} {
+func (fake *FakeSizeCalculator) Invocations() map[string][][]interface{} {
 	fake.invocationsMutex.RLock()
 	defer fake.invocationsMutex.RUnlock()
 	fake.dirSizeMutex.RLock()
@@ -62,7 +63,7 @@ func (fake *FakeHelper) Invocations() map[string][][]interface{} {
 	return fake.invocations
 }
 
-func (fake *FakeHelper) recordInvocation(key string, args []interface{}) {
+func (fake *FakeSizeCalculator) recordInvocation(key string, args []interface{}) {
 	fake.invocationsMutex.Lock()
 	defer fake.invocationsMutex.Unlock()
 	if fake.invocations == nil {
@@ -74,4 +75,4 @@ func (fake *FakeHelper) recordInvocation(key string, args []interface{}) {
 	fake.invocations[key] = append(fake.invocations[key], args)
 }
 
-var _ backup.Helper = new(FakeHelper)
+var _ backup.SizeCalculator = new(FakeSizeCalculator)

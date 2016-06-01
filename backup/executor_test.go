@@ -20,7 +20,7 @@ var _ = Describe("Executor", func() {
 		backuper        *backupfakes.FakeBackuper
 		logger          lager.Logger
 		log             *gbytes.Buffer
-		helper          *backupfakes.FakeHelper
+		calculator      *backupfakes.FakeSizeCalculator
 	)
 
 	BeforeEach(func() {
@@ -29,8 +29,8 @@ var _ = Describe("Executor", func() {
 		logger.RegisterSink(lager.NewWriterSink(log, lager.DEBUG))
 
 		backuper = new(backupfakes.FakeBackuper)
-		helper = new(backupfakes.FakeHelper)
-		helper.DirSizeReturns(200, nil)
+		calculator = new(backupfakes.FakeSizeCalculator)
+		calculator.DirSizeReturns(200, nil)
 	})
 
 	Describe("RunOnce()", func() {
@@ -56,7 +56,7 @@ var _ = Describe("Executor", func() {
 				performIdentifyServiceCmd,
 				logger,
 				providerFactory.ExecCommand,
-				helper,
+				calculator,
 			)
 
 			runOnceErr = executor.RunOnce()

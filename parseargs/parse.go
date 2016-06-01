@@ -133,7 +133,7 @@ func Parse(osArgs []string) (backup.Executor, *string, lager.Logger) {
 
 	validateFlag(sourceFolder, sourceFolderFlagName)
 	validateFlag(backupCreatorCmd, backupCreatorCmdFlagName)
-	var helper = &backup.DefaultHelper{}
+	var calculator = &backup.FileSystemSizeCalculator{}
 
 	executor := backup.NewExecutor(
 		backuper,
@@ -144,7 +144,7 @@ func Parse(osArgs []string) (backup.Executor, *string, lager.Logger) {
 		*serviceIdentifierCmd,
 		logger,
 		exec.Command,
-		helper,
+		calculator,
 	)
 
 	return executor, cronSchedule, logger
