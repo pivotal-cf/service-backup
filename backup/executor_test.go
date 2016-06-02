@@ -102,7 +102,7 @@ var _ = Describe("Executor", func() {
 				})
 
 				It("logs upload metadata information", func() {
-					Expect(log).To(gbytes.Say(`"duration":\d`))
+					Expect(log).To(gbytes.Say(`"duration_in_seconds":\d`))
 					Expect(log).To(gbytes.Say(`"size_in_bytes":200`))
 				})
 
