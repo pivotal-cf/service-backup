@@ -42,6 +42,7 @@ var _ = Describe("Executor", func() {
 		BeforeEach(func() {
 			providerFactory = new(backupfakes.FakeProviderFactory)
 			performIdentifyServiceCmd = assetPath("fake-service-identifier")
+			execCmd = exec.Command("")
 		})
 
 		JustBeforeEach(func() {
