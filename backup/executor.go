@@ -40,6 +40,7 @@ type backup struct {
 	logger               lager.Logger
 	sessionLogger        lager.Logger
 	execCommand          ExecCommand
+	calculator           SizeCalculator
 }
 
 //NewExecutor ...
@@ -52,6 +53,7 @@ func NewExecutor(
 	serviceIdentifierCmd string,
 	logger lager.Logger,
 	execCommand ExecCommand,
+	calculator SizeCalculator,
 ) Executor {
 	return &backup{
 		backuper:             backuper,
@@ -63,6 +65,7 @@ func NewExecutor(
 		logger:               logger,
 		sessionLogger:        logger,
 		execCommand:          execCommand,
+		calculator:           calculator,
 	}
 }
 
@@ -156,17 +159,23 @@ func (b *backup) performCleanup() error {
 func (b *backup) uploadBackup() error {
 	b.sessionLogger.Info("Upload backup started")
 
+	startTime := time.Now()
 	err := b.backuper.Upload(
 		b.sourceFolder,
 		b.remotePathWithDate(),
 	)
+	duration := time.Since(startTime)
 
 	if err != nil {
 		b.sessionLogger.Error("Upload backup completed with error", err)
 		return err
 	}
 
-	b.sessionLogger.Info("Upload backup completed without error")
+	size, err := b.calculator.DirSize(b.sourceFolder)
+	b.sessionLogger.Info("Upload backup completed without error", lager.Data{
+		"duration":      duration.Seconds(),
+		"size_in_bytes": size,
+	})
 	return nil
 }
 
