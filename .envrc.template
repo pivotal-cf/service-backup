@@ -12,12 +12,10 @@ export BOSH_HOST=
 export BOSH_USERNAME=
 export BOSH_PASSWORD=
 
-META_REPO_PATH=
+export BOSH_PRIVATE_KEY_FILE=
+export BOSH_CA_CERT_PATH=
 
-export BOSH_PRIVATE_KEY_FILE=$META_REPO_PATH/bosh-directors/bosh-v2-enablement/bosh.pem
-export BOSH_CA_CERT_PATH=$META_REPO_PATH/bosh-directors/bosh-v2-enablement/certs/rootCA.pem
-
-BOSH_MANIFEST_DIR=$META_REPO_PATH/manifests/service-backups
-export S3_BOSH_MANIFEST=$BOSH_MANIFEST_DIR/ci-aws-s3.yml
-export AZURE_BOSH_MANIFEST=$BOSH_MANIFEST_DIR/ci-aws-azure.yml
-export SCP_BOSH_MANIFEST=$BOSH_MANIFEST_DIR/ci-aws-scp.yml
+export BOSH_MANIFEST_DIR=
+export S3_BOSH_MANIFEST=
+export AZURE_BOSH_MANIFEST=
+export SCP_BOSH_MANIFEST=
