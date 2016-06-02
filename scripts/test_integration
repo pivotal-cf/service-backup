@@ -26,8 +26,8 @@ pushd "${BASE_DIR}"
     -slowSpecThreshold=30 \
     -keepGoing \
     -cover \
-    "$@" \
-    s3integration scpintegration azureintegration backup
+    -skipPackage release_tests \
+    "$@"
 
     go tool cover -func=backup/backup.coverprofile
 
