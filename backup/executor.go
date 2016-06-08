@@ -130,7 +130,7 @@ func (b *backup) performBackup() error {
 		return err
 	}
 
-	b.sessionLogger.Info("Perform backup completed without error")
+	b.sessionLogger.Info("Perform backup completed successfully")
 	return nil
 }
 
@@ -152,7 +152,7 @@ func (b *backup) performCleanup() error {
 		return err
 	}
 
-	b.sessionLogger.Info("Cleanup completed without error")
+	b.sessionLogger.Info("Cleanup completed successfully")
 	return nil
 }
 
@@ -172,7 +172,7 @@ func (b *backup) uploadBackup() error {
 	}
 
 	size, err := b.calculator.DirSize(b.sourceFolder)
-	b.sessionLogger.Info("Upload backup completed without error", lager.Data{
+	b.sessionLogger.Info("Upload backup completed successfully", lager.Data{
 		"duration_in_seconds": duration.Seconds(),
 		"size_in_bytes":       size,
 	})

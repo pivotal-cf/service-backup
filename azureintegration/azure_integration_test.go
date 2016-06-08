@@ -102,7 +102,7 @@ var _ = Describe("AzureClient", func() {
 			destinationPath := fmt.Sprintf("path/to/blobs/%d", today.Unix())
 
 			session := performBackup(sourceFolder, destinationPath)
-			Eventually(session.Out, azureTimeout).Should(gbytes.Say("Cleanup completed without error"))
+			Eventually(session.Out, azureTimeout).Should(gbytes.Say("Cleanup completed successfully"))
 			session.Terminate().Wait()
 			Eventually(session).Should(gexec.Exit())
 
@@ -132,7 +132,7 @@ var _ = Describe("AzureClient", func() {
 
 			session := performBackup(sourceFolder, destinationPath)
 
-			Eventually(session.Out, azureTimeout).Should(gbytes.Say("Cleanup completed without error"))
+			Eventually(session.Out, azureTimeout).Should(gbytes.Say("Cleanup completed successfully"))
 			session.Terminate().Wait()
 			Eventually(session).Should(gexec.Exit())
 
