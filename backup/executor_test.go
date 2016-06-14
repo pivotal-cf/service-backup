@@ -242,12 +242,11 @@ var _ = Describe("Executor", func() {
 					It("rejects the upload", func() {
 						firstBackupInProgress.Wait()
 						secondBackupErr := executor.RunOnce()
-						defer blockUpload.Done()
-						defer firstBackupCompleted.Wait()
+						blockUpload.Done()
+						firstBackupCompleted.Wait()
 
 						Expect(secondBackupErr).To(MatchError("backup operation rejected"))
 						Expect(log).To(gbytes.Say("Backup currently in progress, exiting. Another backup will not be able to start until this is completed."))
-
 					})
 				})
 			})
