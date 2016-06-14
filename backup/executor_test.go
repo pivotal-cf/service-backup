@@ -2,6 +2,7 @@ package backup_test
 
 import (
 	"os/exec"
+	"sync"
 
 	. "github.com/pivotal-cf-experimental/service-backup/backup"
 	"github.com/pivotal-cf-experimental/service-backup/backup/backupfakes"
@@ -37,34 +38,40 @@ var _ = Describe("Executor", func() {
 		var (
 			runOnceErr                error
 			performIdentifyServiceCmd string
+			exitIfBackupInProgress    bool
 		)
 
 		BeforeEach(func() {
 			providerFactory = new(backupfakes.FakeProviderFactory)
 			performIdentifyServiceCmd = assetPath("fake-service-identifier")
+			exitIfBackupInProgress = false
 			execCmd = exec.Command("")
 		})
 
 		JustBeforeEach(func() {
 			providerFactory.ExecCommandReturns(execCmd)
-
-			executor = NewExecutor(
-				backuper,
-				"source-folder",
-				"remote-path",
-				assetPath("fake-snapshotter"),
-				assetPath("fake-cleanup"),
-				performIdentifyServiceCmd,
-				logger,
-				providerFactory.ExecCommand,
-				calculator,
-			)
-
-			runOnceErr = executor.RunOnce()
 		})
 
 		Describe("performIdentifyService", func() {
+			JustBeforeEach(func() {
+				executor = NewExecutor(
+					backuper,
+					"source-folder",
+					"remote-path",
+					assetPath("fake-snapshotter"),
+					assetPath("fake-cleanup"),
+					performIdentifyServiceCmd,
+					exitIfBackupInProgress,
+					logger,
+					providerFactory.ExecCommand,
+					calculator,
+				)
+
+				runOnceErr = executor.RunOnce()
+			})
+
 			Context("when provided service identifier", func() {
+
 				Context("returns an identifier", func() {
 					BeforeEach(func() {
 						execCmd = exec.Command(assetPath("fake-service-identifier"))
@@ -156,6 +163,95 @@ var _ = Describe("Executor", func() {
 					Expect(log).ToNot(gbytes.Say("identifier"))
 				})
 			})
+		})
+
+		Describe("performWithOtherBackupInProgress", func() {
+			Context("when exit_if_in_progress is omitted or set to false", func() {
+				JustBeforeEach(func() {
+					exitIfBackupAlreadyInProgress := false
+					executor = NewExecutor(
+						backuper,
+						"source-folder",
+						"remote-path",
+						assetPath("fake-snapshotter"),
+						assetPath("fake-cleanup"),
+						performIdentifyServiceCmd,
+						exitIfBackupAlreadyInProgress,
+						logger,
+						providerFactory.ExecCommand,
+						calculator,
+					)
+				})
+
+				Context("when a backup is already in progress", func() {
+					JustBeforeEach(func() {
+						firstBackupErr := executor.RunOnce()
+						Expect(firstBackupErr).NotTo(HaveOccurred())
+					})
+
+					It("starts the upload", func() {
+						secondBackupErr := executor.RunOnce()
+						Expect(secondBackupErr).NotTo(HaveOccurred())
+						Expect(providerFactory.ExecCommandCallCount()).To(Equal(2))
+						Expect(log).To(gbytes.Say("Upload backup started"))
+					})
+				})
+			})
+
+			Context("when exit_if_in_progress is set to true", func() {
+				JustBeforeEach(func() {
+					exitIfBackupInProgress = true
+					executor = NewExecutor(
+						backuper,
+						"source-folder",
+						"remote-path",
+						assetPath("fake-snapshotter"),
+						assetPath("fake-cleanup"),
+						performIdentifyServiceCmd,
+						exitIfBackupInProgress,
+						logger,
+						providerFactory.ExecCommand,
+						calculator,
+					)
+				})
+
+				Context("when a backup is already in progress", func() {
+					var blockUpload sync.WaitGroup
+					var firstBackupInProgress sync.WaitGroup
+					var firstBackupCompleted sync.WaitGroup
+					BeforeEach(func() {
+						blockUpload.Add(1)
+						firstBackupInProgress.Add(1)
+						firstBackupCompleted.Add(1)
+					})
+					JustBeforeEach(func() {
+						backuper.UploadStub = func(localPath, remotePath string) error {
+							blockUpload.Wait()
+							return nil
+						}
+						go func() {
+							//start the first upload
+							defer GinkgoRecover()
+							firstBackupInProgress.Done()
+							firstBackupErr := executor.RunOnce()
+							Expect(firstBackupErr).NotTo(HaveOccurred())
+							firstBackupCompleted.Done()
+						}()
+					})
+
+					It("rejects the upload", func() {
+						firstBackupInProgress.Wait()
+						secondBackupErr := executor.RunOnce()
+						defer blockUpload.Done()
+						defer firstBackupCompleted.Wait()
+
+						Expect(secondBackupErr).To(MatchError("backup operation rejected"))
+						Expect(log).To(gbytes.Say("Backup currently in progress, exiting. Another backup will not be able to start until this is completed."))
+
+					})
+				})
+			})
+
 		})
 	})
 })

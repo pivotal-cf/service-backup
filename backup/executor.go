@@ -1,10 +1,12 @@
 package backup
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"os/exec"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/pivotal-golang/lager"
@@ -31,16 +33,19 @@ type Backuper interface {
 }
 
 type backup struct {
-	backuper             Backuper
-	sourceFolder         string
-	remotePath           string
-	backupCreatorCmd     string
-	cleanupCmd           string
-	serviceIdentifierCmd string
-	logger               lager.Logger
-	sessionLogger        lager.Logger
-	execCommand          ExecCommand
-	calculator           SizeCalculator
+	sync.Mutex
+	backuper               Backuper
+	sourceFolder           string
+	remotePath             string
+	backupCreatorCmd       string
+	cleanupCmd             string
+	serviceIdentifierCmd   string
+	exitIfBackupInProgress bool
+	backupInProgress       bool
+	logger                 lager.Logger
+	sessionLogger          lager.Logger
+	execCommand            ExecCommand
+	calculator             SizeCalculator
 }
 
 //NewExecutor ...
@@ -51,25 +56,51 @@ func NewExecutor(
 	backupCreatorCmd,
 	cleanupCmd,
 	serviceIdentifierCmd string,
+	exitIfInProgress bool,
 	logger lager.Logger,
 	execCommand ExecCommand,
 	calculator SizeCalculator,
 ) Executor {
 	return &backup{
-		backuper:             backuper,
-		sourceFolder:         sourceFolder,
-		remotePath:           remotePath,
-		backupCreatorCmd:     backupCreatorCmd,
-		cleanupCmd:           cleanupCmd,
-		serviceIdentifierCmd: serviceIdentifierCmd,
-		logger:               logger,
-		sessionLogger:        logger,
-		execCommand:          execCommand,
-		calculator:           calculator,
+		backuper:               backuper,
+		sourceFolder:           sourceFolder,
+		remotePath:             remotePath,
+		backupCreatorCmd:       backupCreatorCmd,
+		cleanupCmd:             cleanupCmd,
+		serviceIdentifierCmd:   serviceIdentifierCmd,
+		exitIfBackupInProgress: exitIfInProgress,
+		backupInProgress:       false,
+		logger:                 logger,
+		sessionLogger:          logger,
+		execCommand:            execCommand,
+		calculator:             calculator,
 	}
 }
 
+func (b *backup) backupCanBeStarted() bool {
+	b.Lock()
+	defer b.Unlock()
+	if b.backupInProgress && b.exitIfBackupInProgress {
+		return false
+	}
+	b.backupInProgress = true
+	return true
+}
+
+func (b *backup) doneBackup() {
+	b.Lock()
+	defer b.Unlock()
+	b.backupInProgress = false
+}
+
 func (b *backup) RunOnce() error {
+	if !b.backupCanBeStarted() {
+		err := errors.New("backup operation rejected")
+		b.sessionLogger.Error("Backup currently in progress, exiting. Another backup will not be able to start until this is completed.", err)
+		return err
+	}
+	defer b.doneBackup()
+
 	if b.serviceIdentifierCmd != "" {
 		b.identifyService()
 	}
@@ -87,6 +118,7 @@ func (b *backup) RunOnce() error {
 
 	b.sessionLogger = b.logger
 	b.backuper.CloseLogSession()
+
 	return nil
 }
 

@@ -4,6 +4,7 @@ import (
 	"flag"
 	"fmt"
 	"os/exec"
+	"strconv"
 
 	"github.com/cloudfoundry-incubator/cf-lager"
 	"github.com/pivotal-cf-experimental/service-backup/azure"
@@ -24,6 +25,7 @@ const (
 	backupCreatorCmdFlagName     = "backup-creator-cmd"
 	cleanupCmdFlagName           = "cleanup-cmd"
 	serviceIdentifierCmdFlagName = "service-identifier-cmd"
+	exitIfInProgressFlagName     = "exit-if-in-progress"
 	//CronScheduleFlagName ...
 	CronScheduleFlagName = "cron-schedule"
 	awsCmdPathFlagName   = "aws-cli-path"
@@ -56,6 +58,7 @@ func Parse(osArgs []string) (backup.Executor, *string, lager.Logger) {
 	serviceIdentifierCmd := flags.String(serviceIdentifierCmdFlagName, "", "Optional command for identifying service for backup")
 	cronSchedule := flags.String(CronScheduleFlagName, "", "Cron schedule for running backup. Leave empty to run only once.")
 	destPath := flags.String(destPathFlagName, "", "Remote directory path inside bucket to upload to. No preceding or trailing slashes. E.g. remote/path/inside/bucket")
+	exitIfBackupInProgress := flags.String(exitIfInProgressFlagName, "false", "Optional command to reject subsequent backup requests if a backup is already in progress. Defaults to false.")
 
 	// S3 specific
 	destBucket := flags.String(destBucketFlagName, "", "Remote bucket to upload. No preceding or trailing slashes. E.g. my-remote-bucket")
@@ -80,6 +83,12 @@ func Parse(osArgs []string) (backup.Executor, *string, lager.Logger) {
 
 	cf_lager.AddFlags(flags)
 	flags.Parse(osArgs[2:])
+
+	exitIfBackupInProgressBooleanValue, err := strconv.ParseBool(*exitIfBackupInProgress)
+
+	if err != nil {
+		logger.Fatal("Invalid boolean value for --exit-if-in-progress. Please set to true, false, or leave empty for default (false).", err)
+	}
 
 	logger, _ = cf_lager.New("ServiceBackup")
 
@@ -142,6 +151,7 @@ func Parse(osArgs []string) (backup.Executor, *string, lager.Logger) {
 		*backupCreatorCmd,
 		*cleanupCmd,
 		*serviceIdentifierCmd,
+		exitIfBackupInProgressBooleanValue,
 		logger,
 		exec.Command,
 		calculator,

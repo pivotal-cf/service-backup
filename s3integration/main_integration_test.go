@@ -45,6 +45,38 @@ func performBackup(
 	return gexec.Start(backupCmd, GinkgoWriter, GinkgoWriter)
 }
 
+func performBackupIfNotInProgress(
+	awsAccessKeyID,
+	awsSecretAccessKey,
+	sourceFolder,
+	destBucket,
+	destPath,
+	endpointURL,
+	backupCreatorCmd,
+	cleanupCmd,
+	cronSchedule string,
+	exitIfBackupInProgress bool,
+) (*gexec.Session, error) {
+
+	backupCmd := exec.Command(
+		pathToServiceBackupBinary,
+		"s3",
+		"--exit-if-in-progress", fmt.Sprintf("%v", exitIfBackupInProgress),
+		"--aws-access-key-id", awsAccessKeyID,
+		"--aws-secret-access-key", awsSecretAccessKey,
+		"--source-folder", sourceFolder,
+		"--dest-bucket", destBucket,
+		"--dest-path", destPath,
+		"--endpoint-url", endpointURL,
+		"--logLevel", "debug",
+		"--backup-creator-cmd", backupCreatorCmd,
+		"--cleanup-cmd", cleanupCmd,
+		"--cron-schedule", cronSchedule,
+	)
+
+	return gexec.Start(backupCmd, GinkgoWriter, GinkgoWriter)
+}
+
 func performManualBackup(
 	awsAccessKeyID,
 	awsSecretAccessKey,
@@ -112,10 +144,18 @@ func pathWithDate(path string) string {
 	return path + "/" + datePath
 }
 
-func createFilesToUpload(sourceFolder string) map[string]string {
+func createFilesToUpload(sourceFolder string, smallFile bool) map[string]string {
 	createdFiles := map[string]string{}
 
-	rootFile, contents := createFileIn(sourceFolder)
+	var rootFile string
+	var contents string
+
+	if smallFile {
+		rootFile, contents = createFileIn(sourceFolder)
+	} else {
+		rootFile, contents = createLargeFileIn(sourceFolder)
+	}
+
 	createdFiles[rootFile] = contents
 
 	dir1 := filepath.Join(sourceFolder, "dir1")
@@ -123,6 +163,7 @@ func createFilesToUpload(sourceFolder string) map[string]string {
 	Expect(err).ToNot(HaveOccurred())
 
 	dir1File, contents := createFileIn(dir1)
+
 	createdFiles["dir1/"+dir1File] = contents
 
 	dir2 := filepath.Join(dir1, "dir2")
@@ -143,6 +184,18 @@ func createFileIn(sourceFolder string) (string, string) {
 	Expect(err).ToNot(HaveOccurred())
 
 	fileContents := fileContentsUUID.String()
+	_, err = file.Write([]byte(fileContents))
+	Expect(err).ToNot(HaveOccurred())
+
+	fileName := filepath.Base(file.Name())
+	return fileName, fileContents
+}
+
+func createLargeFileIn(sourceFolder string) (string, string) {
+	file, err := ioutil.TempFile(sourceFolder, "")
+	Expect(err).ToNot(HaveOccurred())
+
+	fileContents := string(make([]byte, 100*1000*1024))
 	_, err = file.Write([]byte(fileContents))
 	Expect(err).ToNot(HaveOccurred())
 
@@ -182,7 +235,7 @@ var _ = Describe("Service Backup Binary", func() {
 			downloadFolder, err = ioutil.TempDir("", "")
 			Expect(err).ToNot(HaveOccurred())
 
-			filesToContents = createFilesToUpload(sourceFolder)
+			filesToContents = createFilesToUpload(sourceFolder, true)
 
 			backupCreatorCmd = fmt.Sprintf(
 				"%s %s",
@@ -809,6 +862,146 @@ var _ = Describe("Service Backup Binary", func() {
 				Expect(err).ToNot(HaveOccurred())
 				Eventually(session, awsTimeout).Should(gexec.Exit(2))
 				Eventually(session.Out).Should(gbytes.Say("Error scheduling job"))
+			})
+		})
+
+	})
+
+	Context("when exit_if_in_progress is configured", func() {
+		var (
+			sourceFolder    string
+			downloadFolder  string
+			filesToContents map[string]string
+		)
+
+		BeforeEach(func() {
+			var err error
+
+			sourceFolder, err = ioutil.TempDir("", "")
+			Expect(err).ToNot(HaveOccurred())
+
+			downloadFolder, err = ioutil.TempDir("", "")
+			Expect(err).ToNot(HaveOccurred())
+
+			filesToContents = createFilesToUpload(sourceFolder, false)
+
+			backupCreatorCmd = fmt.Sprintf(
+				"%s %s",
+				assetPath("create-fake-backup"),
+				sourceFolder,
+			)
+
+			cleanupCmd = fmt.Sprintf(
+				"rm -rf %s",
+				sourceFolder,
+			)
+		})
+
+		AfterEach(func() {
+			os.Remove(sourceFolder)
+			os.Remove(downloadFolder)
+		})
+
+		Context("when exit_if_in_progress is true", func() {
+			exitIfInProgress := true
+
+			Context("when a backup is in progress", func() {
+				AfterEach(func() {
+					Expect(s3TestClient.DeleteRemotePath(destBucket, pathWithDate(destPath))).To(Succeed())
+				})
+
+				It("accepts the first, rejects subsequent backup requests", func() {
+					sessionForBackupThatGoesThrough, err1 := performBackupIfNotInProgress(
+						awsAccessKeyID,
+						awsSecretAccessKey,
+						sourceFolder,
+						destBucket,
+						destPath,
+						endpointURL,
+						backupCreatorCmd,
+						cleanupCmd,
+						cronSchedule,
+						exitIfInProgress,
+					)
+
+					sessionForBackupThatGetsRejected, err2 := performBackupIfNotInProgress(
+						awsAccessKeyID,
+						awsSecretAccessKey,
+						sourceFolder,
+						destBucket,
+						destPath,
+						endpointURL,
+						backupCreatorCmd,
+						cleanupCmd,
+						cronSchedule,
+						exitIfInProgress,
+					)
+
+					Expect(err1).ToNot(HaveOccurred())
+					Expect(err2).ToNot(HaveOccurred())
+
+					Eventually(sessionForBackupThatGoesThrough.Out, awsTimeout).Should(gbytes.Say("Perform backup started"))
+					Eventually(sessionForBackupThatGetsRejected.Out, awsTimeout).Should(gbytes.Say("Backup currently in progress, exiting. Another backup will not be able to start until this is completed."))
+					Eventually(sessionForBackupThatGoesThrough.Out, awsTimeout).Should(gbytes.Say("Cleanup completed"))
+
+					sessionForBackupThatGoesThrough.Terminate().Wait()
+					sessionForBackupThatGetsRejected.Terminate().Wait()
+
+					Eventually(sessionForBackupThatGoesThrough).Should(gexec.Exit())
+					Eventually(sessionForBackupThatGetsRejected).Should(gexec.Exit())
+				})
+
+			})
+		})
+
+		Context("when exit_if_in_progress is false", func() {
+			exitIfInProgress := false
+
+			Context("when a backup is in progress", func() {
+				AfterEach(func() {
+					Expect(s3TestClient.DeleteRemotePath(destBucket, pathWithDate(destPath))).To(Succeed())
+				})
+
+				It("successfully completes new backup requests", func() {
+					firstBackupRequest, err := performBackupIfNotInProgress(
+						awsAccessKeyID,
+						awsSecretAccessKey,
+						sourceFolder,
+						destBucket,
+						destPath,
+						endpointURL,
+						backupCreatorCmd,
+						cleanupCmd,
+						cronSchedule,
+						exitIfInProgress,
+					)
+
+					secondBackupRequest, err := performBackupIfNotInProgress(
+						awsAccessKeyID,
+						awsSecretAccessKey,
+						sourceFolder,
+						destBucket,
+						destPath,
+						endpointURL,
+						backupCreatorCmd,
+						cleanupCmd,
+						cronSchedule,
+						exitIfInProgress,
+					)
+
+					Expect(err).ToNot(HaveOccurred())
+					Eventually(firstBackupRequest.Out, awsTimeout).Should(gbytes.Say("Perform backup started"))
+					Eventually(secondBackupRequest.Out, awsTimeout).Should(gbytes.Say("Perform backup started"))
+					Eventually(firstBackupRequest.Out, awsTimeout).Should(gbytes.Say("Cleanup completed"))
+					Eventually(secondBackupRequest.Out, awsTimeout).Should(gbytes.Say("Cleanup completed"))
+					Consistently(secondBackupRequest.Out, awsTimeout).ShouldNot(gbytes.Say("Backup currently in progress, exiting. Another backup will not be able to start until this is completed."))
+
+					firstBackupRequest.Terminate().Wait()
+					secondBackupRequest.Terminate().Wait()
+
+					Eventually(firstBackupRequest).Should(gexec.Exit())
+					Eventually(secondBackupRequest).Should(gexec.Exit())
+				})
 			})
 		})
 	})
