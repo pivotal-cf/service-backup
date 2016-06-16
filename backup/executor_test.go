@@ -2,6 +2,7 @@ package backup_test
 
 import (
 	"os/exec"
+	"strings"
 	"sync"
 
 	. "github.com/pivotal-cf-experimental/service-backup/backup"
@@ -239,14 +240,15 @@ var _ = Describe("Executor", func() {
 						}()
 					})
 
-					It("rejects the upload", func() {
+					FIt("rejects the upload", func() {
 						firstBackupInProgress.Wait()
 						secondBackupErr := executor.RunOnce()
 						blockUpload.Done()
 						firstBackupCompleted.Wait()
 
 						Expect(secondBackupErr).To(MatchError("backup operation rejected"))
-						Expect(log).To(gbytes.Say("Backup currently in progress, exiting. Another backup will not be able to start until this is completed."))
+						Expect(strings.Count(string(log.Contents()), "Perform backup started")).To(Equal(1))
+						Expect(log.Contents()).To(ContainSubstring("Backup currently in progress, exiting. Another backup will not be able to start until this is completed."))
 					})
 				})
 			})
