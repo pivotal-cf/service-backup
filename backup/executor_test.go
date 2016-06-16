@@ -240,7 +240,7 @@ var _ = Describe("Executor", func() {
 						}()
 					})
 
-					FIt("rejects the upload", func() {
+					It("rejects the upload", func() {
 						firstBackupInProgress.Wait()
 						secondBackupErr := executor.RunOnce()
 						blockUpload.Done()
