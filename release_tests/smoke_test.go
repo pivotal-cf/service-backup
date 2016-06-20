@@ -26,6 +26,8 @@ var _ = Describe("smoke tests", func() {
 
 	var (
 		boshHost           string
+		boshUsername       string
+		boshPassword       string
 		boshPrivateKeyFile string
 		toBackup           string
 
@@ -34,8 +36,8 @@ var _ = Describe("smoke tests", func() {
 
 	BeforeEach(func() {
 		boshHost = envMustHave("BOSH_HOST")
-		envMustHave("BOSH_CLIENT")
-		envMustHave("BOSH_CLIENT_SECRET")
+		boshUsername = envMustHave("BOSH_USERNAME")
+		boshPassword = envMustHave("BOSH_PASSWORD")
 		toBackup = "to_backup.txt"
 	})
 
@@ -44,6 +46,8 @@ var _ = Describe("smoke tests", func() {
 			"-n",
 			"-d", boshManifest,
 			"-t", fmt.Sprintf("https://%s:25555", boshHost),
+			"-u", boshUsername,
+			"-p", boshPassword,
 			command,
 			"--gateway_host", boshHost,
 			"--gateway_user", "vcap",
