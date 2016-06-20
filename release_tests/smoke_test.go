@@ -38,6 +38,7 @@ var _ = Describe("smoke tests", func() {
 		boshHost = envMustHave("BOSH_HOST")
 		boshUsername = envMustHave("BOSH_USERNAME")
 		boshPassword = envMustHave("BOSH_PASSWORD")
+		boshPrivateKeyFile = envMustHave("BOSH_PRIVATE_KEY_FILE")
 		toBackup = "to_backup.txt"
 	})
 
