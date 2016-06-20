@@ -11,9 +11,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Azure/azure-sdk-for-go/storage"
 	"github.com/pivotal-cf-experimental/service-backup/s3testclient"
 
+	"github.com/Azure/azure-sdk-for-go/storage"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )
@@ -27,7 +27,6 @@ var _ = Describe("smoke tests", func() {
 	var (
 		boshHost           string
 		boshPrivateKeyFile string
-		boshCACertFile     string
 		toBackup           string
 
 		boshManifest string
@@ -35,16 +34,13 @@ var _ = Describe("smoke tests", func() {
 
 	BeforeEach(func() {
 		boshHost = envMustHave("BOSH_HOST")
-		boshCACertFile = envMustHave("BOSH_CA_CERT_PATH")
 		envMustHave("BOSH_CLIENT")
 		envMustHave("BOSH_CLIENT_SECRET")
-		boshPrivateKeyFile = envMustHave("BOSH_PRIVATE_KEY_FILE")
 		toBackup = "to_backup.txt"
 	})
 
 	boshCmdWithGateway := func(stdout io.Writer, command string, args ...string) {
 		commonArgs := []string{
-			"--ca-cert", boshCACertFile,
 			"-n",
 			"-d", boshManifest,
 			"-t", fmt.Sprintf("https://%s:25555", boshHost),
