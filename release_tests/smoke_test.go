@@ -51,7 +51,7 @@ var _ = Describe("smoke tests", func() {
 			"-p", boshPassword,
 			command,
 			"--gateway_host", boshHost,
-			"--gateway_user", "vcap",
+			"--gateway_user", "ubuntu", // Need to make this injectable if want to use different environments, e.g. vcap on init-deployed directors
 			"--gateway_identity_file", boshPrivateKeyFile,
 		}
 		allArgs := append(commonArgs, args...)
