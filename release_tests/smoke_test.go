@@ -145,7 +145,7 @@ var _ = Describe("smoke tests", func() {
 			Expect(err).NotTo(HaveOccurred())
 			publicKey := strings.TrimSpace(string(publicKeyBytes))
 
-			boshSSH(fmt.Sprintf("echo %s | sudo tee -a ~vcap/.ssh/authorized_keys", publicKey))
+			boshSSH(fmt.Sprintf("sudo mkdir -p ~vcap/.ssh && echo %s | sudo tee -a ~vcap/.ssh/authorized_keys", publicKey))
 		})
 
 		AfterEach(func() {
