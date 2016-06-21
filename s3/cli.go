@@ -93,8 +93,8 @@ func (c *S3CliClient) createRemotePath(remotePath string) error {
 }
 
 func (c *S3CliClient) Upload(localPath, remotePath string) error {
+	c.sessionLogger.Info(fmt.Sprintf("about to upload %s to S3 remote path %s", localPath, remotePath))
 	cmd := c.S3Cmd("sync", localPath, fmt.Sprintf("s3://%s", remotePath))
-	c.sessionLogger.Info(fmt.Sprintf("Running command: %+v\n", cmd))
 
 	out, err := cmd.CombinedOutput()
 	if err == nil {
@@ -114,7 +114,6 @@ func (c *S3CliClient) Upload(localPath, remotePath string) error {
 }
 
 func (c *S3CliClient) RunCommand(cmd *exec.Cmd, stepName string) error {
-	c.sessionLogger.Info(fmt.Sprintf("Running command: %+v\n", cmd))
 	if out, err := cmd.CombinedOutput(); err != nil {
 		return fmt.Errorf("error in %s: %s, output: %s", stepName, err, string(out))
 	}

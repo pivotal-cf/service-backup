@@ -341,7 +341,7 @@ var _ = Describe("Service Backup Binary", func() {
 							Eventually(session.Out, awsTimeout).Should(gbytes.Say(identifier))
 							Eventually(session.Out, awsTimeout).Should(gbytes.Say("Upload backup started"))
 							Eventually(session.Out, awsTimeout).Should(gbytes.Say(identifier))
-							Eventually(session.Out, awsTimeout).Should(gbytes.Say("Running command"))
+							Eventually(session.Out, awsTimeout).Should(gbytes.Say("about to upload"))
 							Eventually(session.Out, awsTimeout).Should(gbytes.Say(identifier))
 							Eventually(session.Out, awsTimeout).Should(gbytes.Say("Upload backup completed successfully"))
 							Eventually(session.Out, awsTimeout).Should(gbytes.Say(identifier))
