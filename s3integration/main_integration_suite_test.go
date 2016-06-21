@@ -21,7 +21,7 @@ const (
 	awsSecretAccessKeyEnvKeyRestricted = "AWS_SECRET_ACCESS_KEY_RESTRICTED"
 	existingBucketInNonDefaultRegion   = "service-backup-integration-test"
 	existingBucketInDefaultRegion      = "service-backup-integration-test2"
-	awsTimeout                         = "20s"
+	awsTimeout                         = "40s"
 
 	cronSchedule = "*/5 * * * * *" // every 5 seconds of every minute of every day etc
 )
