@@ -46,19 +46,31 @@ func runBackup(params ...string) *gexec.Session {
 	return session
 }
 
+//CHANGE THE ARGUMENTS
 func performBackup(sourceFolder, destinationPath string) *gexec.Session {
-	return runBackup(
-		"azure",
-		"--source-folder", sourceFolder,
-		"--dest-path", destinationPath,
-		"--azure-storage-access-key", azureAccountKey,
-		"--azure-storage-account", azureAccountName,
-		"--azure-container", azureContainer,
-		"--cron-schedule", "*/5 * * * * *", // every 5 seconds
-		"--backup-creator-cmd", "true",
-		"--cleanup-cmd", "true",
-		"--azure-blob-store-base-url", "core.windows.net",
-	)
+	file, err := ioutil.TempFile("", "config.yml")
+	Expect(err).NotTo(HaveOccurred())
+	file.Write([]byte(fmt.Sprintf(`---
+destinations:
+- type: azure
+  config:
+    storage_account: %s
+    storage_access_key: %s
+    container: %s
+    path: %s
+    blob_store_base_url: core.windows.net
+source_folder: %s
+source_executable: true
+azure_cli_path: blobxfer
+exit_if_in_progress: true
+cron_schedule: '*/5 * * * * *'
+cleanup_executable: true
+missing_properties_message: custom message`, azureAccountName, azureAccountKey, azureContainer,
+		destinationPath, sourceFolder,
+	)))
+	file.Close()
+
+	return runBackup(file.Name())
 }
 
 func createFakeBackupFile(sourceFolder, fileName, content string) {
@@ -157,24 +169,4 @@ var _ = Describe("AzureClient", func() {
 			It("uploads the backup", uploadsTheBackup)
 		})
 	})
-
-	Context("when the client is wrongly configured", func() {
-		It("exits with non-zero", func() {
-
-			session := runBackup(
-				"azure",
-				"--source-folder", "does/not/matter",
-				"--dest-path", "does/not/matter_either",
-				"--azure-storage-access-key", azureAccountKey,
-				"--azure-storage-account", azureAccountName,
-				"--cron-schedule", "*/5 * * * * *", // every 5 seconds
-				"--backup-creator-cmd", "true",
-				"--cleanup-cmd", "true",
-			)
-
-			Expect(session.Wait(time.Second).ExitCode()).ToNot(Equal(0))
-			Expect(string(session.Out.Contents())).To(ContainSubstring("Flag azure-container not provided"))
-		})
-	})
-
 })

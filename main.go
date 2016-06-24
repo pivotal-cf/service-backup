@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"os"
 
 	"github.com/pivotal-cf-experimental/service-backup/parseargs"
@@ -19,10 +18,6 @@ func main() {
 
 	if executor == nil {
 		return
-	}
-
-	if *cronSchedule == "" {
-		logger.Fatal("main.validation", fmt.Errorf("Flag %s not provided", parseargs.CronScheduleFlagName))
 	}
 
 	scheduler := cron.New()

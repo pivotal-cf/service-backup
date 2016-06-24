@@ -3,8 +3,12 @@ package parseargs
 import (
 	"flag"
 	"fmt"
+	"io/ioutil"
+	"log"
 	"os/exec"
 	"strconv"
+
+	"gopkg.in/yaml.v2"
 
 	"github.com/cloudfoundry-incubator/cf-lager"
 	"github.com/pivotal-cf-experimental/service-backup/azure"
@@ -15,159 +19,112 @@ import (
 	"github.com/pivotal-golang/lager"
 )
 
-const (
-	sourceFolderFlagName         = "source-folder"
-	destBucketFlagName           = "dest-bucket"
-	destPathFlagName             = "dest-path"
-	endpointURLFlagName          = "endpoint-url"
-	awsAccessKeyFlagName         = "aws-access-key-id"
-	awsSecretKeyFlagName         = "aws-secret-access-key"
-	backupCreatorCmdFlagName     = "backup-creator-cmd"
-	cleanupCmdFlagName           = "cleanup-cmd"
-	serviceIdentifierCmdFlagName = "service-identifier-cmd"
-	exitIfInProgressFlagName     = "exit-if-in-progress"
-	//CronScheduleFlagName ...
-	CronScheduleFlagName = "cron-schedule"
-	awsCmdPathFlagName   = "aws-cli-path"
-
-	// SCP specific
-	sshHostFlagName           = "ssh-host"
-	sshPortFlagName           = "ssh-port"
-	sshUserFlagName           = "ssh-user"
-	sshPrivateKeyPathFlagName = "ssh-private-key-path"
-
-	// Azure specific
-	azureStorageAccountFlagName   = "azure-storage-account"
-	azureStorageAccessKeyFlagName = "azure-storage-access-key"
-	azureContainerFlagName        = "azure-container"
-	azureCliPath                  = "azure-cli-path"
-	azureBlobStoreBaseURLFlagName = "azure-blob-store-base-url"
-)
-
-var logger lager.Logger
-
 //Parse ...
 func Parse(osArgs []string) (backup.Executor, *string, lager.Logger) {
 	flags := flag.NewFlagSet(osArgs[0], flag.ExitOnError)
 
-	backupType := osArgs[1]
+	backupConfigPath := osArgs[1]
+	var backupConfig = BackupConfig{}
+	configYAML, err := ioutil.ReadFile(backupConfigPath)
 
-	sourceFolder := flags.String(sourceFolderFlagName, "", "Local path to upload from (e.g.: /var/vcap/data)")
-	backupCreatorCmd := flags.String(backupCreatorCmdFlagName, "", "Command for creating backup")
-	cleanupCmd := flags.String(cleanupCmdFlagName, "", "Command for cleaning backup")
-	serviceIdentifierCmd := flags.String(serviceIdentifierCmdFlagName, "", "Optional command for identifying service for backup")
-	cronSchedule := flags.String(CronScheduleFlagName, "", "Cron schedule for running backup. Leave empty to run only once.")
-	destPath := flags.String(destPathFlagName, "", "Remote directory path inside bucket to upload to. No preceding or trailing slashes. E.g. remote/path/inside/bucket")
-	exitIfBackupInProgress := flags.String(exitIfInProgressFlagName, "false", "Optional command to reject subsequent backup requests if a backup is already in progress. Defaults to false.")
+	if err != nil {
+		log.Fatal(err)
+	}
+	err = yaml.Unmarshal([]byte(configYAML), &backupConfig)
+	if err != nil {
+		log.Fatal(err)
+	}
 
-	// S3 specific
-	destBucket := flags.String(destBucketFlagName, "", "Remote bucket to upload. No preceding or trailing slashes. E.g. my-remote-bucket")
-	endpointURL := flags.String(endpointURLFlagName, "", "S3 endpoint URL")
-	awsAccessKeyID := flags.String(awsAccessKeyFlagName, "", "AWS access key ID")
-	awsSecretAccessKey := flags.String(awsSecretKeyFlagName, "", "AWS secret access key")
-	awsCmdPath := flags.String(awsCmdPathFlagName, "aws", "Path to AWS CLI binary. Optional. Defaults to looking on $PATH.")
+	var backupType string
+	var destinationConfig map[string]interface{}
 
-	// SCP specific
-	sshHost := flags.String(sshHostFlagName, "", "SCP destination hostname")
-	sshPort := flags.Int(sshPortFlagName, 22, "SCP destination port")
-	sshUser := flags.String(sshUserFlagName, "", "SCP destination user")
-	sshPrivateKey := flags.String(sshPrivateKeyPathFlagName, "", "SCP destination user identity file")
-
-	// Azure specific
-	azureStorageAccount := flags.String(azureStorageAccountFlagName, "", "Azure storage account name")
-	azureStorageAccessKey := flags.String(azureStorageAccessKeyFlagName, "", "Azure storage account access key")
-	azureContainer := flags.String(azureContainerFlagName, "", "Azure storage account container")
-	azureCmdPath := flags.String(azureCliPath, "blobxfer", "Azure storage account container")
-
-	azureBlobStoreBaseURL := flags.String(azureBlobStoreBaseURLFlagName, "", "Azure blob store base URL (optional)")
-
+	if len(backupConfig.Destinations) == 0 {
+		backupType = "skip"
+	} else {
+		backupType = backupConfig.Destinations[0].DestType
+		destinationConfig = backupConfig.Destinations[0].Config
+	}
 	cf_lager.AddFlags(flags)
 	flags.Parse(osArgs[2:])
 
-	exitIfBackupInProgressBooleanValue, err := strconv.ParseBool(*exitIfBackupInProgress)
-
-	if err != nil {
-		logger.Fatal("Invalid boolean value for --exit-if-in-progress. Please set to true, false, or leave empty for default (false).", err)
-	}
-
 	logger, _ = cf_lager.New("ServiceBackup")
+
+	exitIfBackupInProgressBooleanValue, err := strconv.ParseBool(backupConfig.ExitIfInProgress)
+	if err != nil {
+		logger.Fatal("Invalid boolean value for exit_if_in_progress. Please set to true or false.", err)
+	}
 
 	var backuper backup.Backuper
 	var remotePath string
+
 	switch backupType {
 	case "s3":
-		validateFlag(awsAccessKeyID, awsAccessKeyFlagName)
-		validateFlag(awsSecretAccessKey, awsSecretKeyFlagName)
-		validateFlag(destBucket, destBucketFlagName)
 
-		remotePath = fmt.Sprintf("%s/%s", *destBucket, *destPath)
+		remotePath = fmt.Sprintf("%s/%s", destinationConfig["bucket_name"], destinationConfig["bucket_path"])
 		backuper = s3.NewCliClient(
-			*awsCmdPath,
-			*endpointURL,
-			*awsAccessKeyID,
-			*awsSecretAccessKey,
+			backupConfig.AwsCliPath,
+			destinationConfig["endpoint_url"].(string),
+			destinationConfig["access_key_id"].(string),
+			destinationConfig["secret_access_key"].(string),
 			logger,
 		)
 
 	case "scp":
-		validateFlag(sshHost, sshHostFlagName)
-		validateIntFlag(sshPort, sshPortFlagName)
-		validateFlag(sshUser, sshUserFlagName)
-		validateFlag(sshPrivateKey, sshPrivateKeyPathFlagName)
-
-		remotePath = *destPath
-		backuper = scp.New(*sshHost, *sshPort, *sshUser, *sshPrivateKey, logger)
+		remotePath = destinationConfig["destination"].(string)
+		backuper = scp.New(destinationConfig["server"].(string), destinationConfig["port"].(int), destinationConfig["user"].(string), destinationConfig["key"].(string), logger)
 
 	case "azure":
-		validateFlag(azureStorageAccessKey, azureStorageAccessKeyFlagName)
-		validateFlag(azureStorageAccount, azureStorageAccountFlagName)
-		validateFlag(azureContainer, azureContainerFlagName)
-
-		remotePath = *destPath
-		backuper = azure.New(*azureStorageAccessKey, *azureStorageAccount, *azureContainer, *azureBlobStoreBaseURL, *azureCmdPath, logger)
+		remotePath = destinationConfig["path"].(string)
+		backuper = azure.New(destinationConfig["storage_access_key"].(string), destinationConfig["storage_account"].(string), destinationConfig["container"].(string), destinationConfig["blob_store_base_url"].(string), backupConfig.AzureCliPath, logger)
 
 	case "skip":
 		logger.Info("No destination provided - skipping backup")
 		dummyExecutor := dummy.NewDummyExecutor(logger)
 		// Default cronSchedule to monthly if not provided when destination is also not provided
 		// This is needed to successfully run the dummy executor and not exit
-		if *cronSchedule == "" {
-			*cronSchedule = "@monthly"
+		if backupConfig.CronSchedule == "" {
+			backupConfig.CronSchedule = "@monthly"
 		}
-		return dummyExecutor, cronSchedule, logger
+		return dummyExecutor, &backupConfig.CronSchedule, logger
 
 	default:
 		logger.Fatal(fmt.Sprintf("Unknown destination type: %s", backupType), nil)
 	}
 
-	validateFlag(sourceFolder, sourceFolderFlagName)
-	validateFlag(backupCreatorCmd, backupCreatorCmdFlagName)
 	var calculator = &backup.FileSystemSizeCalculator{}
 
 	executor := backup.NewExecutor(
 		backuper,
-		*sourceFolder,
+		backupConfig.SourceFolder,
 		remotePath,
-		*backupCreatorCmd,
-		*cleanupCmd,
-		*serviceIdentifierCmd,
+		backupConfig.SourceExecutable,
+		backupConfig.CleanupExecutable,
+		backupConfig.ServiceIdentifierExecutable,
 		exitIfBackupInProgressBooleanValue,
 		logger,
 		exec.Command,
 		calculator,
 	)
 
-	return executor, cronSchedule, logger
+	return executor, &backupConfig.CronSchedule, logger
 }
 
-func validateFlag(value *string, flagName string) {
-	if *value == "" {
-		logger.Fatal("main.validation", fmt.Errorf("Flag %s not provided", flagName))
-	}
+var logger lager.Logger
+
+type destinationType struct {
+	DestType string `yaml:"type"`
+	Config   map[string]interface{}
 }
 
-func validateIntFlag(value *int, flagName string) {
-	if *value == 0 {
-		logger.Fatal("main.validation", fmt.Errorf("Flag %s not provided", flagName))
-	}
+type BackupConfig struct {
+	Destinations                []destinationType `yaml:"destinations"`
+	SourceFolder                string            `yaml:"source_folder"`
+	SourceExecutable            string            `yaml:"source_executable"`
+	CronSchedule                string            `yaml:"cron_schedule"`
+	CleanupExecutable           string            `yaml:"cleanup_executable"`
+	MissingPropertiesMessage    string            `yaml:"missing_properties_message"`
+	ExitIfInProgress            string            `yaml:"exit_if_in_progress"`
+	ServiceIdentifierExecutable string            `yaml:"service_identifier_executable"`
+	AwsCliPath                  string            `yaml:"aws_cli_path"`
+	AzureCliPath                string            `yaml:"azure_cli_path"`
 }

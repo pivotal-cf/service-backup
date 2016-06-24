@@ -30,6 +30,7 @@ type TestData struct {
 var (
 	pathToServiceBackupBinary string
 	privateKeyPath            string
+	privateKeyContents        []byte
 	unixUser                  *user.User
 )
 
@@ -39,6 +40,8 @@ func createSSHKey() (string, string) {
 	privateKeyPath = filepath.Join(sshKeys, "id_rsa")
 	Expect(exec.Command("ssh-keygen", "-t", "rsa", "-b", "4096", "-C", sshKeyUsername,
 		"-N", "", "-f", privateKeyPath).Run()).To(Succeed())
+	privateKeyContents, err = ioutil.ReadFile(privateKeyPath)
+	Expect(err).ToNot(HaveOccurred())
 	return filepath.Join(sshKeys, "id_rsa.pub"), privateKeyPath
 }
 

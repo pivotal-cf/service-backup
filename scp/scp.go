@@ -2,38 +2,82 @@ package scp
 
 import (
 	"fmt"
+	"io/ioutil"
+	"os"
 	"os/exec"
+	"strconv"
 
 	"github.com/pivotal-golang/lager"
 )
 
 type SCPClient struct {
-	host           string
-	port           int
-	username       string
-	privateKeyPath string
-	logger         lager.Logger
-	sessionLogger  lager.Logger
+	host          string
+	port          int
+	username      string
+	privateKey    string
+	logger        lager.Logger
+	sessionLogger lager.Logger
 }
 
 func New(host string, port int, username, privateKeyPath string, logger lager.Logger) *SCPClient {
 	return &SCPClient{
-		host:           host,
-		port:           port,
-		username:       username,
-		privateKeyPath: privateKeyPath,
-		logger:         logger,
-		sessionLogger:  logger,
+		host:          host,
+		port:          port,
+		username:      username,
+		privateKey:    privateKeyPath,
+		logger:        logger,
+		sessionLogger: logger,
 	}
 }
 
+func (client *SCPClient) generateBackupKey() (string, error) {
+	privateKeyFile, err := ioutil.TempFile("", "backup_key")
+	if err != nil {
+		return "", err
+	}
+	privateKeyFile.WriteString(client.privateKey)
+	privateKeyFile.Close()
+	privateKeyFile.Chmod(0400)
+	return privateKeyFile.Name(), nil
+}
+
+func (client *SCPClient) generateKnownHosts() (string, error) {
+	cmd := exec.Command("ssh-keyscan", "-p", strconv.Itoa(client.port), client.host)
+	sshKeyscanOutput, err := cmd.CombinedOutput()
+	if err != nil {
+		wrappedErr := fmt.Errorf("error performing ssh-keyscan: '%s', output: '%s'", err, sshKeyscanOutput)
+		client.sessionLogger.Error("scp", wrappedErr)
+		return "", wrappedErr
+	}
+	knownHostsFile, err := ioutil.TempFile("", "known_hosts")
+	if err != nil {
+		return "", err
+	}
+	knownHostsFile.WriteString(string(sshKeyscanOutput))
+	knownHostsFile.Close()
+	return knownHostsFile.Name(), nil
+}
+
 func (client *SCPClient) Upload(localPath, remotePath string) error {
-	if err := client.ensureRemoteDirectoryExists(remotePath); err != nil {
+	privateKeyFileName, err := client.generateBackupKey()
+	if err != nil {
+		return err
+	}
+
+	knownHostsFileName, err := client.generateKnownHosts()
+	if err != nil {
+		return err
+	}
+
+	defer os.Remove(privateKeyFileName)
+
+	if err := client.ensureRemoteDirectoryExists(remotePath, privateKeyFileName, knownHostsFileName); err != nil {
 		return err
 	}
 
 	scpDest := fmt.Sprintf("%s@%s:%s", client.username, client.host, remotePath)
-	cmd := exec.Command("scp", "-i", client.privateKeyPath, "-P", fmt.Sprintf("%d", client.port), "-r", ".", scpDest)
+	cmd := exec.Command("scp", "-i", privateKeyFileName, "-oUserKnownHostsFile="+knownHostsFileName, "-P", strconv.Itoa(client.port), "-r", ".", scpDest)
+
 	cmd.Dir = localPath
 	scpCommandOutput, err := cmd.CombinedOutput()
 	if err != nil {
@@ -46,8 +90,8 @@ func (client *SCPClient) Upload(localPath, remotePath string) error {
 	return nil
 }
 
-func (client *SCPClient) ensureRemoteDirectoryExists(remotePath string) error {
-	cmd := exec.Command("ssh", "-i", client.privateKeyPath, "-p", fmt.Sprintf("%d", client.port),
+func (client *SCPClient) ensureRemoteDirectoryExists(remotePath, privateKeyFileName, knownHostsFileName string) error {
+	cmd := exec.Command("ssh", "-i", privateKeyFileName, "-oUserKnownHostsFile="+knownHostsFileName, "-p", fmt.Sprintf("%d", client.port),
 		fmt.Sprintf("%s@%s", client.username, client.host),
 		fmt.Sprintf("mkdir -p %s", remotePath))
 	output, err := cmd.CombinedOutput()

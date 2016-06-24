@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 	"time"
 
 	. "github.com/onsi/ginkgo"
@@ -20,7 +21,6 @@ var _ = Describe("SCP Backup", func() {
 			runningBin *gexec.Session
 			baseDir    string
 			destPath   string
-			flags      []string
 		)
 
 		pathWithDate := func(endParts ...string) string {
@@ -45,25 +45,7 @@ var _ = Describe("SCP Backup", func() {
 			Expect(os.Mkdir(filepath.Join(dirToBackup, "subdir"), 0755)).To(Succeed())
 			Expect(ioutil.WriteFile(filepath.Join(dirToBackup, "subdir", "2.txt"), []byte("2"), 0644)).To(Succeed())
 
-			flags = []string{
-				"scp",
-				"-source-folder", dirToBackup,
-				"-backup-creator-cmd", "ls",
-				"-cleanup-cmd", "",
-				"-cron-schedule", "*/5 * * * * *",
-				"-ssh-host", "localhost",
-				"-ssh-port", "22",
-				"-ssh-user", unixUser.Username,
-				"-ssh-private-key-path", privateKeyPath,
-				"-dest-path", destPath,
-			}
-		})
-
-		JustBeforeEach(func() {
-			var err error
-			cmd := exec.Command(pathToServiceBackupBinary, flags...)
-			runningBin, err = gexec.Start(cmd, GinkgoWriter, GinkgoWriter)
-			Expect(err).NotTo(HaveOccurred())
+			runningBin = performBackup("localhost", unixUser.Username, destPath, string(privateKeyContents), 22, dirToBackup)
 		})
 
 		AfterEach(func() {
@@ -81,26 +63,41 @@ var _ = Describe("SCP Backup", func() {
 			Expect(err).NotTo(HaveOccurred())
 			Expect(content2).To(Equal([]byte("2")))
 		})
-
-		Context("when not all mandatory flags are supplied for SCP to work", func() {
-			BeforeEach(func() {
-				flags = []string{
-					"scp",
-					"-source-folder", "somedir",
-					"-backup-creator-cmd", "ls",
-					"-cleanup-cmd", "",
-					"-cron-schedule", "*/5 * * * * *",
-					"-ssh-host", "localhost",
-					"-ssh-port", "22",
-					"-ssh-user", unixUser.Username,
-					"-dest-path", destPath,
-				}
-			})
-
-			It("exits with non-zero", func() {
-				Expect(runningBin.Wait(time.Second).ExitCode()).ToNot(Equal(0))
-				Expect(string(runningBin.Out.Contents())).To(ContainSubstring("Flag ssh-private-key-path not provided"))
-			})
-		})
 	})
 })
+
+func runBackup(params ...string) *gexec.Session {
+	backupCmd := exec.Command(pathToServiceBackupBinary, params...)
+	session, err := gexec.Start(backupCmd, GinkgoWriter, GinkgoWriter)
+	Expect(err).ToNot(HaveOccurred())
+	return session
+}
+
+func performBackup(scpServer, scpUser, scpDestination, scpKey string, scpPort int, sourceFolder string) *gexec.Session {
+	file, err := ioutil.TempFile("", "config.yml")
+	Expect(err).NotTo(HaveOccurred())
+
+	parts := strings.Split(scpKey, "\n")
+	scpKey = strings.Join(parts, "\n      ")
+
+	file.Write([]byte(fmt.Sprintf(`---
+destinations:
+- type: scp
+  config:
+    server: %s
+    user: %s
+    destination: %s
+    key: |
+      %s
+    port: %d
+source_folder: %s
+source_executable: true
+exit_if_in_progress: true
+cron_schedule: '*/5 * * * * *'
+cleanup_executable: true
+missing_properties_message: custom message`, scpServer, scpUser, scpDestination, scpKey, scpPort, sourceFolder,
+	)))
+	file.Close()
+
+	return runBackup(file.Name())
+}

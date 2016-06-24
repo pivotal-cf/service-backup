@@ -27,21 +27,29 @@ func performBackup(
 	cronSchedule string,
 ) (*gexec.Session, error) {
 
-	backupCmd := exec.Command(
-		pathToServiceBackupBinary,
-		"s3",
-		"--aws-access-key-id", awsAccessKeyID,
-		"--aws-secret-access-key", awsSecretAccessKey,
-		"--source-folder", sourceFolder,
-		"--dest-bucket", destBucket,
-		"--dest-path", destPath,
-		"--endpoint-url", endpointURL,
-		"--logLevel", "debug",
-		"--backup-creator-cmd", backupCreatorCmd,
-		"--cleanup-cmd", cleanupCmd,
-		"--cron-schedule", cronSchedule,
-	)
+	file, err := ioutil.TempFile("", "config.yml")
+	Expect(err).NotTo(HaveOccurred())
+	file.Write([]byte(fmt.Sprintf(`---
+destinations:
+- type: s3
+  config:
+    endpoint_url: '%s'
+    bucket_name: %s
+    bucket_path: %s
+    access_key_id: %s
+    secret_access_key: %s
+source_folder: %s
+source_executable: %s
+aws_cli_path: aws
+exit_if_in_progress: false
+cron_schedule: '%s'
+cleanup_executable: %s
+missing_properties_message: custom message`, endpointURL, destBucket, destPath,
+		awsAccessKeyID, awsSecretAccessKey, sourceFolder, backupCreatorCmd, cronSchedule, cleanupCmd,
+	)))
+	file.Close()
 
+	backupCmd := exec.Command(pathToServiceBackupBinary, file.Name(), "--logLevel", "debug")
 	return gexec.Start(backupCmd, GinkgoWriter, GinkgoWriter)
 }
 
@@ -58,22 +66,29 @@ func performBackupIfNotInProgress(
 	exitIfBackupInProgress bool,
 ) (*gexec.Session, error) {
 
-	backupCmd := exec.Command(
-		pathToServiceBackupBinary,
-		"s3",
-		"--exit-if-in-progress", fmt.Sprintf("%v", exitIfBackupInProgress),
-		"--aws-access-key-id", awsAccessKeyID,
-		"--aws-secret-access-key", awsSecretAccessKey,
-		"--source-folder", sourceFolder,
-		"--dest-bucket", destBucket,
-		"--dest-path", destPath,
-		"--endpoint-url", endpointURL,
-		"--logLevel", "debug",
-		"--backup-creator-cmd", backupCreatorCmd,
-		"--cleanup-cmd", cleanupCmd,
-		"--cron-schedule", cronSchedule,
-	)
+	file, err := ioutil.TempFile("", "config.yml")
+	Expect(err).NotTo(HaveOccurred())
+	file.Write([]byte(fmt.Sprintf(`---
+destinations:
+- type: s3
+  config:
+    endpoint_url: %s
+    bucket_name: %s
+    bucket_path: %s
+    access_key_id: %s
+    secret_access_key: %s
+source_folder: %s
+source_executable: %s
+aws_cli_path: aws
+exit_if_in_progress: %s
+cron_schedule: '%s'
+cleanup_executable: %s
+missing_properties_message: custom message`, endpointURL, destBucket, destPath,
+		awsAccessKeyID, awsSecretAccessKey, sourceFolder, backupCreatorCmd, fmt.Sprintf("%v", exitIfBackupInProgress), cronSchedule, cleanupCmd,
+	)))
+	file.Close()
 
+	backupCmd := exec.Command(pathToServiceBackupBinary, file.Name())
 	return gexec.Start(backupCmd, GinkgoWriter, GinkgoWriter)
 }
 
@@ -88,20 +103,29 @@ func performManualBackup(
 	cleanupCmd string,
 ) (*gexec.Session, error) {
 
-	manualBackupCmd := exec.Command(
-		pathToManualBackupBinary,
-		"s3",
-		"--aws-access-key-id", awsAccessKeyID,
-		"--aws-secret-access-key", awsSecretAccessKey,
-		"--source-folder", sourceFolder,
-		"--dest-bucket", destBucket,
-		"--dest-path", destPath,
-		"--endpoint-url", endpointURL,
-		"--logLevel", "debug",
-		"--backup-creator-cmd", backupCreatorCmd,
-		"--cleanup-cmd", cleanupCmd,
-	)
+	file, err := ioutil.TempFile("", "config.yml")
+	Expect(err).NotTo(HaveOccurred())
+	file.Write([]byte(fmt.Sprintf(`---
+destinations:
+- type: s3
+  config:
+    endpoint_url: %s
+    bucket_name: %s
+    bucket_path: %s
+    access_key_id: %s
+    secret_access_key: %s
+source_folder: %s
+source_executable: %s
+aws_cli_path: aws
+exit_if_in_progress: false
+cron_schedule: '%s'
+cleanup_executable: %s
+missing_properties_message: custom message`, endpointURL, destBucket, destPath,
+		awsAccessKeyID, awsSecretAccessKey, sourceFolder, backupCreatorCmd, cronSchedule, cleanupCmd,
+	)))
+	file.Close()
 
+	manualBackupCmd := exec.Command(pathToManualBackupBinary, file.Name())
 	return gexec.Start(manualBackupCmd, GinkgoWriter, GinkgoWriter)
 
 }
@@ -119,22 +143,30 @@ func performBackupWithServiceIdentifier(
 	serviceIdentifierCmd string,
 ) (*gexec.Session, error) {
 
-	backupCmd := exec.Command(
-		pathToServiceBackupBinary,
-		"s3",
-		"--aws-access-key-id", awsAccessKeyID,
-		"--aws-secret-access-key", awsSecretAccessKey,
-		"--source-folder", sourceFolder,
-		"--dest-bucket", destBucket,
-		"--dest-path", destPath,
-		"--endpoint-url", endpointURL,
-		"--logLevel", "debug",
-		"--backup-creator-cmd", backupCreatorCmd,
-		"--cleanup-cmd", cleanupCmd,
-		"--cron-schedule", cronSchedule,
-		"--service-identifier-cmd", serviceIdentifierCmd,
-	)
+	file, err := ioutil.TempFile("", "config.yml")
+	Expect(err).NotTo(HaveOccurred())
+	file.Write([]byte(fmt.Sprintf(`---
+destinations:
+- type: s3
+  config:
+    endpoint_url: %s
+    bucket_name: %s
+    bucket_path: %s
+    access_key_id: %s
+    secret_access_key: %s
+source_folder: %s
+source_executable: %s
+aws_cli_path: aws
+exit_if_in_progress: false
+cron_schedule: '%s'
+cleanup_executable: %s
+service_identifier_executable: %s
+missing_properties_message: custom message`, endpointURL, destBucket, destPath,
+		awsAccessKeyID, awsSecretAccessKey, sourceFolder, backupCreatorCmd, cronSchedule, cleanupCmd, serviceIdentifierCmd,
+	)))
+	file.Close()
 
+	backupCmd := exec.Command(pathToServiceBackupBinary, file.Name(), "--logLevel", "debug")
 	return gexec.Start(backupCmd, GinkgoWriter, GinkgoWriter)
 }
 
@@ -709,28 +741,6 @@ var _ = Describe("Service Backup Binary", func() {
 			})
 		})
 
-		Context("when the source folder flag is not provided", func() {
-			const invalidSourceFolder = ""
-
-			It("gracefully fails to perform the upload", func() {
-				session, err := performBackup(
-					awsAccessKeyID,
-					awsSecretAccessKey,
-					invalidSourceFolder,
-					destBucket,
-					destPath,
-					endpointURL,
-					backupCreatorCmd,
-					cleanupCmd,
-					cronSchedule,
-				)
-
-				Expect(err).ToNot(HaveOccurred())
-				Eventually(session, awsTimeout).Should(gexec.Exit(2))
-				Eventually(session.Out).Should(gbytes.Say("Flag source-folder not provided"))
-			})
-		})
-
 		Context("when the endpointURL is invalid", func() {
 			const invalidEndpointURL = "http://0.0.0.0:1234/"
 			It("gracefully fails to perform the upload", func() {
@@ -755,50 +765,6 @@ var _ = Describe("Service Backup Binary", func() {
 			})
 		})
 
-		Context("when the destination bucket flag is not provided", func() {
-			const emptyDestBucket = ""
-
-			It("gracefully fails to perform the upload", func() {
-				session, err := performBackup(
-					awsAccessKeyID,
-					awsSecretAccessKey,
-					sourceFolder,
-					emptyDestBucket,
-					destPath,
-					endpointURL,
-					backupCreatorCmd,
-					cleanupCmd,
-					cronSchedule,
-				)
-
-				Expect(err).ToNot(HaveOccurred())
-				Eventually(session, awsTimeout).Should(gexec.Exit(2))
-				Eventually(session.Out).Should(gbytes.Say("Flag dest-bucket not provided"))
-			})
-		})
-
-		Context("when backup-creator-cmd is not provided", func() {
-			const invalidBackupCreatorCmd = ""
-
-			It("gracefully fails to perform the upload", func() {
-				session, err := performBackup(
-					awsAccessKeyID,
-					awsSecretAccessKey,
-					sourceFolder,
-					destBucket,
-					destPath,
-					endpointURL,
-					invalidBackupCreatorCmd,
-					cleanupCmd,
-					cronSchedule,
-				)
-
-				Expect(err).ToNot(HaveOccurred())
-				Eventually(session, awsTimeout).Should(gexec.Exit(2))
-				Eventually(session.Out).Should(gbytes.Say("Flag backup-creator-cmd not provided"))
-			})
-		})
-
 		Context("when the backup creation command fails with non-zero exit code", func() {
 			const failingBackupCreatorCmd = "ls /not/a/valid/directory"
 
@@ -818,28 +784,6 @@ var _ = Describe("Service Backup Binary", func() {
 				Eventually(session.Out, awsTimeout).Should(gbytes.Say("Perform backup completed with error"))
 				session.Terminate().Wait()
 				Eventually(session).Should(gexec.Exit())
-			})
-		})
-
-		Context("when the cron schedule is not provided", func() {
-			const emptyCronSchedule = ""
-
-			It("gracefully fails to perform the upload", func() {
-				session, err := performBackup(
-					awsAccessKeyID,
-					awsSecretAccessKey,
-					sourceFolder,
-					destBucket,
-					destPath,
-					endpointURL,
-					backupCreatorCmd,
-					cleanupCmd,
-					emptyCronSchedule,
-				)
-
-				Expect(err).ToNot(HaveOccurred())
-				Eventually(session, awsTimeout).Should(gexec.Exit(2))
-				Eventually(session.Out).Should(gbytes.Say("Flag cron-schedule not provided"))
 			})
 		})
 
@@ -1010,13 +954,22 @@ var _ = Describe("Service Backup Binary", func() {
 		var session *gexec.Session
 
 		BeforeEach(func() {
-			backupCmd := exec.Command(
-				pathToServiceBackupBinary,
-				"skip",
-				"--cron-schedule", cronSchedule,
-			)
+			file, err := ioutil.TempFile("", "config.yml")
+			Expect(err).NotTo(HaveOccurred())
+			file.Write([]byte(fmt.Sprintf(`---
+cleanup_executable: ''
+cron_schedule: '%s'
+destinations: []
+exit_if_in_progress: 'false'
+aws_cli_path: "/var/vcap/packages/aws-cli/bin/aws"
+azure_cli_path: "/var/vcap/packages/blobxfer/bin/blobxfer"
+missing_properties_message: Provide these missing fields in your manifest.
+service_identifier_executable:
+source_executable:
+source_folder:`, cronSchedule)))
+			file.Close()
 
-			var err error
+			backupCmd := exec.Command(pathToServiceBackupBinary, file.Name(), "--logLevel", "debug")
 			session, err = gexec.Start(backupCmd, GinkgoWriter, GinkgoWriter)
 
 			Expect(err).ToNot(HaveOccurred())
