@@ -3,7 +3,7 @@ package main
 import (
 	"os"
 
-	"github.com/pivotal-cf-experimental/service-backup/parseargs"
+	"github.com/pivotal-cf-experimental/service-backup/config"
 	"github.com/pivotal-golang/lager"
 	"github.com/tedsuo/ifrit"
 	"gopkg.in/robfig/cron.v2"
@@ -14,7 +14,7 @@ var (
 )
 
 func main() {
-	executor, cronSchedule, logger := parseargs.Parse(os.Args)
+	executor, cronSchedule, logger := config.Parse(os.Args)
 
 	if executor == nil {
 		return
@@ -22,7 +22,7 @@ func main() {
 
 	scheduler := cron.New()
 
-	_, err := scheduler.AddFunc(*cronSchedule, func() {
+	_, err := scheduler.AddFunc(cronSchedule, func() {
 		executor.RunOnce()
 	})
 

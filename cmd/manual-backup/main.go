@@ -4,7 +4,7 @@ import (
 	"log"
 	"os"
 
-	"github.com/pivotal-cf-experimental/service-backup/parseargs"
+	"github.com/pivotal-cf-experimental/service-backup/config"
 	"github.com/pivotal-golang/lager"
 )
 
@@ -13,7 +13,7 @@ var (
 )
 
 func main() {
-	executor, _, _ := parseargs.Parse(os.Args)
+	executor, _, _ := config.Parse(os.Args)
 
 	if executor == nil {
 		return

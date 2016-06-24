@@ -1,4 +1,4 @@
-package parseargs
+package config
 
 import (
 	"flag"
@@ -20,7 +20,7 @@ import (
 )
 
 //Parse ...
-func Parse(osArgs []string) (backup.Executor, *string, lager.Logger) {
+func Parse(osArgs []string) (backup.Executor, string, lager.Logger) {
 	flags := flag.NewFlagSet(osArgs[0], flag.ExitOnError)
 
 	backupConfigPath := osArgs[1]
@@ -85,7 +85,7 @@ func Parse(osArgs []string) (backup.Executor, *string, lager.Logger) {
 		if backupConfig.CronSchedule == "" {
 			backupConfig.CronSchedule = "@monthly"
 		}
-		return dummyExecutor, &backupConfig.CronSchedule, logger
+		return dummyExecutor, backupConfig.CronSchedule, logger
 
 	default:
 		logger.Fatal(fmt.Sprintf("Unknown destination type: %s", backupType), nil)
@@ -106,7 +106,7 @@ func Parse(osArgs []string) (backup.Executor, *string, lager.Logger) {
 		calculator,
 	)
 
-	return executor, &backupConfig.CronSchedule, logger
+	return executor, backupConfig.CronSchedule, logger
 }
 
 var logger lager.Logger
