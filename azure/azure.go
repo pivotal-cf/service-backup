@@ -26,6 +26,7 @@ func New(accountKey, accountName, container, blobStoreBaseUrl, azureCmd string, 
 func (a *AzureClient) Upload(localPath, remotePath string) error {
 	a.sessionLogger.Info("Uploading azure blobs", lager.Data{"container": a.container, "localPath": localPath, "remotePath": remotePath})
 	a.sessionLogger.Info("The container and remote path will be created if they don't already exist", lager.Data{"container": a.container, "remotePath": remotePath})
+	a.sessionLogger.Info(fmt.Sprintf("about to upload %s to Azure remote path %s", localPath, remotePath))
 	return a.uploadDirectory(localPath, remotePath)
 }
 
@@ -61,7 +62,6 @@ func (a *AzureClient) uploadFile(localFilePath, remoteFilePath string, length ui
 
 	defer file.Close()
 
-	a.sessionLogger.Info("Uploading blob", lager.Data{"localPath": localFilePath, "remotePath": remoteFilePath, "length": length})
 	return exec.Command(a.azureCmd, fmt.Sprintf("--storageaccountkey=%s", a.accountKey), fmt.Sprintf("--remoteresource=%s", remoteFilePath), a.accountName, a.container, localFilePath).Run()
 }
 
