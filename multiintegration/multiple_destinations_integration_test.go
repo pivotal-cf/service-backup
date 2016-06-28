@@ -14,21 +14,11 @@ import (
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gbytes"
 	"github.com/onsi/gomega/gexec"
-	"github.com/pivotal-cf-experimental/service-backup/s3testclient"
 )
 
 const (
 	awsAccessKeyIDEnvKey     = "AWS_ACCESS_KEY_ID"
 	awsSecretAccessKeyEnvKey = "AWS_SECRET_ACCESS_KEY"
-)
-
-var (
-	existingBucketInDefaultRegion = "service-backup-integration-test2"
-
-	awsAccessKeyID     string
-	awsSecretAccessKey string
-
-	s3TestClient *s3testclient.S3TestClient
 )
 
 var _ = Describe("Multiple destinations backup", func() {

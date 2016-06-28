@@ -24,13 +24,15 @@ func TestMultiintegration(t *testing.T) {
 }
 
 const (
-	sshKeyUsername = "service-backup-tmp-key"
+	sshKeyUsername                = "service-backup-tmp-key"
+	existingBucketInDefaultRegion = "service-backup-integration-test2"
 )
 
 type TestData struct {
 	PathToServiceBackupBinary string
-	PrivateKeyPath            string
 	UnixUser                  *user.User
+	AwsAccessKeyID            string
+	AwsSecretAccessKey        string
 }
 
 var (
@@ -38,6 +40,9 @@ var (
 	privateKeyPath            string
 	privateKeyContents        []byte
 	unixUser                  *user.User
+	awsAccessKeyID            string
+	awsSecretAccessKey        string
+	s3TestClient              *s3testclient.S3TestClient
 )
 
 func createSSHKey() (string, string) {
@@ -99,8 +104,9 @@ var _ = SynchronizedBeforeSuite(func() []byte {
 
 	forOtherNodes, err := json.Marshal(TestData{
 		PathToServiceBackupBinary: pathToServiceBackupBinary,
-		PrivateKeyPath:            privateKeyPath,
 		UnixUser:                  unixUser,
+		AwsAccessKeyID:            awsAccessKeyID,
+		AwsSecretAccessKey:        awsSecretAccessKey,
 	})
 	Expect(err).ToNot(HaveOccurred())
 	return forOtherNodes
@@ -109,8 +115,14 @@ var _ = SynchronizedBeforeSuite(func() []byte {
 	Expect(json.Unmarshal(data, &t)).To(Succeed())
 
 	pathToServiceBackupBinary = t.PathToServiceBackupBinary
-	privateKeyPath = t.PrivateKeyPath
 	unixUser = t.UnixUser
+	awsAccessKeyID = t.AwsAccessKeyID
+	awsSecretAccessKey = t.AwsSecretAccessKey
+	s3TestClient = s3testclient.New("", awsAccessKeyID, awsSecretAccessKey, existingBucketInDefaultRegion)
+
+	var publicKeyPath string
+	publicKeyPath, privateKeyPath = createSSHKey()
+	addToAuthorizedKeys(publicKeyPath)
 })
 
 var _ = SynchronizedAfterSuite(func() {
