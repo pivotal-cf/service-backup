@@ -45,7 +45,7 @@ var (
 	s3TestClient              *s3testclient.S3TestClient
 )
 
-func createSSHKey() (string, string) {
+func createSSHKey() (string, string, []byte) {
 	sshKeys, err := ioutil.TempDir("", "scp-unit-tests")
 	Expect(err).ToNot(HaveOccurred())
 	privateKeyPath = filepath.Join(sshKeys, "id_rsa")
@@ -53,7 +53,7 @@ func createSSHKey() (string, string) {
 		"-N", "", "-f", privateKeyPath).Run()).To(Succeed())
 	privateKeyContents, err = ioutil.ReadFile(privateKeyPath)
 	Expect(err).ToNot(HaveOccurred())
-	return filepath.Join(sshKeys, "id_rsa.pub"), privateKeyPath
+	return filepath.Join(sshKeys, "id_rsa.pub"), privateKeyPath, privateKeyContents
 }
 
 func addToAuthorizedKeys(publicKeyPath string) {
@@ -87,7 +87,7 @@ func removeKeyFromAuthorized() {
 
 var _ = SynchronizedBeforeSuite(func() []byte {
 	var publicKeyPath string
-	publicKeyPath, privateKeyPath = createSSHKey()
+	publicKeyPath, privateKeyPath, privateKeyContents = createSSHKey()
 
 	var err error
 	unixUser, err = user.Current()
@@ -121,7 +121,7 @@ var _ = SynchronizedBeforeSuite(func() []byte {
 	s3TestClient = s3testclient.New("", awsAccessKeyID, awsSecretAccessKey, existingBucketInDefaultRegion)
 
 	var publicKeyPath string
-	publicKeyPath, privateKeyPath = createSSHKey()
+	publicKeyPath, privateKeyPath, privateKeyContents = createSSHKey()
 	addToAuthorizedKeys(publicKeyPath)
 })
 

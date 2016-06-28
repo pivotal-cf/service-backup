@@ -117,6 +117,97 @@ missing_properties_message: custom message`, unixUser.Username, destPathSCP, pad
 			Expect(content2).To(Equal([]byte("2")))
 		})
 	})
+
+	Context("When two SCP destinations are correctly configured", func() {
+		var (
+			runningBin      *gexec.Session
+			baseDir         string
+			destPathSCP1    string
+			destPathSCP2    string
+			privateKey2Path string
+		)
+
+		BeforeEach(func() {
+			var err error
+			baseDir, err = ioutil.TempDir("", "multiple-destinations-integration-tests")
+			Expect(err).NotTo(HaveOccurred())
+			dirToBackup := filepath.Join(baseDir, "source")
+			destPathSCP1 = filepath.Join(baseDir, "target1")
+			destPathSCP2 = filepath.Join(baseDir, "target2")
+			Expect(os.Mkdir(dirToBackup, 0755)).To(Succeed())
+			Expect(os.Mkdir(destPathSCP1, 0755)).To(Succeed())
+			Expect(os.Mkdir(destPathSCP2, 0755)).To(Succeed())
+
+			Expect(ioutil.WriteFile(filepath.Join(dirToBackup, "1.txt"), []byte("1"), 0644)).To(Succeed())
+			Expect(os.Mkdir(filepath.Join(dirToBackup, "subdir"), 0755)).To(Succeed())
+			Expect(ioutil.WriteFile(filepath.Join(dirToBackup, "subdir", "2.txt"), []byte("2"), 0644)).To(Succeed())
+
+			var publicKey2Path string
+			var privateKey2Contents []byte
+			publicKey2Path, privateKey2Path, privateKey2Contents = createSSHKey()
+			addToAuthorizedKeys(publicKey2Path)
+
+			runningBin = runBackup(createConfigFile(`---
+destinations:
+- type: scp
+  config:
+    server: localhost
+    user: %s
+    destination: %s
+    key: |
+      %s
+    port: 22
+- type: scp
+  config:
+    server: localhost
+    user: %s
+    destination: %s
+    key: |
+      %s
+    port: 22
+source_folder: %s
+source_executable: true
+exit_if_in_progress: true
+cron_schedule: '*/5 * * * * *'
+cleanup_executable: true
+missing_properties_message: custom message`, unixUser.Username, destPathSCP1, padWithSpaces(string(privateKeyContents), 6),
+				unixUser.Username, destPathSCP2, padWithSpaces(string(privateKey2Contents), 6),
+				dirToBackup))
+		})
+
+		AfterEach(func() {
+			Expect(os.RemoveAll(baseDir)).To(Succeed())
+			Expect(os.RemoveAll(filepath.Dir(privateKey2Path))).To(Succeed())
+			Eventually(runningBin.Terminate()).Should(gexec.Exit())
+		})
+
+		It("copies files with SCP to the first destination", func() {
+			Eventually(runningBin.Out, time.Second*10).Should(gbytes.Say("scp completed"))
+			runningBin.Terminate().Wait()
+
+			content1, err := ioutil.ReadFile(pathWithDateForSCP(destPathSCP1, "1.txt"))
+			Expect(err).NotTo(HaveOccurred())
+			Expect(content1).To(Equal([]byte("1")))
+
+			content2, err := ioutil.ReadFile(pathWithDateForSCP(destPathSCP1, "subdir", "2.txt"))
+			Expect(err).NotTo(HaveOccurred())
+			Expect(content2).To(Equal([]byte("2")))
+		})
+
+		It("copies files with SCP to the second destination", func() {
+			Eventually(runningBin.Out, time.Second*10).Should(gbytes.Say("scp completed"))
+			Eventually(runningBin.Out, time.Second*10).Should(gbytes.Say("scp completed"))
+			runningBin.Terminate().Wait()
+
+			content1, err := ioutil.ReadFile(pathWithDateForSCP(destPathSCP2, "1.txt"))
+			Expect(err).NotTo(HaveOccurred())
+			Expect(content1).To(Equal([]byte("1")))
+
+			content2, err := ioutil.ReadFile(pathWithDateForSCP(destPathSCP2, "subdir", "2.txt"))
+			Expect(err).NotTo(HaveOccurred())
+			Expect(content2).To(Equal([]byte("2")))
+		})
+	})
 })
 
 func padWithSpaces(data string, len int) string {
