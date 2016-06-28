@@ -1,13 +1,14 @@
 package backup_test
 
 import (
+	"io/ioutil"
+	"os"
+	"path/filepath"
+
 	"github.com/nu7hatch/gouuid"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	. "github.com/pivotal-cf-experimental/service-backup/backup"
-	"io/ioutil"
-	"os"
-	"path/filepath"
 )
 
 func createFilesIn(path string) int64 {

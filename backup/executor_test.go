@@ -58,7 +58,6 @@ var _ = Describe("Executor", func() {
 				executor = NewExecutor(
 					backuper,
 					"source-folder",
-					"remote-path",
 					assetPath("fake-snapshotter"),
 					assetPath("fake-cleanup"),
 					performIdentifyServiceCmd,
@@ -173,7 +172,6 @@ var _ = Describe("Executor", func() {
 					executor = NewExecutor(
 						backuper,
 						"source-folder",
-						"remote-path",
 						assetPath("fake-snapshotter"),
 						assetPath("fake-cleanup"),
 						performIdentifyServiceCmd,
@@ -205,7 +203,6 @@ var _ = Describe("Executor", func() {
 					executor = NewExecutor(
 						backuper,
 						"source-folder",
-						"remote-path",
 						assetPath("fake-snapshotter"),
 						assetPath("fake-cleanup"),
 						performIdentifyServiceCmd,
@@ -226,7 +223,7 @@ var _ = Describe("Executor", func() {
 						firstBackupCompleted.Add(1)
 					})
 					JustBeforeEach(func() {
-						backuper.UploadStub = func(localPath, remotePath string) error {
+						backuper.UploadStub = func(localPath string) error {
 							blockUpload.Wait()
 							return nil
 						}

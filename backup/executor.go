@@ -2,7 +2,6 @@ package backup
 
 import (
 	"errors"
-	"fmt"
 	"os"
 	"os/exec"
 	"strings"
@@ -12,7 +11,7 @@ import (
 	"github.com/pivotal-golang/lager"
 )
 
-//ProviderFactory counterfeiter . ProviderFactory
+//go:generate counterfeiter -o backupfakes/fake_provider_factory.go . ProviderFactory
 type ProviderFactory interface {
 	ExecCommand(string, ...string) *exec.Cmd
 }
@@ -20,14 +19,13 @@ type ProviderFactory interface {
 //ExecCommand fakeable exec.Command
 type ExecCommand func(string, ...string) *exec.Cmd
 
-//Executor ...
 type Executor interface {
 	RunOnce() error
 }
 
-//Backuper ...
+//go:generate counterfeiter -o backupfakes/fake_backuper.go . Backuper
 type Backuper interface {
-	Upload(localPath, remotePath string) error
+	Upload(localPath string) error
 	SetLogSession(sessionName, sessionIdentifier string)
 	CloseLogSession()
 }
@@ -36,7 +34,6 @@ type backup struct {
 	sync.Mutex
 	backuper               Backuper
 	sourceFolder           string
-	remotePath             string
 	backupCreatorCmd       string
 	cleanupCmd             string
 	serviceIdentifierCmd   string
@@ -52,7 +49,6 @@ type backup struct {
 func NewExecutor(
 	backuper Backuper,
 	sourceFolder,
-	remotePath,
 	backupCreatorCmd,
 	cleanupCmd,
 	serviceIdentifierCmd string,
@@ -64,7 +60,6 @@ func NewExecutor(
 	return &backup{
 		backuper:               backuper,
 		sourceFolder:           sourceFolder,
-		remotePath:             remotePath,
 		backupCreatorCmd:       backupCreatorCmd,
 		cleanupCmd:             cleanupCmd,
 		serviceIdentifierCmd:   serviceIdentifierCmd,
@@ -192,10 +187,7 @@ func (b *backup) uploadBackup() error {
 	b.sessionLogger.Info("Upload backup started")
 
 	startTime := time.Now()
-	err := b.backuper.Upload(
-		b.sourceFolder,
-		b.remotePathWithDate(),
-	)
+	err := b.backuper.Upload(b.sourceFolder)
 	duration := time.Since(startTime)
 
 	if err != nil {
@@ -209,10 +201,4 @@ func (b *backup) uploadBackup() error {
 		"size_in_bytes":       size,
 	})
 	return nil
-}
-
-func (b *backup) remotePathWithDate() string {
-	today := time.Now()
-	datePath := fmt.Sprintf("%d/%02d/%02d", today.Year(), today.Month(), today.Day())
-	return b.remotePath + "/" + datePath
 }

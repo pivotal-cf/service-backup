@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/exec"
 
+	"github.com/pivotal-cf-experimental/service-backup/backup"
 	"github.com/pivotal-golang/lager"
 )
 
@@ -15,15 +16,28 @@ type AzureClient struct {
 	container        string
 	blobStoreBaseUrl string
 	azureCmd         string
+	basePath         string
 	logger           lager.Logger
 	sessionLogger    lager.Logger
 }
 
-func New(accountKey, accountName, container, blobStoreBaseUrl, azureCmd string, logger lager.Logger) *AzureClient {
-	return &AzureClient{accountKey: accountKey, accountName: accountName, container: container, blobStoreBaseUrl: blobStoreBaseUrl, logger: logger, sessionLogger: logger, azureCmd: azureCmd}
+func New(accountKey, accountName, container, blobStoreBaseUrl, azureCmd, basePath string, logger lager.Logger) *AzureClient {
+	return &AzureClient{
+		accountKey:       accountKey,
+		accountName:      accountName,
+		container:        container,
+		blobStoreBaseUrl: blobStoreBaseUrl,
+		basePath:         basePath,
+		logger:           logger,
+		sessionLogger:    logger,
+		azureCmd:         azureCmd,
+	}
 }
 
-func (a *AzureClient) Upload(localPath, remotePath string) error {
+func (a *AzureClient) Upload(localPath string) error {
+	remotePathGenerator := backup.RemotePathGenerator{}
+	remotePath := remotePathGenerator.RemotePathWithDate(a.basePath)
+
 	a.sessionLogger.Info("Uploading azure blobs", lager.Data{"container": a.container, "localPath": localPath, "remotePath": remotePath})
 	a.sessionLogger.Info("The container and remote path will be created if they don't already exist", lager.Data{"container": a.container, "remotePath": remotePath})
 	a.sessionLogger.Info(fmt.Sprintf("about to upload %s to Azure remote path %s", localPath, remotePath))

@@ -16,13 +16,13 @@ type S3TestClient struct {
 	*s3.S3CliClient
 }
 
-func New(endpointURL, accessKeyID, secretAccessKey string) *S3TestClient {
+func New(endpointURL, accessKeyID, secretAccessKey, basePath string) *S3TestClient {
 	flags := flag.NewFlagSet(os.Args[0], flag.ExitOnError)
 	cf_lager.AddFlags(flags)
 	logger, _ := cf_lager.New("s3-test-client")
 
 	return &S3TestClient{
-		S3CliClient: s3.NewCliClient("aws", endpointURL, accessKeyID, secretAccessKey, logger),
+		S3CliClient: s3.NewCliClient("aws", endpointURL, accessKeyID, secretAccessKey, basePath, logger),
 	}
 }
 

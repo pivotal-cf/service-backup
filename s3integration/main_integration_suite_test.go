@@ -73,7 +73,6 @@ func beforeSuiteFirstNode() []byte {
 	Expect(err).ToNot(HaveOccurred())
 
 	c := config{
-
 		AWSAccessKeyID:               awsAccessKeyID,
 		AWSSecretAccessKey:           awsSecretAccessKey,
 		AWSAccessKeyIDRestricted:     awsAccessKeyIDRestricted,
@@ -85,7 +84,7 @@ func beforeSuiteFirstNode() []byte {
 	data, err := json.Marshal(c)
 	Expect(err).ToNot(HaveOccurred())
 
-	s3TestClient = s3testclient.New("", awsAccessKeyID, awsSecretAccessKey)
+	s3TestClient = s3testclient.New("", awsAccessKeyID, awsSecretAccessKey, existingBucketInDefaultRegion)
 	Expect(s3TestClient.CreateRemotePathIfNeeded(existingBucketInDefaultRegion)).To(Succeed())
 	Expect(s3TestClient.CreateRemotePathIfNeeded(existingBucketInNonDefaultRegion)).To(Succeed())
 
@@ -109,7 +108,7 @@ func beforeSuiteOtherNodes(b []byte) {
 	awsSecretAccessKeyRestricted = c.AWSSecretAccessKeyRestricted
 	pathToServiceBackupBinary = c.PathToBackupBinary
 	pathToManualBackupBinary = c.PathToManualBinary
-	s3TestClient = s3testclient.New(endpointURL, awsAccessKeyID, awsSecretAccessKey)
+	s3TestClient = s3testclient.New(endpointURL, awsAccessKeyID, awsSecretAccessKey, existingBucketInDefaultRegion)
 }
 
 var _ = SynchronizedBeforeSuite(beforeSuiteFirstNode, beforeSuiteOtherNodes)

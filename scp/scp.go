@@ -7,6 +7,7 @@ import (
 	"os/exec"
 	"strconv"
 
+	"github.com/pivotal-cf-experimental/service-backup/backup"
 	"github.com/pivotal-golang/lager"
 )
 
@@ -15,16 +16,18 @@ type SCPClient struct {
 	port          int
 	username      string
 	privateKey    string
+	basePath      string
 	logger        lager.Logger
 	sessionLogger lager.Logger
 }
 
-func New(host string, port int, username, privateKeyPath string, logger lager.Logger) *SCPClient {
+func New(host string, port int, username, privateKeyPath, basePath string, logger lager.Logger) *SCPClient {
 	return &SCPClient{
 		host:          host,
 		port:          port,
 		username:      username,
 		privateKey:    privateKeyPath,
+		basePath:      basePath,
 		logger:        logger,
 		sessionLogger: logger,
 	}
@@ -58,7 +61,7 @@ func (client *SCPClient) generateKnownHosts() (string, error) {
 	return knownHostsFile.Name(), nil
 }
 
-func (client *SCPClient) Upload(localPath, remotePath string) error {
+func (client *SCPClient) Upload(localPath string) error {
 	privateKeyFileName, err := client.generateBackupKey()
 	if err != nil {
 		return err
@@ -70,6 +73,9 @@ func (client *SCPClient) Upload(localPath, remotePath string) error {
 	}
 
 	defer os.Remove(privateKeyFileName)
+
+	remotePathGenerator := backup.RemotePathGenerator{}
+	remotePath := remotePathGenerator.RemotePathWithDate(client.basePath)
 
 	if err := client.ensureRemoteDirectoryExists(remotePath, privateKeyFileName, knownHostsFileName); err != nil {
 		return err

@@ -5,15 +5,13 @@ import (
 	"path/filepath"
 )
 
-// SizeCalculator ...
+//go:generate counterfeiter -o backupfakes/fake_size_calculator.go . SizeCalculator
 type SizeCalculator interface {
 	DirSize(localPath string) (int64, error)
 }
 
-// FileSystemSizeCalculator ...
 type FileSystemSizeCalculator struct{}
 
-// DirSize ...
 func (h *FileSystemSizeCalculator) DirSize(localPath string) (int64, error) {
 	var size int64
 	var err error

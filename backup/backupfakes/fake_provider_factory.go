@@ -18,6 +18,8 @@ type FakeProviderFactory struct {
 	execCommandReturns struct {
 		result1 *exec.Cmd
 	}
+	invocations      map[string][][]interface{}
+	invocationsMutex sync.RWMutex
 }
 
 func (fake *FakeProviderFactory) ExecCommand(arg1 string, arg2 ...string) *exec.Cmd {
@@ -26,6 +28,7 @@ func (fake *FakeProviderFactory) ExecCommand(arg1 string, arg2 ...string) *exec.
 		arg1 string
 		arg2 []string
 	}{arg1, arg2})
+	fake.recordInvocation("ExecCommand", []interface{}{arg1, arg2})
 	fake.execCommandMutex.Unlock()
 	if fake.ExecCommandStub != nil {
 		return fake.ExecCommandStub(arg1, arg2...)
@@ -51,6 +54,26 @@ func (fake *FakeProviderFactory) ExecCommandReturns(result1 *exec.Cmd) {
 	fake.execCommandReturns = struct {
 		result1 *exec.Cmd
 	}{result1}
+}
+
+func (fake *FakeProviderFactory) Invocations() map[string][][]interface{} {
+	fake.invocationsMutex.RLock()
+	defer fake.invocationsMutex.RUnlock()
+	fake.execCommandMutex.RLock()
+	defer fake.execCommandMutex.RUnlock()
+	return fake.invocations
+}
+
+func (fake *FakeProviderFactory) recordInvocation(key string, args []interface{}) {
+	fake.invocationsMutex.Lock()
+	defer fake.invocationsMutex.Unlock()
+	if fake.invocations == nil {
+		fake.invocations = map[string][][]interface{}{}
+	}
+	if fake.invocations[key] == nil {
+		fake.invocations[key] = [][]interface{}{}
+	}
+	fake.invocations[key] = append(fake.invocations[key], args)
 }
 
 var _ backup.ProviderFactory = new(FakeProviderFactory)

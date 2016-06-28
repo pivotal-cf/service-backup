@@ -35,15 +35,6 @@ func Parse(osArgs []string) (backup.Executor, string, lager.Logger) {
 		log.Fatal(err)
 	}
 
-	var backupType string
-	var destinationConfig map[string]interface{}
-
-	if len(backupConfig.Destinations) == 0 {
-		backupType = "skip"
-	} else {
-		backupType = backupConfig.Destinations[0].DestType
-		destinationConfig = backupConfig.Destinations[0].Config
-	}
 	cf_lager.AddFlags(flags)
 	flags.Parse(osArgs[2:])
 
@@ -54,30 +45,10 @@ func Parse(osArgs []string) (backup.Executor, string, lager.Logger) {
 		logger.Fatal("Invalid boolean value for exit_if_in_progress. Please set to true or false.", err)
 	}
 
-	var backuper backup.Backuper
-	var remotePath string
+	backupers := backup.MultiBackuper{}
+	var basePath string
 
-	switch backupType {
-	case "s3":
-
-		remotePath = fmt.Sprintf("%s/%s", destinationConfig["bucket_name"], destinationConfig["bucket_path"])
-		backuper = s3.NewCliClient(
-			backupConfig.AwsCliPath,
-			destinationConfig["endpoint_url"].(string),
-			destinationConfig["access_key_id"].(string),
-			destinationConfig["secret_access_key"].(string),
-			logger,
-		)
-
-	case "scp":
-		remotePath = destinationConfig["destination"].(string)
-		backuper = scp.New(destinationConfig["server"].(string), destinationConfig["port"].(int), destinationConfig["user"].(string), destinationConfig["key"].(string), logger)
-
-	case "azure":
-		remotePath = destinationConfig["path"].(string)
-		backuper = azure.New(destinationConfig["storage_access_key"].(string), destinationConfig["storage_account"].(string), destinationConfig["container"].(string), destinationConfig["blob_store_base_url"].(string), backupConfig.AzureCliPath, logger)
-
-	case "skip":
+	if len(backupConfig.Destinations) == 0 {
 		logger.Info("No destination provided - skipping backup")
 		dummyExecutor := dummy.NewDummyExecutor(logger)
 		// Default cronSchedule to monthly if not provided when destination is also not provided
@@ -86,17 +57,37 @@ func Parse(osArgs []string) (backup.Executor, string, lager.Logger) {
 			backupConfig.CronSchedule = "@monthly"
 		}
 		return dummyExecutor, backupConfig.CronSchedule, logger
+	}
 
-	default:
-		logger.Fatal(fmt.Sprintf("Unknown destination type: %s", backupType), nil)
+	for _, destination := range backupConfig.Destinations {
+		destinationConfig := destination.Config
+		switch destination.DestType {
+		case "s3":
+			basePath = fmt.Sprintf("%s/%s", destinationConfig["bucket_name"], destinationConfig["bucket_path"])
+			backupers = append(backupers, s3.NewCliClient(
+				backupConfig.AwsCliPath,
+				destinationConfig["endpoint_url"].(string),
+				destinationConfig["access_key_id"].(string),
+				destinationConfig["secret_access_key"].(string),
+				basePath,
+				logger,
+			))
+		case "scp":
+			basePath = destinationConfig["destination"].(string)
+			backupers = append(backupers, scp.New(destinationConfig["server"].(string), destinationConfig["port"].(int), destinationConfig["user"].(string), destinationConfig["key"].(string), basePath, logger))
+		case "azure":
+			basePath = destinationConfig["path"].(string)
+			backupers = append(backupers, azure.New(destinationConfig["storage_access_key"].(string), destinationConfig["storage_account"].(string), destinationConfig["container"].(string), destinationConfig["blob_store_base_url"].(string), backupConfig.AzureCliPath, basePath, logger))
+		default:
+			logger.Fatal(fmt.Sprintf("Unknown destination type: %s", destination.DestType), nil)
+		}
 	}
 
 	var calculator = &backup.FileSystemSizeCalculator{}
 
 	executor := backup.NewExecutor(
-		backuper,
+		backupers,
 		backupConfig.SourceFolder,
-		remotePath,
 		backupConfig.SourceExecutable,
 		backupConfig.CleanupExecutable,
 		backupConfig.ServiceIdentifierExecutable,

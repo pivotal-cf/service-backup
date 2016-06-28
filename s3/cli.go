@@ -6,6 +6,7 @@ import (
 	"os/exec"
 	"strings"
 
+	"github.com/pivotal-cf-experimental/service-backup/backup"
 	"github.com/pivotal-golang/lager"
 )
 
@@ -14,16 +15,18 @@ type S3CliClient struct {
 	accessKey     string
 	secretKey     string
 	endpointURL   string
+	basePath      string
 	logger        lager.Logger
 	sessionLogger lager.Logger
 }
 
-func NewCliClient(awsCmdPath, endpointURL, accessKey, secretKey string, logger lager.Logger) *S3CliClient {
+func NewCliClient(awsCmdPath, endpointURL, accessKey, secretKey, basePath string, logger lager.Logger) *S3CliClient {
 	return &S3CliClient{
 		awsCmdPath:    awsCmdPath,
 		endpointURL:   endpointURL,
 		accessKey:     accessKey,
 		secretKey:     secretKey,
+		basePath:      basePath,
 		logger:        logger,
 		sessionLogger: logger,
 	}
@@ -92,7 +95,12 @@ func (c *S3CliClient) createRemotePath(remotePath string) error {
 	return c.RunCommand(cmd, "create bucket")
 }
 
-func (c *S3CliClient) Upload(localPath, remotePath string) error {
+func (c *S3CliClient) Upload(localPath string) error {
+	defer c.sessionLogger.Info("s3 completed")
+
+	remotePathGenerator := backup.RemotePathGenerator{}
+	remotePath := remotePathGenerator.RemotePathWithDate(c.basePath)
+
 	c.sessionLogger.Info(fmt.Sprintf("about to upload %s to S3 remote path %s", localPath, remotePath))
 	cmd := c.S3Cmd("sync", localPath, fmt.Sprintf("s3://%s", remotePath))
 
