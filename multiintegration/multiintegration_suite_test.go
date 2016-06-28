@@ -24,8 +24,9 @@ func TestMultiintegration(t *testing.T) {
 }
 
 const (
-	sshKeyUsername                = "service-backup-tmp-key"
-	existingBucketInDefaultRegion = "service-backup-integration-test2"
+	sshKeyUsername                   = "service-backup-tmp-key"
+	existingBucketInDefaultRegion    = "service-backup-integration-test2"
+	existingBucketInNonDefaultRegion = "service-backup-integration-test"
 )
 
 type TestData struct {

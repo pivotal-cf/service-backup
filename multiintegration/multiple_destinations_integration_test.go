@@ -82,6 +82,7 @@ missing_properties_message: custom message`, unixUser.Username, destPathSCP, pad
 
 		It("copies files with SCP", func() {
 			Eventually(runningBin.Out, time.Second*10).Should(gbytes.Say("scp completed"))
+			Eventually(runningBin.Out, time.Second*10).Should(gbytes.Say("s3 completed"))
 			runningBin.Terminate().Wait()
 
 			content1, err := ioutil.ReadFile(pathWithDateForSCP(destPathSCP, "1.txt"))
@@ -94,6 +95,7 @@ missing_properties_message: custom message`, unixUser.Username, destPathSCP, pad
 		})
 
 		It("copies files to S3", func() {
+			Eventually(runningBin.Out, time.Second*10).Should(gbytes.Say("scp completed"))
 			Eventually(runningBin.Out, time.Second*10).Should(gbytes.Say("s3 completed"))
 			runningBin.Terminate().Wait()
 
@@ -183,6 +185,7 @@ missing_properties_message: custom message`, unixUser.Username, destPathSCP1, pa
 
 		It("copies files with SCP to the first destination", func() {
 			Eventually(runningBin.Out, time.Second*10).Should(gbytes.Say("scp completed"))
+			Eventually(runningBin.Out, time.Second*10).Should(gbytes.Say("scp completed"))
 			runningBin.Terminate().Wait()
 
 			content1, err := ioutil.ReadFile(pathWithDateForSCP(destPathSCP1, "1.txt"))
@@ -204,6 +207,115 @@ missing_properties_message: custom message`, unixUser.Username, destPathSCP1, pa
 			Expect(content1).To(Equal([]byte("1")))
 
 			content2, err := ioutil.ReadFile(pathWithDateForSCP(destPathSCP2, "subdir", "2.txt"))
+			Expect(err).NotTo(HaveOccurred())
+			Expect(content2).To(Equal([]byte("2")))
+		})
+	})
+
+	Context("when two S3 destinations are correctly configured", func() {
+		var (
+			runningBin  *gexec.Session
+			baseDir     string
+			dest1PathS3 string
+			dest2PathS3 string
+		)
+
+		BeforeEach(func() {
+			var err error
+			baseDir, err = ioutil.TempDir("", "multiple-destinations-integration-tests")
+			Expect(err).NotTo(HaveOccurred())
+			dirToBackup := filepath.Join(baseDir, "source")
+			Expect(os.Mkdir(dirToBackup, 0755)).To(Succeed())
+
+			Expect(ioutil.WriteFile(filepath.Join(dirToBackup, "1.txt"), []byte("1"), 0644)).To(Succeed())
+			Expect(os.Mkdir(filepath.Join(dirToBackup, "subdir"), 0755)).To(Succeed())
+			Expect(ioutil.WriteFile(filepath.Join(dirToBackup, "subdir", "2.txt"), []byte("2"), 0644)).To(Succeed())
+
+			dest1S3UUID, err := uuid.NewV4()
+			Expect(err).ToNot(HaveOccurred())
+			dest1PathS3 = dest1S3UUID.String()
+			dest2S3UUID, err := uuid.NewV4()
+			Expect(err).ToNot(HaveOccurred())
+			dest2PathS3 = dest2S3UUID.String()
+
+			runningBin = runBackup(createConfigFile(`---
+destinations:
+- type: s3
+  config:
+    endpoint_url: 'https://s3.amazonaws.com'
+    bucket_name: %s
+    bucket_path: %s
+    access_key_id: %s
+    secret_access_key: %s
+- type: s3
+  config:
+    endpoint_url: ''
+    bucket_name: %s
+    bucket_path: %s
+    access_key_id: %s
+    secret_access_key: %s
+source_folder: %s
+source_executable: true
+aws_cli_path: aws
+exit_if_in_progress: true
+cron_schedule: '*/5 * * * * *'
+cleanup_executable: true
+missing_properties_message: custom message`, existingBucketInDefaultRegion, dest1PathS3, awsAccessKeyID, awsSecretAccessKey,
+				existingBucketInNonDefaultRegion, dest2PathS3, awsAccessKeyID, awsSecretAccessKey,
+				dirToBackup))
+		})
+
+		AfterEach(func() {
+			Expect(os.RemoveAll(baseDir)).To(Succeed())
+			Eventually(runningBin.Terminate()).Should(gexec.Exit())
+		})
+
+		It("copies files to the first S3 destination", func() {
+			Eventually(runningBin.Out, time.Second*10).Should(gbytes.Say("s3 completed"))
+			Eventually(runningBin.Out, time.Second*10).Should(gbytes.Say("s3 completed"))
+			runningBin.Terminate().Wait()
+
+			downloadFolder, err := ioutil.TempDir("", "backup-tests")
+			Expect(err).ToNot(HaveOccurred())
+			defer os.Remove(downloadFolder)
+
+			err = s3TestClient.DownloadRemoteDirectory(
+				existingBucketInDefaultRegion,
+				dest1PathS3,
+				downloadFolder,
+			)
+			Expect(err).ToNot(HaveOccurred())
+
+			content1, err := ioutil.ReadFile(downloadedS3Path(downloadFolder, "1.txt"))
+			Expect(err).NotTo(HaveOccurred())
+			Expect(content1).To(Equal([]byte("1")))
+
+			content2, err := ioutil.ReadFile(downloadedS3Path(downloadFolder, "subdir", "2.txt"))
+			Expect(err).NotTo(HaveOccurred())
+			Expect(content2).To(Equal([]byte("2")))
+		})
+
+		It("copies files to the second S3 destination", func() {
+			Eventually(runningBin.Out, time.Second*10).Should(gbytes.Say("s3 completed"))
+			Eventually(runningBin.Out, time.Second*10).Should(gbytes.Say("s3 completed"))
+			runningBin.Terminate().Wait()
+
+			downloadFolder, err := ioutil.TempDir("", "backup-tests")
+			Expect(err).ToNot(HaveOccurred())
+			defer os.Remove(downloadFolder)
+
+			err = s3TestClient.DownloadRemoteDirectory(
+				existingBucketInNonDefaultRegion,
+				dest2PathS3,
+				downloadFolder,
+			)
+			Expect(err).ToNot(HaveOccurred())
+
+			content1, err := ioutil.ReadFile(downloadedS3Path(downloadFolder, "1.txt"))
+			Expect(err).NotTo(HaveOccurred())
+			Expect(content1).To(Equal([]byte("1")))
+
+			content2, err := ioutil.ReadFile(downloadedS3Path(downloadFolder, "subdir", "2.txt"))
 			Expect(err).NotTo(HaveOccurred())
 			Expect(content2).To(Equal([]byte("2")))
 		})
