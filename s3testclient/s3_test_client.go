@@ -22,7 +22,7 @@ func New(endpointURL, accessKeyID, secretAccessKey, basePath string) *S3TestClie
 	logger, _ := cf_lager.New("s3-test-client")
 
 	return &S3TestClient{
-		S3CliClient: s3.NewCliClient("aws", endpointURL, accessKeyID, secretAccessKey, basePath, logger),
+		S3CliClient: s3.New("aws", endpointURL, accessKeyID, secretAccessKey, basePath, logger),
 	}
 }
 

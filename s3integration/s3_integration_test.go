@@ -235,7 +235,7 @@ func createLargeFileIn(sourceFolder string) (string, string) {
 	return fileName, fileContents
 }
 
-var _ = Describe("Service Backup Binary", func() {
+var _ = Describe("S3 Backup", func() {
 	var (
 		destBucket       string
 		backupCreatorCmd string
@@ -813,9 +813,8 @@ var _ = Describe("Service Backup Binary", func() {
 
 	Context("when exit_if_in_progress is configured", func() {
 		var (
-			sourceFolder    string
-			downloadFolder  string
-			filesToContents map[string]string
+			sourceFolder   string
+			downloadFolder string
 		)
 
 		BeforeEach(func() {
@@ -827,7 +826,7 @@ var _ = Describe("Service Backup Binary", func() {
 			downloadFolder, err = ioutil.TempDir("", "")
 			Expect(err).ToNot(HaveOccurred())
 
-			filesToContents = createFilesToUpload(sourceFolder, false)
+			createFilesToUpload(sourceFolder, false)
 
 			backupCreatorCmd = fmt.Sprintf(
 				"%s %s",

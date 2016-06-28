@@ -64,7 +64,7 @@ func Parse(osArgs []string) (backup.Executor, string, lager.Logger) {
 		switch destination.DestType {
 		case "s3":
 			basePath = fmt.Sprintf("%s/%s", destinationConfig["bucket_name"], destinationConfig["bucket_path"])
-			backupers = append(backupers, s3.NewCliClient(
+			backupers = append(backupers, s3.New(
 				backupConfig.AwsCliPath,
 				destinationConfig["endpoint_url"].(string),
 				destinationConfig["access_key_id"].(string),

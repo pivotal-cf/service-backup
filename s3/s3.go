@@ -20,7 +20,7 @@ type S3CliClient struct {
 	sessionLogger lager.Logger
 }
 
-func NewCliClient(awsCmdPath, endpointURL, accessKey, secretKey, basePath string, logger lager.Logger) *S3CliClient {
+func New(awsCmdPath, endpointURL, accessKey, secretKey, basePath string, logger lager.Logger) *S3CliClient {
 	return &S3CliClient{
 		awsCmdPath:    awsCmdPath,
 		endpointURL:   endpointURL,

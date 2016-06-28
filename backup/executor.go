@@ -195,7 +195,7 @@ func (b *backup) uploadBackup() error {
 		return err
 	}
 
-	size, err := b.calculator.DirSize(b.sourceFolder)
+	size, _ := b.calculator.DirSize(b.sourceFolder)
 	b.sessionLogger.Info("Upload backup completed successfully", lager.Data{
 		"duration_in_seconds": duration.Seconds(),
 		"size_in_bytes":       size,
