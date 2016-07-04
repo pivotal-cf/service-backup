@@ -53,6 +53,7 @@ func performBackup(sourceFolder, destinationPath string) *gexec.Session {
 	file.Write([]byte(fmt.Sprintf(`---
 destinations:
 - type: azure
+  name: foo
   config:
     storage_account: %s
     storage_access_key: %s
@@ -114,6 +115,7 @@ var _ = Describe("AzureClient", func() {
 			destinationPath := fmt.Sprintf("path/to/blobs/%d", today.Unix())
 
 			session := performBackup(sourceFolder, destinationPath)
+			Eventually(session.Out, azureTimeout).Should(gbytes.Say(`"destination_name":"foo"`))
 			Eventually(session.Out, azureTimeout).Should(gbytes.Say("Cleanup completed successfully"))
 			session.Terminate().Wait()
 			Eventually(session).Should(gexec.Exit())

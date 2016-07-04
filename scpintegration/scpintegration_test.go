@@ -55,6 +55,7 @@ var _ = Describe("SCP Backup", func() {
 
 		It("copies files over SCP", func() {
 			Eventually(runningBin.Out, time.Second*10).Should(gbytes.Say("scp completed"))
+			Eventually(runningBin.Out, time.Second*10).Should(gbytes.Say(`"destination_name":"foo"`))
 			runningBin.Terminate().Wait()
 			content1, err := ioutil.ReadFile(pathWithDate("1.txt"))
 			Expect(err).NotTo(HaveOccurred())
@@ -83,6 +84,7 @@ func performBackup(scpServer, scpUser, scpDestination, scpKey string, scpPort in
 	file.Write([]byte(fmt.Sprintf(`---
 destinations:
 - type: scp
+  name: foo
   config:
     server: %s
     user: %s

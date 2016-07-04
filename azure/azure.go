@@ -11,6 +11,7 @@ import (
 )
 
 type AzureClient struct {
+	name             string
 	accountName      string
 	accountKey       string
 	container        string
@@ -19,8 +20,9 @@ type AzureClient struct {
 	basePath         string
 }
 
-func New(accountKey, accountName, container, blobStoreBaseUrl, azureCmd, basePath string) *AzureClient {
+func New(name, accountKey, accountName, container, blobStoreBaseUrl, azureCmd, basePath string) *AzureClient {
 	return &AzureClient{
+		name:             name,
 		accountKey:       accountKey,
 		accountName:      accountName,
 		container:        container,
@@ -73,4 +75,8 @@ func (a *AzureClient) uploadFile(localFilePath, remoteFilePath string, length ui
 	defer file.Close()
 
 	return exec.Command(a.azureCmd, fmt.Sprintf("--storageaccountkey=%s", a.accountKey), fmt.Sprintf("--remoteresource=%s", remoteFilePath), a.accountName, a.container, localFilePath).Run()
+}
+
+func (a *AzureClient) Name() string {
+	return a.name
 }

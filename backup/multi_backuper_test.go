@@ -13,23 +13,23 @@ import (
 var _ = Describe("MultiBackuper", func() {
 	Context("Upload", func() {
 		var (
-			localPath     = "local/path"
-			backuperA     *backupfakes.FakeBackuper
-			backuperB     *backupfakes.FakeBackuper
-			multibackuper backup.MultiBackuper
-			logger        lager.Logger
-			uploadErr     error
+			localPath = "local/path"
+			backuperA *backupfakes.FakeBackuper
+			backuperB *backupfakes.FakeBackuper
+			uploader  backup.Uploader
+			logger    lager.Logger
+			uploadErr error
 		)
 
 		BeforeEach(func() {
 			backuperA = new(backupfakes.FakeBackuper)
 			backuperB = new(backupfakes.FakeBackuper)
-			multibackuper = backup.MultiBackuper{backuperA, backuperB}
+			uploader = backup.Uploader{backuperA, backuperB}
 		})
 
 		JustBeforeEach(func() {
 			logger = lager.NewLogger("multi-logger")
-			uploadErr = multibackuper.Upload(localPath, logger)
+			uploadErr = uploader.Upload(localPath, logger)
 		})
 
 		Context("when all uploads succeed", func() {

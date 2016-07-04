@@ -53,6 +53,46 @@ missing_properties_message: custom message`, endpointURL, destBucket, destPath,
 	return gexec.Start(backupCmd, GinkgoWriter, GinkgoWriter)
 }
 
+func performBackupWithName(
+	name,
+	awsAccessKeyID,
+	awsSecretAccessKey,
+	sourceFolder,
+	destBucket,
+	destPath,
+	endpointURL,
+	backupCreatorCmd,
+	cleanupCmd,
+	cronSchedule string,
+) (*gexec.Session, error) {
+
+	file, err := ioutil.TempFile("", "config.yml")
+	Expect(err).NotTo(HaveOccurred())
+	file.Write([]byte(fmt.Sprintf(`---
+destinations:
+- type: s3
+  name: %s
+  config:
+    endpoint_url: '%s'
+    bucket_name: %s
+    bucket_path: %s
+    access_key_id: %s
+    secret_access_key: %s
+source_folder: %s
+source_executable: %s
+aws_cli_path: aws
+exit_if_in_progress: false
+cron_schedule: '%s'
+cleanup_executable: %s
+missing_properties_message: custom message`, name, endpointURL, destBucket, destPath,
+		awsAccessKeyID, awsSecretAccessKey, sourceFolder, backupCreatorCmd, cronSchedule, cleanupCmd,
+	)))
+	file.Close()
+
+	backupCmd := exec.Command(pathToServiceBackupBinary, file.Name(), "--logLevel", "debug")
+	return gexec.Start(backupCmd, GinkgoWriter, GinkgoWriter)
+}
+
 func performBackupIfNotInProgress(
 	awsAccessKeyID,
 	awsSecretAccessKey,
@@ -131,6 +171,7 @@ missing_properties_message: custom message`, endpointURL, destBucket, destPath,
 }
 
 func performBackupWithServiceIdentifier(
+	name,
 	awsAccessKeyID,
 	awsSecretAccessKey,
 	sourceFolder,
@@ -148,6 +189,7 @@ func performBackupWithServiceIdentifier(
 	file.Write([]byte(fmt.Sprintf(`---
 destinations:
 - type: s3
+  name: %s
   config:
     endpoint_url: %s
     bucket_name: %s
@@ -161,7 +203,7 @@ exit_if_in_progress: false
 cron_schedule: '%s'
 cleanup_executable: %s
 service_identifier_executable: %s
-missing_properties_message: custom message`, endpointURL, destBucket, destPath,
+missing_properties_message: custom message`, name, endpointURL, destBucket, destPath,
 		awsAccessKeyID, awsSecretAccessKey, sourceFolder, backupCreatorCmd, cronSchedule, cleanupCmd, serviceIdentifierCmd,
 	)))
 	file.Close()
@@ -350,6 +392,7 @@ var _ = Describe("S3 Backup", func() {
 						It("logs events with the data element including an identifier", func() {
 							By("Uploading the directory contents to the blobstore")
 							session, err := performBackupWithServiceIdentifier(
+								"",
 								awsAccessKeyID,
 								awsSecretAccessKey,
 								sourceFolder,
@@ -374,6 +417,9 @@ var _ = Describe("S3 Backup", func() {
 							Eventually(session.Out, awsTimeout).Should(gbytes.Say("ServiceBackup.WithIdentifier.Upload backup started"))
 							Eventually(session.Out, awsTimeout).Should(gbytes.Say(identifier))
 							Eventually(session.Out, awsTimeout).Should(gbytes.Say("ServiceBackup.WithIdentifier.about to upload"))
+							Consistently(session.Out, awsTimeout).ShouldNot(gbytes.Say(`"destination_name":`))
+							Eventually(session.Out, awsTimeout).Should(gbytes.Say(identifier))
+							Eventually(session.Out, awsTimeout).Should(gbytes.Say("ServiceBackup.WithIdentifier.s3 completed"))
 							Eventually(session.Out, awsTimeout).Should(gbytes.Say(identifier))
 							Eventually(session.Out, awsTimeout).Should(gbytes.Say("ServiceBackup.WithIdentifier.Upload backup completed successfully"))
 							Eventually(session.Out, awsTimeout).Should(gbytes.Say(identifier))
@@ -382,6 +428,48 @@ var _ = Describe("S3 Backup", func() {
 
 							session.Terminate().Wait()
 							Eventually(session).Should(gexec.Exit())
+						})
+
+						Context("and a destination name is provided", func() {
+							It("logs events with the service identifier and destination name", func() {
+								session, err := performBackupWithServiceIdentifier(
+									"bar",
+									awsAccessKeyID,
+									awsSecretAccessKey,
+									sourceFolder,
+									destBucket,
+									destPath,
+									endpointURL,
+									backupCreatorCmd,
+									cleanupCmd,
+									cronSchedule,
+									serviceIdentifierCmd,
+								)
+
+								identifier := `"identifier":"FakeIdentifier"`
+
+								Expect(err).ToNot(HaveOccurred())
+								Eventually(session.Out, awsTimeout).Should(gbytes.Say("ServiceBackup.WithIdentifier.Perform backup started"))
+								Eventually(session.Out, awsTimeout).Should(gbytes.Say(identifier))
+								Eventually(session.Out, awsTimeout).Should(gbytes.Say("ServiceBackup.WithIdentifier.Perform backup debug info"))
+								Eventually(session.Out, awsTimeout).Should(gbytes.Say(identifier))
+								Eventually(session.Out, awsTimeout).Should(gbytes.Say("ServiceBackup.WithIdentifier.Perform backup completed successfully"))
+								Eventually(session.Out, awsTimeout).Should(gbytes.Say(identifier))
+								Eventually(session.Out, awsTimeout).Should(gbytes.Say("ServiceBackup.WithIdentifier.Upload backup started"))
+								Eventually(session.Out, awsTimeout).Should(gbytes.Say(identifier))
+								Eventually(session.Out, awsTimeout).Should(gbytes.Say("ServiceBackup.WithIdentifier.about to upload"))
+								Eventually(session.Out, awsTimeout).Should(gbytes.Say(`"destination_name":"bar"`))
+								Eventually(session.Out, awsTimeout).Should(gbytes.Say(identifier))
+								Eventually(session.Out, awsTimeout).Should(gbytes.Say("ServiceBackup.WithIdentifier.s3 completed"))
+								Eventually(session.Out, awsTimeout).Should(gbytes.Say(identifier))
+								Eventually(session.Out, awsTimeout).Should(gbytes.Say("ServiceBackup.WithIdentifier.Upload backup completed successfully"))
+								Eventually(session.Out, awsTimeout).Should(gbytes.Say(identifier))
+								Eventually(session.Out, awsTimeout).Should(gbytes.Say("ServiceBackup.WithIdentifier.Cleanup completed"))
+								Eventually(session.Out, awsTimeout).Should(gbytes.Say(identifier))
+
+								session.Terminate().Wait()
+								Eventually(session).Should(gexec.Exit())
+							})
 						})
 					})
 				})
@@ -625,6 +713,27 @@ var _ = Describe("S3 Backup", func() {
 					)
 					Expect(err).ToNot(HaveOccurred())
 					Eventually(session.Out, awsTimeout).Should(gbytes.Say("Cleanup command not provided"))
+					session.Terminate().Wait()
+					Eventually(session).Should(gexec.Exit())
+				})
+			})
+
+			Context("when destination name is provided", func() {
+				It("logs and exits without error", func() {
+					session, err := performBackupWithName(
+						"foo",
+						awsAccessKeyID,
+						awsSecretAccessKey,
+						sourceFolder,
+						destBucket,
+						destPath,
+						endpointURL,
+						backupCreatorCmd,
+						"ls",
+						cronSchedule,
+					)
+					Expect(err).ToNot(HaveOccurred())
+					Eventually(session.Out, awsTimeout).Should(gbytes.Say(`"destination_name":"foo"`))
 					session.Terminate().Wait()
 					Eventually(session).Should(gexec.Exit())
 				})

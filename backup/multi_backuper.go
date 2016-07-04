@@ -7,12 +7,16 @@ import (
 	"github.com/pivotal-golang/lager"
 )
 
-type MultiBackuper []Backuper
+type Uploader []Backuper
 
-func (m MultiBackuper) Upload(localPath string, logger lager.Logger) error {
+func (m Uploader) Upload(localPath string, logger lager.Logger) error {
 	var errors []error
 	for _, b := range m {
-		err := b.Upload(localPath, logger)
+		sessionLogger := logger
+		if b.Name() != "" {
+			sessionLogger = logger.WithData(lager.Data{"destination_name": b.Name()})
+		}
+		err := b.Upload(localPath, sessionLogger)
 		if err != nil {
 			errors = append(errors, err)
 		}

@@ -26,11 +26,12 @@ type Executor interface {
 //go:generate counterfeiter -o backupfakes/fake_backuper.go . Backuper
 type Backuper interface {
 	Upload(localPath string, sessionLogger lager.Logger) error
+	Name() string
 }
 
 type backup struct {
 	sync.Mutex
-	backuper               Backuper
+	uploader               Uploader
 	sourceFolder           string
 	backupCreatorCmd       string
 	cleanupCmd             string
@@ -45,7 +46,7 @@ type backup struct {
 
 //NewExecutor ...
 func NewExecutor(
-	backuper Backuper,
+	uploader Uploader,
 	sourceFolder,
 	backupCreatorCmd,
 	cleanupCmd,
@@ -56,7 +57,7 @@ func NewExecutor(
 	calculator SizeCalculator,
 ) Executor {
 	return &backup{
-		backuper:               backuper,
+		uploader:               uploader,
 		sourceFolder:           sourceFolder,
 		backupCreatorCmd:       backupCreatorCmd,
 		cleanupCmd:             cleanupCmd,
@@ -183,7 +184,7 @@ func (b *backup) uploadBackup() error {
 	b.sessionLogger.Info("Upload backup started")
 
 	startTime := time.Now()
-	err := b.backuper.Upload(b.sourceFolder, b.sessionLogger)
+	err := b.uploader.Upload(b.sourceFolder, b.sessionLogger)
 	duration := time.Since(startTime)
 
 	if err != nil {

@@ -19,6 +19,7 @@ var _ = Describe("Executor", func() {
 		providerFactory *backupfakes.FakeProviderFactory
 		execCmd         *exec.Cmd
 		executor        Executor
+		uploader        Uploader
 		backuper        *backupfakes.FakeBackuper
 		logger          lager.Logger
 		log             *gbytes.Buffer
@@ -31,6 +32,7 @@ var _ = Describe("Executor", func() {
 		logger.RegisterSink(lager.NewWriterSink(log, lager.DEBUG))
 
 		backuper = new(backupfakes.FakeBackuper)
+		uploader = Uploader{backuper}
 		calculator = new(backupfakes.FakeSizeCalculator)
 		calculator.DirSizeReturns(200, nil)
 	})
@@ -56,7 +58,7 @@ var _ = Describe("Executor", func() {
 		Describe("performIdentifyService", func() {
 			JustBeforeEach(func() {
 				executor = NewExecutor(
-					backuper,
+					uploader,
 					"source-folder",
 					assetPath("fake-snapshotter"),
 					assetPath("fake-cleanup"),
@@ -170,7 +172,7 @@ var _ = Describe("Executor", func() {
 				JustBeforeEach(func() {
 					exitIfBackupAlreadyInProgress := false
 					executor = NewExecutor(
-						backuper,
+						uploader,
 						"source-folder",
 						assetPath("fake-snapshotter"),
 						assetPath("fake-cleanup"),
@@ -201,7 +203,7 @@ var _ = Describe("Executor", func() {
 				JustBeforeEach(func() {
 					exitIfBackupInProgress = true
 					executor = NewExecutor(
-						backuper,
+						uploader,
 						"source-folder",
 						assetPath("fake-snapshotter"),
 						assetPath("fake-cleanup"),

@@ -45,7 +45,7 @@ func Parse(osArgs []string) (backup.Executor, string, lager.Logger) {
 		logger.Fatal("Invalid boolean value for exit_if_in_progress. Please set to true or false.", err)
 	}
 
-	backupers := backup.MultiBackuper{}
+	uploader := backup.Uploader{}
 	var basePath string
 
 	if len(backupConfig.Destinations) == 0 {
@@ -64,7 +64,8 @@ func Parse(osArgs []string) (backup.Executor, string, lager.Logger) {
 		switch destination.DestType {
 		case "s3":
 			basePath = fmt.Sprintf("%s/%s", destinationConfig["bucket_name"], destinationConfig["bucket_path"])
-			backupers = append(backupers, s3.New(
+			uploader = append(uploader, s3.New(
+				destination.Name,
 				backupConfig.AwsCliPath,
 				destinationConfig["endpoint_url"].(string),
 				destinationConfig["access_key_id"].(string),
@@ -73,10 +74,24 @@ func Parse(osArgs []string) (backup.Executor, string, lager.Logger) {
 			))
 		case "scp":
 			basePath = destinationConfig["destination"].(string)
-			backupers = append(backupers, scp.New(destinationConfig["server"].(string), destinationConfig["port"].(int), destinationConfig["user"].(string), destinationConfig["key"].(string), basePath, logger))
+			uploader = append(uploader, scp.New(
+				destination.Name,
+				destinationConfig["server"].(string),
+				destinationConfig["port"].(int),
+				destinationConfig["user"].(string),
+				destinationConfig["key"].(string),
+				basePath,
+				logger))
 		case "azure":
 			basePath = destinationConfig["path"].(string)
-			backupers = append(backupers, azure.New(destinationConfig["storage_access_key"].(string), destinationConfig["storage_account"].(string), destinationConfig["container"].(string), destinationConfig["blob_store_base_url"].(string), backupConfig.AzureCliPath, basePath))
+			uploader = append(uploader, azure.New(
+				destination.Name,
+				destinationConfig["storage_access_key"].(string),
+				destinationConfig["storage_account"].(string),
+				destinationConfig["container"].(string),
+				destinationConfig["blob_store_base_url"].(string),
+				backupConfig.AzureCliPath,
+				basePath))
 		default:
 			logger.Fatal(fmt.Sprintf("Unknown destination type: %s", destination.DestType), nil)
 		}
@@ -85,7 +100,7 @@ func Parse(osArgs []string) (backup.Executor, string, lager.Logger) {
 	var calculator = &backup.FileSystemSizeCalculator{}
 
 	executor := backup.NewExecutor(
-		backupers,
+		uploader,
 		backupConfig.SourceFolder,
 		backupConfig.SourceExecutable,
 		backupConfig.CleanupExecutable,
@@ -103,6 +118,7 @@ var logger lager.Logger
 
 type destinationType struct {
 	DestType string `yaml:"type"`
+	Name     string `yaml:"name"`
 	Config   map[string]interface{}
 }
 

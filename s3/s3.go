@@ -11,6 +11,7 @@ import (
 )
 
 type S3CliClient struct {
+	name        string
 	awsCmdPath  string
 	accessKey   string
 	secretKey   string
@@ -18,8 +19,9 @@ type S3CliClient struct {
 	basePath    string
 }
 
-func New(awsCmdPath, endpointURL, accessKey, secretKey, basePath string) *S3CliClient {
+func New(name, awsCmdPath, endpointURL, accessKey, secretKey, basePath string) *S3CliClient {
 	return &S3CliClient{
+		name:        name,
 		awsCmdPath:  awsCmdPath,
 		endpointURL: endpointURL,
 		accessKey:   accessKey,
@@ -122,4 +124,8 @@ func (c *S3CliClient) RunCommand(cmd *exec.Cmd, stepName string) error {
 		return fmt.Errorf("error in %s: %s, output: %s", stepName, err, string(out))
 	}
 	return nil
+}
+
+func (c *S3CliClient) Name() string {
+	return c.name
 }

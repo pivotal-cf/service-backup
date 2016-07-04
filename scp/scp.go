@@ -12,6 +12,7 @@ import (
 )
 
 type SCPClient struct {
+	name       string
 	host       string
 	port       int
 	username   string
@@ -19,8 +20,9 @@ type SCPClient struct {
 	basePath   string
 }
 
-func New(host string, port int, username, privateKeyPath, basePath string, logger lager.Logger) *SCPClient {
+func New(name, host string, port int, username, privateKeyPath, basePath string, logger lager.Logger) *SCPClient {
 	return &SCPClient{
+		name:       name,
 		host:       host,
 		port:       port,
 		username:   username,
@@ -104,4 +106,8 @@ func (client *SCPClient) ensureRemoteDirectoryExists(remotePath, privateKeyFileN
 	}
 
 	return nil
+}
+
+func (c *SCPClient) Name() string {
+	return c.name
 }

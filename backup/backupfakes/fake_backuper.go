@@ -18,17 +18,14 @@ type FakeBackuper struct {
 	uploadReturns struct {
 		result1 error
 	}
-	SetLogSessionStub        func(sessionName, sessionIdentifier string)
-	setLogSessionMutex       sync.RWMutex
-	setLogSessionArgsForCall []struct {
-		sessionName       string
-		sessionIdentifier string
+	NameStub        func() string
+	nameMutex       sync.RWMutex
+	nameArgsForCall []struct{}
+	nameReturns     struct {
+		result1 string
 	}
-	CloseLogSessionStub        func()
-	closeLogSessionMutex       sync.RWMutex
-	closeLogSessionArgsForCall []struct{}
-	invocations                map[string][][]interface{}
-	invocationsMutex           sync.RWMutex
+	invocations      map[string][][]interface{}
+	invocationsMutex sync.RWMutex
 }
 
 func (fake *FakeBackuper) Upload(localPath string, sessionLogger lager.Logger) error {
@@ -65,45 +62,29 @@ func (fake *FakeBackuper) UploadReturns(result1 error) {
 	}{result1}
 }
 
-func (fake *FakeBackuper) SetLogSession(sessionName string, sessionIdentifier string) {
-	fake.setLogSessionMutex.Lock()
-	fake.setLogSessionArgsForCall = append(fake.setLogSessionArgsForCall, struct {
-		sessionName       string
-		sessionIdentifier string
-	}{sessionName, sessionIdentifier})
-	fake.recordInvocation("SetLogSession", []interface{}{sessionName, sessionIdentifier})
-	fake.setLogSessionMutex.Unlock()
-	if fake.SetLogSessionStub != nil {
-		fake.SetLogSessionStub(sessionName, sessionIdentifier)
+func (fake *FakeBackuper) Name() string {
+	fake.nameMutex.Lock()
+	fake.nameArgsForCall = append(fake.nameArgsForCall, struct{}{})
+	fake.recordInvocation("Name", []interface{}{})
+	fake.nameMutex.Unlock()
+	if fake.NameStub != nil {
+		return fake.NameStub()
+	} else {
+		return fake.nameReturns.result1
 	}
 }
 
-func (fake *FakeBackuper) SetLogSessionCallCount() int {
-	fake.setLogSessionMutex.RLock()
-	defer fake.setLogSessionMutex.RUnlock()
-	return len(fake.setLogSessionArgsForCall)
+func (fake *FakeBackuper) NameCallCount() int {
+	fake.nameMutex.RLock()
+	defer fake.nameMutex.RUnlock()
+	return len(fake.nameArgsForCall)
 }
 
-func (fake *FakeBackuper) SetLogSessionArgsForCall(i int) (string, string) {
-	fake.setLogSessionMutex.RLock()
-	defer fake.setLogSessionMutex.RUnlock()
-	return fake.setLogSessionArgsForCall[i].sessionName, fake.setLogSessionArgsForCall[i].sessionIdentifier
-}
-
-func (fake *FakeBackuper) CloseLogSession() {
-	fake.closeLogSessionMutex.Lock()
-	fake.closeLogSessionArgsForCall = append(fake.closeLogSessionArgsForCall, struct{}{})
-	fake.recordInvocation("CloseLogSession", []interface{}{})
-	fake.closeLogSessionMutex.Unlock()
-	if fake.CloseLogSessionStub != nil {
-		fake.CloseLogSessionStub()
-	}
-}
-
-func (fake *FakeBackuper) CloseLogSessionCallCount() int {
-	fake.closeLogSessionMutex.RLock()
-	defer fake.closeLogSessionMutex.RUnlock()
-	return len(fake.closeLogSessionArgsForCall)
+func (fake *FakeBackuper) NameReturns(result1 string) {
+	fake.NameStub = nil
+	fake.nameReturns = struct {
+		result1 string
+	}{result1}
 }
 
 func (fake *FakeBackuper) Invocations() map[string][][]interface{} {
@@ -111,10 +92,8 @@ func (fake *FakeBackuper) Invocations() map[string][][]interface{} {
 	defer fake.invocationsMutex.RUnlock()
 	fake.uploadMutex.RLock()
 	defer fake.uploadMutex.RUnlock()
-	fake.setLogSessionMutex.RLock()
-	defer fake.setLogSessionMutex.RUnlock()
-	fake.closeLogSessionMutex.RLock()
-	defer fake.closeLogSessionMutex.RUnlock()
+	fake.nameMutex.RLock()
+	defer fake.nameMutex.RUnlock()
 	return fake.invocations
 }
 

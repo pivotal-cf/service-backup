@@ -20,7 +20,7 @@ func New(endpointURL, accessKeyID, secretAccessKey, basePath string) *S3TestClie
 	cf_lager.AddFlags(flags)
 
 	return &S3TestClient{
-		S3CliClient: s3.New("aws", endpointURL, accessKeyID, secretAccessKey, basePath),
+		S3CliClient: s3.New("s3_test_client", "aws", endpointURL, accessKeyID, secretAccessKey, basePath),
 	}
 }
 
