@@ -6,10 +6,9 @@ import (
 	"os"
 	"strings"
 
-	"github.com/pivotal-cf-experimental/service-backup/s3"
-
 	"github.com/cloudfoundry-incubator/cf-lager"
 	. "github.com/onsi/gomega"
+	"github.com/pivotal-cf-experimental/service-backup/s3"
 )
 
 type S3TestClient struct {
@@ -19,10 +18,9 @@ type S3TestClient struct {
 func New(endpointURL, accessKeyID, secretAccessKey, basePath string) *S3TestClient {
 	flags := flag.NewFlagSet(os.Args[0], flag.ExitOnError)
 	cf_lager.AddFlags(flags)
-	logger, _ := cf_lager.New("s3-test-client")
 
 	return &S3TestClient{
-		S3CliClient: s3.New("aws", endpointURL, accessKeyID, secretAccessKey, basePath, logger),
+		S3CliClient: s3.New("aws", endpointURL, accessKeyID, secretAccessKey, basePath),
 	}
 }
 

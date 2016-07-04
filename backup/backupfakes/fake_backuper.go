@@ -5,13 +5,15 @@ import (
 	"sync"
 
 	"github.com/pivotal-cf-experimental/service-backup/backup"
+	"github.com/pivotal-golang/lager"
 )
 
 type FakeBackuper struct {
-	UploadStub        func(localPath string) error
+	UploadStub        func(localPath string, sessionLogger lager.Logger) error
 	uploadMutex       sync.RWMutex
 	uploadArgsForCall []struct {
-		localPath string
+		localPath     string
+		sessionLogger lager.Logger
 	}
 	uploadReturns struct {
 		result1 error
@@ -29,15 +31,16 @@ type FakeBackuper struct {
 	invocationsMutex           sync.RWMutex
 }
 
-func (fake *FakeBackuper) Upload(localPath string) error {
+func (fake *FakeBackuper) Upload(localPath string, sessionLogger lager.Logger) error {
 	fake.uploadMutex.Lock()
 	fake.uploadArgsForCall = append(fake.uploadArgsForCall, struct {
-		localPath string
-	}{localPath})
-	fake.recordInvocation("Upload", []interface{}{localPath})
+		localPath     string
+		sessionLogger lager.Logger
+	}{localPath, sessionLogger})
+	fake.recordInvocation("Upload", []interface{}{localPath, sessionLogger})
 	fake.uploadMutex.Unlock()
 	if fake.UploadStub != nil {
-		return fake.UploadStub(localPath)
+		return fake.UploadStub(localPath, sessionLogger)
 	} else {
 		return fake.uploadReturns.result1
 	}
@@ -49,10 +52,10 @@ func (fake *FakeBackuper) UploadCallCount() int {
 	return len(fake.uploadArgsForCall)
 }
 
-func (fake *FakeBackuper) UploadArgsForCall(i int) string {
+func (fake *FakeBackuper) UploadArgsForCall(i int) (string, lager.Logger) {
 	fake.uploadMutex.RLock()
 	defer fake.uploadMutex.RUnlock()
-	return fake.uploadArgsForCall[i].localPath
+	return fake.uploadArgsForCall[i].localPath, fake.uploadArgsForCall[i].sessionLogger
 }
 
 func (fake *FakeBackuper) UploadReturns(result1 error) {

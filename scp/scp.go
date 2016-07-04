@@ -12,24 +12,20 @@ import (
 )
 
 type SCPClient struct {
-	host          string
-	port          int
-	username      string
-	privateKey    string
-	basePath      string
-	logger        lager.Logger
-	sessionLogger lager.Logger
+	host       string
+	port       int
+	username   string
+	privateKey string
+	basePath   string
 }
 
 func New(host string, port int, username, privateKeyPath, basePath string, logger lager.Logger) *SCPClient {
 	return &SCPClient{
-		host:          host,
-		port:          port,
-		username:      username,
-		privateKey:    privateKeyPath,
-		basePath:      basePath,
-		logger:        logger,
-		sessionLogger: logger,
+		host:       host,
+		port:       port,
+		username:   username,
+		privateKey: privateKeyPath,
+		basePath:   basePath,
 	}
 }
 
@@ -44,12 +40,12 @@ func (client *SCPClient) generateBackupKey() (string, error) {
 	return privateKeyFile.Name(), nil
 }
 
-func (client *SCPClient) generateKnownHosts() (string, error) {
+func (client *SCPClient) generateKnownHosts(sessionLogger lager.Logger) (string, error) {
 	cmd := exec.Command("ssh-keyscan", "-p", strconv.Itoa(client.port), client.host)
 	sshKeyscanOutput, err := cmd.CombinedOutput()
 	if err != nil {
 		wrappedErr := fmt.Errorf("error performing ssh-keyscan: '%s', output: '%s'", err, sshKeyscanOutput)
-		client.sessionLogger.Error("scp", wrappedErr)
+		sessionLogger.Error("scp", wrappedErr)
 		return "", wrappedErr
 	}
 	knownHostsFile, err := ioutil.TempFile("", "known_hosts")
@@ -61,13 +57,13 @@ func (client *SCPClient) generateKnownHosts() (string, error) {
 	return knownHostsFile.Name(), nil
 }
 
-func (client *SCPClient) Upload(localPath string) error {
+func (client *SCPClient) Upload(localPath string, sessionLogger lager.Logger) error {
 	privateKeyFileName, err := client.generateBackupKey()
 	if err != nil {
 		return err
 	}
 
-	knownHostsFileName, err := client.generateKnownHosts()
+	knownHostsFileName, err := client.generateKnownHosts(sessionLogger)
 	if err != nil {
 		return err
 	}
@@ -77,7 +73,7 @@ func (client *SCPClient) Upload(localPath string) error {
 	remotePathGenerator := backup.RemotePathGenerator{}
 	remotePath := remotePathGenerator.RemotePathWithDate(client.basePath)
 
-	if err := client.ensureRemoteDirectoryExists(remotePath, privateKeyFileName, knownHostsFileName); err != nil {
+	if err := client.ensureRemoteDirectoryExists(remotePath, privateKeyFileName, knownHostsFileName, sessionLogger); err != nil {
 		return err
 	}
 
@@ -88,37 +84,24 @@ func (client *SCPClient) Upload(localPath string) error {
 	scpCommandOutput, err := cmd.CombinedOutput()
 	if err != nil {
 		wrappedErr := fmt.Errorf("error performing SCP: '%s', output: '%s'", err, scpCommandOutput)
-		client.sessionLogger.Error("scp", wrappedErr)
+		sessionLogger.Error("scp", wrappedErr)
 		return wrappedErr
 	}
 
-	client.sessionLogger.Info("scp completed")
+	sessionLogger.Info("scp completed")
 	return nil
 }
 
-func (client *SCPClient) ensureRemoteDirectoryExists(remotePath, privateKeyFileName, knownHostsFileName string) error {
+func (client *SCPClient) ensureRemoteDirectoryExists(remotePath, privateKeyFileName, knownHostsFileName string, sessionLogger lager.Logger) error {
 	cmd := exec.Command("ssh", "-i", privateKeyFileName, "-oUserKnownHostsFile="+knownHostsFileName, "-p", fmt.Sprintf("%d", client.port),
 		fmt.Sprintf("%s@%s", client.username, client.host),
 		fmt.Sprintf("mkdir -p %s", remotePath))
 	output, err := cmd.CombinedOutput()
 	if err != nil {
 		wrappedErr := fmt.Errorf("error checking if remote path exists: '%s', output: '%s'", err, output)
-		client.sessionLogger.Error("ssh", wrappedErr)
+		sessionLogger.Error("ssh", wrappedErr)
 		return wrappedErr
 	}
 
 	return nil
-}
-
-//SetLogSession adds an identifier to all log messages for the duration of the session
-func (client *SCPClient) SetLogSession(sessionName, sessionIdentifier string) {
-	client.sessionLogger = client.logger.Session(
-		sessionName,
-		lager.Data{"identifier": sessionIdentifier},
-	)
-}
-
-//CloseLogSession removes any previously added identifier from future log messages
-func (client *SCPClient) CloseLogSession() {
-	client.sessionLogger = client.logger
 }

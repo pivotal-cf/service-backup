@@ -70,14 +70,13 @@ func Parse(osArgs []string) (backup.Executor, string, lager.Logger) {
 				destinationConfig["access_key_id"].(string),
 				destinationConfig["secret_access_key"].(string),
 				basePath,
-				logger,
 			))
 		case "scp":
 			basePath = destinationConfig["destination"].(string)
 			backupers = append(backupers, scp.New(destinationConfig["server"].(string), destinationConfig["port"].(int), destinationConfig["user"].(string), destinationConfig["key"].(string), basePath, logger))
 		case "azure":
 			basePath = destinationConfig["path"].(string)
-			backupers = append(backupers, azure.New(destinationConfig["storage_access_key"].(string), destinationConfig["storage_account"].(string), destinationConfig["container"].(string), destinationConfig["blob_store_base_url"].(string), backupConfig.AzureCliPath, basePath, logger))
+			backupers = append(backupers, azure.New(destinationConfig["storage_access_key"].(string), destinationConfig["storage_account"].(string), destinationConfig["container"].(string), destinationConfig["blob_store_base_url"].(string), backupConfig.AzureCliPath, basePath))
 		default:
 			logger.Fatal(fmt.Sprintf("Unknown destination type: %s", destination.DestType), nil)
 		}

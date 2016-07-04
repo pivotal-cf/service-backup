@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/pivotal-cf-experimental/service-backup/s3testclient"
+	"github.com/pivotal-golang/lager"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -84,9 +85,10 @@ func beforeSuiteFirstNode() []byte {
 	data, err := json.Marshal(c)
 	Expect(err).ToNot(HaveOccurred())
 
+	logger := lager.NewLogger("before-suite")
 	s3TestClient = s3testclient.New("", awsAccessKeyID, awsSecretAccessKey, existingBucketInDefaultRegion)
-	Expect(s3TestClient.CreateRemotePathIfNeeded(existingBucketInDefaultRegion)).To(Succeed())
-	Expect(s3TestClient.CreateRemotePathIfNeeded(existingBucketInNonDefaultRegion)).To(Succeed())
+	Expect(s3TestClient.CreateRemotePathIfNeeded(existingBucketInDefaultRegion, logger)).To(Succeed())
+	Expect(s3TestClient.CreateRemotePathIfNeeded(existingBucketInNonDefaultRegion, logger)).To(Succeed())
 
 	return data
 }

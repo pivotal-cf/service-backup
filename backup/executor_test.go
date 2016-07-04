@@ -223,7 +223,7 @@ var _ = Describe("Executor", func() {
 						firstBackupCompleted.Add(1)
 					})
 					JustBeforeEach(func() {
-						backuper.UploadStub = func(localPath string) error {
+						backuper.UploadStub = func(localPath string, _ lager.Logger) error {
 							blockUpload.Wait()
 							return nil
 						}

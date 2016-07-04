@@ -25,9 +25,7 @@ type Executor interface {
 
 //go:generate counterfeiter -o backupfakes/fake_backuper.go . Backuper
 type Backuper interface {
-	Upload(localPath string) error
-	SetLogSession(sessionName, sessionIdentifier string)
-	CloseLogSession()
+	Upload(localPath string, sessionLogger lager.Logger) error
 }
 
 type backup struct {
@@ -112,7 +110,6 @@ func (b *backup) RunOnce() error {
 	b.performCleanup()
 
 	b.sessionLogger = b.logger
-	b.backuper.CloseLogSession()
 
 	return nil
 }
@@ -141,7 +138,6 @@ func (b *backup) identifyService() {
 		sessionName,
 		lager.Data{"identifier": sessionIdentifier},
 	)
-	b.backuper.SetLogSession(sessionName, sessionIdentifier)
 }
 
 func (b *backup) performBackup() error {
@@ -187,7 +183,7 @@ func (b *backup) uploadBackup() error {
 	b.sessionLogger.Info("Upload backup started")
 
 	startTime := time.Now()
-	err := b.backuper.Upload(b.sourceFolder)
+	err := b.backuper.Upload(b.sourceFolder, b.sessionLogger)
 	duration := time.Since(startTime)
 
 	if err != nil {

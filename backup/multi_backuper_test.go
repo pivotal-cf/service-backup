@@ -7,6 +7,7 @@ import (
 	. "github.com/onsi/gomega"
 	"github.com/pivotal-cf-experimental/service-backup/backup"
 	"github.com/pivotal-cf-experimental/service-backup/backup/backupfakes"
+	"github.com/pivotal-golang/lager"
 )
 
 var _ = Describe("MultiBackuper", func() {
@@ -16,6 +17,7 @@ var _ = Describe("MultiBackuper", func() {
 			backuperA     *backupfakes.FakeBackuper
 			backuperB     *backupfakes.FakeBackuper
 			multibackuper backup.MultiBackuper
+			logger        lager.Logger
 			uploadErr     error
 		)
 
@@ -26,7 +28,8 @@ var _ = Describe("MultiBackuper", func() {
 		})
 
 		JustBeforeEach(func() {
-			uploadErr = multibackuper.Upload(localPath)
+			logger = lager.NewLogger("multi-logger")
+			uploadErr = multibackuper.Upload(localPath, logger)
 		})
 
 		Context("when all uploads succeed", func() {
@@ -34,12 +37,14 @@ var _ = Describe("MultiBackuper", func() {
 				Expect(uploadErr).NotTo(HaveOccurred())
 
 				Expect(backuperA.UploadCallCount()).To(Equal(1))
-				actualLocalPath := backuperA.UploadArgsForCall(0)
+				actualLocalPath, loggerForA := backuperA.UploadArgsForCall(0)
 				Expect(actualLocalPath).To(Equal(localPath))
+				Expect(loggerForA).To(Equal(logger))
 
 				Expect(backuperB.UploadCallCount()).To(Equal(1))
-				actualLocalPath = backuperB.UploadArgsForCall(0)
+				actualLocalPath, loggerForB := backuperB.UploadArgsForCall(0)
 				Expect(actualLocalPath).To(Equal(localPath))
+				Expect(loggerForB).To(Equal(logger))
 			})
 		})
 
@@ -73,42 +78,6 @@ var _ = Describe("MultiBackuper", func() {
 				Expect(backuperA.UploadCallCount()).To(Equal(1))
 				Expect(backuperB.UploadCallCount()).To(Equal(1))
 			})
-		})
-	})
-
-	Context("SetLogSession", func() {
-		It("calls SetLogSession on each backuper", func() {
-			logSessionName := "session-name"
-			logSessionID := "session-id"
-
-			backuperA := new(backupfakes.FakeBackuper)
-			backuperB := new(backupfakes.FakeBackuper)
-			multibackuper := backup.MultiBackuper{backuperA, backuperB}
-
-			multibackuper.SetLogSession(logSessionName, logSessionID)
-
-			Expect(backuperA.SetLogSessionCallCount()).To(Equal(1))
-			actualSessionName, actualSessionID := backuperA.SetLogSessionArgsForCall(0)
-			Expect(actualSessionName).To(Equal(logSessionName))
-			Expect(actualSessionID).To(Equal(logSessionID))
-
-			Expect(backuperB.SetLogSessionCallCount()).To(Equal(1))
-			actualSessionName, actualSessionID = backuperB.SetLogSessionArgsForCall(0)
-			Expect(actualSessionName).To(Equal(logSessionName))
-			Expect(actualSessionID).To(Equal(logSessionID))
-		})
-	})
-
-	Context("CloseLogSession", func() {
-		It("calls CloseLogSession on each backuper", func() {
-			backuperA := new(backupfakes.FakeBackuper)
-			backuperB := new(backupfakes.FakeBackuper)
-			multibackuper := backup.MultiBackuper{backuperA, backuperB}
-
-			multibackuper.CloseLogSession()
-
-			Expect(backuperA.CloseLogSessionCallCount()).To(Equal(1))
-			Expect(backuperB.CloseLogSessionCallCount()).To(Equal(1))
 		})
 	})
 })

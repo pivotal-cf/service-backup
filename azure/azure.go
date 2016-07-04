@@ -17,30 +17,26 @@ type AzureClient struct {
 	blobStoreBaseUrl string
 	azureCmd         string
 	basePath         string
-	logger           lager.Logger
-	sessionLogger    lager.Logger
 }
 
-func New(accountKey, accountName, container, blobStoreBaseUrl, azureCmd, basePath string, logger lager.Logger) *AzureClient {
+func New(accountKey, accountName, container, blobStoreBaseUrl, azureCmd, basePath string) *AzureClient {
 	return &AzureClient{
 		accountKey:       accountKey,
 		accountName:      accountName,
 		container:        container,
 		blobStoreBaseUrl: blobStoreBaseUrl,
 		basePath:         basePath,
-		logger:           logger,
-		sessionLogger:    logger,
 		azureCmd:         azureCmd,
 	}
 }
 
-func (a *AzureClient) Upload(localPath string) error {
+func (a *AzureClient) Upload(localPath string, sessionLogger lager.Logger) error {
 	remotePathGenerator := backup.RemotePathGenerator{}
 	remotePath := remotePathGenerator.RemotePathWithDate(a.basePath)
 
-	a.sessionLogger.Info("Uploading azure blobs", lager.Data{"container": a.container, "localPath": localPath, "remotePath": remotePath})
-	a.sessionLogger.Info("The container and remote path will be created if they don't already exist", lager.Data{"container": a.container, "remotePath": remotePath})
-	a.sessionLogger.Info(fmt.Sprintf("about to upload %s to Azure remote path %s", localPath, remotePath))
+	sessionLogger.Info("Uploading azure blobs", lager.Data{"container": a.container, "localPath": localPath, "remotePath": remotePath})
+	sessionLogger.Info("The container and remote path will be created if they don't already exist", lager.Data{"container": a.container, "remotePath": remotePath})
+	sessionLogger.Info(fmt.Sprintf("about to upload %s to Azure remote path %s", localPath, remotePath))
 	return a.uploadDirectory(localPath, remotePath)
 }
 
@@ -77,17 +73,4 @@ func (a *AzureClient) uploadFile(localFilePath, remoteFilePath string, length ui
 	defer file.Close()
 
 	return exec.Command(a.azureCmd, fmt.Sprintf("--storageaccountkey=%s", a.accountKey), fmt.Sprintf("--remoteresource=%s", remoteFilePath), a.accountName, a.container, localFilePath).Run()
-}
-
-//SetLogSession adds an identifier to all log messages for the duration of the session
-func (a *AzureClient) SetLogSession(sessionName, sessionIdentifier string) {
-	a.sessionLogger = a.logger.Session(
-		sessionName,
-		lager.Data{"identifier": sessionIdentifier},
-	)
-}
-
-//CloseLogSession removes any previously added identifier from future log messages
-func (a *AzureClient) CloseLogSession() {
-	a.sessionLogger = a.logger
 }
