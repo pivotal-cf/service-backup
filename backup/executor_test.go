@@ -55,6 +55,28 @@ var _ = Describe("Executor", func() {
 			providerFactory.ExecCommandReturns(execCmd)
 		})
 
+		Describe("backup_guid", func() {
+			JustBeforeEach(func() {
+				executor = NewExecutor(
+					uploader,
+					"source-folder",
+					assetPath("fake-snapshotter"),
+					assetPath("fake-cleanup"),
+					"",
+					exitIfBackupInProgress,
+					logger,
+					providerFactory.ExecCommand,
+					calculator,
+				)
+
+				runOnceErr = executor.RunOnce()
+			})
+
+			It("logs with a guid for the backup", func() {
+				Expect(log).To(gbytes.Say(`"backup_guid":`))
+			})
+		})
+
 		Describe("performIdentifyService", func() {
 			JustBeforeEach(func() {
 				executor = NewExecutor(
@@ -96,6 +118,7 @@ var _ = Describe("Executor", func() {
 
 					It("logs with the identifier for each event", func() {
 						Expect(log).To(gbytes.Say("Perform backup started"))
+						Expect(log).To(gbytes.Say(`"backup_guid":`))
 						Expect(log).To(gbytes.Say(`"identifier":"unit-identifier"`))
 						Expect(log).To(gbytes.Say("Perform backup debug info"))
 						Expect(log).To(gbytes.Say(`"identifier":"unit-identifier"`))

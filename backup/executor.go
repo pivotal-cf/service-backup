@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/pivotal-golang/lager"
+	"github.com/satori/go.uuid"
 )
 
 //go:generate counterfeiter -o backupfakes/fake_provider_factory.go . ProviderFactory
@@ -88,6 +89,9 @@ func (b *backup) doneBackup() {
 }
 
 func (b *backup) RunOnce() error {
+	b.sessionLogger = b.logger
+	b.sessionLogger = b.sessionLogger.WithData(lager.Data{"backup_guid": uuid.NewV4().String()})
+
 	if !b.backupCanBeStarted() {
 		err := errors.New("backup operation rejected")
 		b.sessionLogger.Error("Backup currently in progress, exiting. Another backup will not be able to start until this is completed.", err)
@@ -135,7 +139,7 @@ func (b *backup) identifyService() {
 	sessionName := "WithIdentifier"
 	sessionIdentifier := strings.TrimSpace(string(out))
 
-	b.sessionLogger = b.logger.Session(
+	b.sessionLogger = b.sessionLogger.Session(
 		sessionName,
 		lager.Data{"identifier": sessionIdentifier},
 	)
