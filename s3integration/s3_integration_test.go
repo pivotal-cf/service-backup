@@ -293,6 +293,12 @@ var _ = Describe("S3 Backup", func() {
 		destPath = destPathUUID.String()
 	})
 
+	AfterEach(func() {
+		if destBucket == existingBucketInDefaultRegion || destBucket == existingBucketInNonDefaultRegion {
+			Expect(s3TestClient.DeleteRemotePath(destBucket, pathWithDate(destPath))).To(Succeed())
+		}
+	})
+
 	Context("when credentials are provided", func() {
 		var (
 			sourceFolder    string
@@ -331,9 +337,6 @@ var _ = Describe("S3 Backup", func() {
 		Context("when all required inputs are valid", func() {
 
 			Context("when the bucket already exists in the default region", func() {
-				AfterEach(func() {
-					Expect(s3TestClient.DeleteRemotePath(destBucket, pathWithDate(destPath))).To(Succeed())
-				})
 
 				Context("using cron scheduled backup", func() {
 
@@ -543,10 +546,6 @@ var _ = Describe("S3 Backup", func() {
 					By("Not specifing a endpoint url")
 					endpointURL = ""
 					destBucket = existingBucketInNonDefaultRegion
-				})
-
-				AfterEach(func() {
-					Expect(s3TestClient.DeleteRemotePath(destBucket, pathWithDate(destPath))).To(Succeed())
 				})
 
 				Context("using cron scheduled backup", func() {
@@ -958,10 +957,6 @@ var _ = Describe("S3 Backup", func() {
 			exitIfInProgress := true
 
 			Context("when a backup is in progress", func() {
-				AfterEach(func() {
-					Expect(s3TestClient.DeleteRemotePath(destBucket, pathWithDate(destPath))).To(Succeed())
-				})
-
 				It("accepts the first, rejects subsequent backup requests", func() {
 					sessionForBackupThatGoesThrough, err1 := performBackupIfNotInProgress(
 						awsAccessKeyID,
@@ -1010,10 +1005,6 @@ var _ = Describe("S3 Backup", func() {
 			exitIfInProgress := false
 
 			Context("when a backup is in progress", func() {
-				AfterEach(func() {
-					Expect(s3TestClient.DeleteRemotePath(destBucket, pathWithDate(destPath))).To(Succeed())
-				})
-
 				It("successfully completes new backup requests", func() {
 					firstBackupRequest, err := performBackupIfNotInProgress(
 						awsAccessKeyID,

@@ -72,8 +72,11 @@ func (c *S3TestClient) DeleteRemotePath(bucketName, remotePath string) error {
 }
 
 func (c *S3TestClient) DeleteBucket(bucketName string) {
+	err := c.DeleteRemotePath(bucketName, "")
+	Expect(err).ToNot(HaveOccurred())
+
 	cmd := c.S3Cmd("rb", "--force", fmt.Sprintf("s3://%s", bucketName))
 
-	err := c.RunCommand(cmd, "delete bucket")
+	err = c.RunCommand(cmd, "delete bucket")
 	Expect(err).ToNot(HaveOccurred())
 }
