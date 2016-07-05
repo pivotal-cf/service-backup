@@ -40,7 +40,6 @@ type backup struct {
 	exitIfBackupInProgress bool
 	backupInProgress       bool
 	logger                 lager.Logger
-	sessionLogger          lager.Logger
 	execCommand            ExecCommand
 	calculator             SizeCalculator
 }
@@ -66,7 +65,6 @@ func NewExecutor(
 		exitIfBackupInProgress: exitIfInProgress,
 		backupInProgress:       false,
 		logger:                 logger,
-		sessionLogger:          logger,
 		execCommand:            execCommand,
 		calculator:             calculator,
 	}
@@ -89,115 +87,114 @@ func (b *backup) doneBackup() {
 }
 
 func (b *backup) RunOnce() error {
-	b.sessionLogger = b.logger
-	b.sessionLogger = b.sessionLogger.WithData(lager.Data{"backup_guid": uuid.NewV4().String()})
+	sessionLogger := b.logger.WithData(lager.Data{"backup_guid": uuid.NewV4().String()})
 
 	if !b.backupCanBeStarted() {
 		err := errors.New("backup operation rejected")
-		b.sessionLogger.Error("Backup currently in progress, exiting. Another backup will not be able to start until this is completed.", err)
+		sessionLogger.Error("Backup currently in progress, exiting. Another backup will not be able to start until this is completed.", err)
 		return err
 	}
 	defer b.doneBackup()
 
 	if b.serviceIdentifierCmd != "" {
-		b.identifyService()
+		sessionLogger = b.identifyService(sessionLogger)
 	}
 
-	if err := b.performBackup(); err != nil {
+	if err := b.performBackup(sessionLogger); err != nil {
 		return err
 	}
 
-	if err := b.uploadBackup(); err != nil {
+	if err := b.uploadBackup(sessionLogger); err != nil {
 		return err
 	}
 
 	// Do not return error if cleanup command failed.
-	b.performCleanup()
+	b.performCleanup(sessionLogger)
 
-	b.sessionLogger = b.logger
+	sessionLogger = b.logger
 
 	return nil
 }
 
-func (b *backup) identifyService() {
+func (b *backup) identifyService(sessionLogger lager.Logger) lager.Logger {
 	args := strings.Split(b.serviceIdentifierCmd, " ")
 
 	_, err := os.Stat(args[0])
 	if err != nil {
-		b.sessionLogger.Error("Service identifier command not found", err)
-		return
+		sessionLogger.Error("Service identifier command not found", err)
+		return sessionLogger
 	}
 
 	cmd := b.execCommand(args[0], args[1:]...)
 	out, err := cmd.CombinedOutput()
 
 	if err != nil {
-		b.sessionLogger.Error("Service identifier command returned error", err)
-		return
+		sessionLogger.Error("Service identifier command returned error", err)
+		return sessionLogger
 	}
 
 	sessionName := "WithIdentifier"
 	sessionIdentifier := strings.TrimSpace(string(out))
 
-	b.sessionLogger = b.sessionLogger.Session(
+	return sessionLogger.Session(
 		sessionName,
 		lager.Data{"identifier": sessionIdentifier},
 	)
 }
 
-func (b *backup) performBackup() error {
-	b.sessionLogger.Info("Perform backup started")
+func (b *backup) performBackup(sessionLogger lager.Logger) error {
+	sessionLogger.Info("Perform backup started")
 	args := strings.Split(b.backupCreatorCmd, " ")
 	cmd := exec.Command(args[0], args[1:]...)
 
 	out, err := cmd.CombinedOutput()
-	b.sessionLogger.Debug("Perform backup debug info", lager.Data{"cmd": b.backupCreatorCmd, "out": string(out)})
+	sessionLogger.Debug("Perform backup debug info", lager.Data{"cmd": b.backupCreatorCmd, "out": string(out)})
 
 	if err != nil {
-		b.sessionLogger.Error("Perform backup completed with error", err)
+		sessionLogger.Error("Perform backup completed with error", err)
 		return err
 	}
 
-	b.sessionLogger.Info("Perform backup completed successfully")
+	sessionLogger.Info("Perform backup completed successfully")
 	return nil
 }
 
-func (b *backup) performCleanup() error {
+func (b *backup) performCleanup(sessionLogger lager.Logger) error {
 	if b.cleanupCmd == "" {
-		b.sessionLogger.Info("Cleanup command not provided")
+		sessionLogger.Info("Cleanup command not provided")
 		return nil
 	}
-	b.sessionLogger.Info("Cleanup started")
+	sessionLogger.Info("Cleanup started")
 
 	args := strings.Split(b.cleanupCmd, " ")
 	cmd := exec.Command(args[0], args[1:]...)
 
 	out, err := cmd.CombinedOutput()
-	b.sessionLogger.Debug("Cleanup debug info", lager.Data{"cmd": b.cleanupCmd, "out": string(out)})
+	sessionLogger.Debug("Cleanup debug info", lager.Data{"cmd": b.cleanupCmd, "out": string(out)})
 
 	if err != nil {
-		b.sessionLogger.Error("Cleanup completed with error", err)
+		sessionLogger.Error("Cleanup completed with error", err)
 		return err
 	}
 
-	b.sessionLogger.Info("Cleanup completed successfully")
+	sessionLogger.Info("Cleanup completed successfully")
 	return nil
 }
 
-func (b *backup) uploadBackup() error {
-	b.sessionLogger.Info("Upload backup started")
+func (b *backup) uploadBackup(sessionLogger lager.Logger) error {
+	sessionLogger.Info("Upload backup started")
 
 	startTime := time.Now()
-	err := b.uploader.Upload(b.sourceFolder, b.sessionLogger)
+	err := b.uploader.Upload(b.sourceFolder, sessionLogger)
 	duration := time.Since(startTime)
 
 	if err != nil {
-		b.sessionLogger.Error("Upload backup completed with error", err)
+		sessionLogger.Error("Upload backup completed with error", err)
 		return err
 	}
 
 	size, _ := b.calculator.DirSize(b.sourceFolder)
-	b.sessionLogger.Info("Upload backup completed successfully", lager.Data{
+	sessionLogger.Info("Upload backup completed successfully", lager.Data{
 		"duration_in_seconds": duration.Seconds(),
 		"size_in_bytes":       size,
 	})

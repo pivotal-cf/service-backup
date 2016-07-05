@@ -412,6 +412,7 @@ var _ = Describe("S3 Backup", func() {
 
 							Expect(err).ToNot(HaveOccurred())
 							Eventually(session.Out, awsTimeout).Should(gbytes.Say("ServiceBackup.WithIdentifier.Perform backup started"))
+							Eventually(session.Out, awsTimeout).Should(gbytes.Say(`"backup_guid":`))
 							Eventually(session.Out, awsTimeout).Should(gbytes.Say(identifier))
 							Eventually(session.Out, awsTimeout).Should(gbytes.Say("ServiceBackup.WithIdentifier.Perform backup debug info"))
 							Eventually(session.Out, awsTimeout).Should(gbytes.Say(identifier))
