@@ -55,6 +55,35 @@ var _ = Describe("Executor", func() {
 			providerFactory.ExecCommandReturns(execCmd)
 		})
 
+		Describe("source_executable not provided", func() {
+			JustBeforeEach(func() {
+				executor = NewExecutor(
+					uploader,
+					"source-folder",
+					"",
+					assetPath("fake-cleanup"),
+					"",
+					exitIfBackupInProgress,
+					logger,
+					providerFactory.ExecCommand,
+					calculator,
+				)
+
+				runOnceErr = executor.RunOnce()
+			})
+
+			It("should continue with upload", func() {
+				Expect(log).To(gbytes.Say("source_executable not provided, skipping performing of backup"))
+				Expect(log).To(gbytes.Say("Upload backup started"))
+				Expect(log).To(gbytes.Say("Upload backup completed successfully"))
+				Expect(log).To(gbytes.Say("Cleanup completed"))
+			})
+
+			It("does not return an error", func() {
+				Expect(runOnceErr).ToNot(HaveOccurred())
+			})
+		})
+
 		Describe("backup_guid", func() {
 			JustBeforeEach(func() {
 				executor = NewExecutor(

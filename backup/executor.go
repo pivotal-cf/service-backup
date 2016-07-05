@@ -143,6 +143,10 @@ func (b *backup) identifyService(sessionLogger lager.Logger) lager.Logger {
 }
 
 func (b *backup) performBackup(sessionLogger lager.Logger) error {
+	if b.backupCreatorCmd == "" {
+		sessionLogger.Info("source_executable not provided, skipping performing of backup")
+		return nil
+	}
 	sessionLogger.Info("Perform backup started")
 	args := strings.Split(b.backupCreatorCmd, " ")
 	cmd := exec.Command(args[0], args[1:]...)
