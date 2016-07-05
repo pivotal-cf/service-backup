@@ -53,6 +53,7 @@ destinations:
     server: localhost
     user: %s
     destination: %s
+    fingerprint: ""
     key: |
       %s
     port: 22
@@ -155,6 +156,7 @@ destinations:
     server: localhost
     user: %s
     destination: %s
+    fingerprint: ""
     key: |
       %s
     port: 22
@@ -163,6 +165,7 @@ destinations:
     server: localhost
     user: %s
     destination: %s
+    fingerprint: ""
     key: |
       %s
     port: 22
