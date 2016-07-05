@@ -81,7 +81,7 @@ func Parse(osArgs []string) (backup.Executor, string, lager.Logger) {
 				destinationConfig["user"].(string),
 				destinationConfig["key"].(string),
 				basePath,
-				logger))
+				destinationConfig["fingerprint"].(string)))
 		case "azure":
 			basePath = destinationConfig["path"].(string)
 			uploader = append(uploader, azure.New(

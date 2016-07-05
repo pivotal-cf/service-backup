@@ -12,22 +12,24 @@ import (
 )
 
 type SCPClient struct {
-	name       string
-	host       string
-	port       int
-	username   string
-	privateKey string
-	basePath   string
+	name        string
+	host        string
+	port        int
+	username    string
+	privateKey  string
+	basePath    string
+	fingerPrint string
 }
 
-func New(name, host string, port int, username, privateKeyPath, basePath string, logger lager.Logger) *SCPClient {
+func New(name, host string, port int, username, privateKeyPath, basePath, fingerPrint string) *SCPClient {
 	return &SCPClient{
-		name:       name,
-		host:       host,
-		port:       port,
-		username:   username,
-		privateKey: privateKeyPath,
-		basePath:   basePath,
+		name:        name,
+		host:        host,
+		port:        port,
+		username:    username,
+		privateKey:  privateKeyPath,
+		basePath:    basePath,
+		fingerPrint: fingerPrint,
 	}
 }
 
@@ -43,18 +45,26 @@ func (client *SCPClient) generateBackupKey() (string, error) {
 }
 
 func (client *SCPClient) generateKnownHosts(sessionLogger lager.Logger) (string, error) {
-	cmd := exec.Command("ssh-keyscan", "-p", strconv.Itoa(client.port), client.host)
-	sshKeyscanOutput, err := cmd.CombinedOutput()
-	if err != nil {
-		wrappedErr := fmt.Errorf("error performing ssh-keyscan: '%s', output: '%s'", err, sshKeyscanOutput)
-		sessionLogger.Error("scp", wrappedErr)
-		return "", wrappedErr
+	knownHostsContent := ""
+	if client.fingerPrint == "" {
+		sessionLogger.Info("Fingerprint not found, performing key-scan")
+		cmd := exec.Command("ssh-keyscan", "-p", strconv.Itoa(client.port), client.host)
+		sshKeyscanOutput, err := cmd.CombinedOutput()
+		if err != nil {
+			wrappedErr := fmt.Errorf("error performing ssh-keyscan: '%s', output: '%s'", err, sshKeyscanOutput)
+			sessionLogger.Error("scp", wrappedErr)
+			return "", wrappedErr
+		}
+		knownHostsContent = string(sshKeyscanOutput)
+	} else {
+		knownHostsContent = client.fingerPrint
 	}
+
 	knownHostsFile, err := ioutil.TempFile("", "known_hosts")
 	if err != nil {
 		return "", err
 	}
-	knownHostsFile.WriteString(string(sshKeyscanOutput))
+	knownHostsFile.WriteString(knownHostsContent)
 	knownHostsFile.Close()
 	return knownHostsFile.Name(), nil
 }
@@ -80,7 +90,7 @@ func (client *SCPClient) Upload(localPath string, sessionLogger lager.Logger) er
 	}
 
 	scpDest := fmt.Sprintf("%s@%s:%s", client.username, client.host, remotePath)
-	cmd := exec.Command("scp", "-i", privateKeyFileName, "-oUserKnownHostsFile="+knownHostsFileName, "-P", strconv.Itoa(client.port), "-r", ".", scpDest)
+	cmd := exec.Command("scp", "-oStrictHostKeyChecking=yes", "-i", privateKeyFileName, "-oUserKnownHostsFile="+knownHostsFileName, "-P", strconv.Itoa(client.port), "-r", ".", scpDest)
 
 	cmd.Dir = localPath
 	scpCommandOutput, err := cmd.CombinedOutput()
@@ -95,7 +105,7 @@ func (client *SCPClient) Upload(localPath string, sessionLogger lager.Logger) er
 }
 
 func (client *SCPClient) ensureRemoteDirectoryExists(remotePath, privateKeyFileName, knownHostsFileName string, sessionLogger lager.Logger) error {
-	cmd := exec.Command("ssh", "-i", privateKeyFileName, "-oUserKnownHostsFile="+knownHostsFileName, "-p", fmt.Sprintf("%d", client.port),
+	cmd := exec.Command("ssh", "-oStrictHostKeyChecking=yes", "-i", privateKeyFileName, "-oUserKnownHostsFile="+knownHostsFileName, "-p", fmt.Sprintf("%d", client.port),
 		fmt.Sprintf("%s@%s", client.username, client.host),
 		fmt.Sprintf("mkdir -p %s", remotePath))
 	output, err := cmd.CombinedOutput()

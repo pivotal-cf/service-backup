@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 
@@ -18,9 +19,10 @@ import (
 var _ = Describe("SCP Backup", func() {
 	Context("When SCP server is correctly configured with flags", func() {
 		var (
-			runningBin *gexec.Session
-			baseDir    string
-			destPath   string
+			runningBin      *gexec.Session
+			baseDir         string
+			destPath        string
+			hostFingerprint string
 		)
 
 		pathWithDate := func(endParts ...string) string {
@@ -32,7 +34,7 @@ var _ = Describe("SCP Backup", func() {
 			return filepath.Join(args...)
 		}
 
-		BeforeEach(func() {
+		JustBeforeEach(func() {
 			var err error
 			baseDir, err = ioutil.TempDir("", "scp-integration-tests")
 			Expect(err).NotTo(HaveOccurred())
@@ -45,7 +47,7 @@ var _ = Describe("SCP Backup", func() {
 			Expect(os.Mkdir(filepath.Join(dirToBackup, "subdir"), 0755)).To(Succeed())
 			Expect(ioutil.WriteFile(filepath.Join(dirToBackup, "subdir", "2.txt"), []byte("2"), 0644)).To(Succeed())
 
-			runningBin = performBackup("localhost", unixUser.Username, destPath, string(privateKeyContents), 22, dirToBackup)
+			runningBin = performBackup("localhost", unixUser.Username, destPath, string(privateKeyContents), hostFingerprint, 22, dirToBackup)
 		})
 
 		AfterEach(func() {
@@ -53,16 +55,55 @@ var _ = Describe("SCP Backup", func() {
 			Eventually(runningBin.Terminate()).Should(gexec.Exit())
 		})
 
-		It("copies files over SCP", func() {
-			Eventually(runningBin.Out, time.Second*10).Should(gbytes.Say("scp completed"))
-			Eventually(runningBin.Out, time.Second*10).Should(gbytes.Say(`"destination_name":"foo"`))
-			runningBin.Terminate().Wait()
-			content1, err := ioutil.ReadFile(pathWithDate("1.txt"))
-			Expect(err).NotTo(HaveOccurred())
-			Expect(content1).To(Equal([]byte("1")))
-			content2, err := ioutil.ReadFile(pathWithDate("subdir", "2.txt"))
-			Expect(err).NotTo(HaveOccurred())
-			Expect(content2).To(Equal([]byte("2")))
+		Context("host finger print not provided", func() {
+			BeforeEach(func() {
+				hostFingerprint = ""
+			})
+			It("copies files over SCP", func() {
+				Eventually(runningBin.Out, time.Second*10).Should(gbytes.Say("Fingerprint not found, performing key-scan"))
+				Eventually(runningBin.Out, time.Second*10).Should(gbytes.Say("scp completed"))
+				Eventually(runningBin.Out, time.Second*10).Should(gbytes.Say(`"destination_name":"foo"`))
+				runningBin.Terminate().Wait()
+				content1, err := ioutil.ReadFile(pathWithDate("1.txt"))
+				Expect(err).NotTo(HaveOccurred())
+				Expect(content1).To(Equal([]byte("1")))
+				content2, err := ioutil.ReadFile(pathWithDate("subdir", "2.txt"))
+				Expect(err).NotTo(HaveOccurred())
+				Expect(content2).To(Equal([]byte("2")))
+			})
+		})
+
+		Context("valid host finger print provided", func() {
+			BeforeEach(func() {
+				cmd := exec.Command("ssh-keyscan", "-p", strconv.Itoa(22), "localhost")
+				output, err := cmd.Output()
+				Expect(err).NotTo(HaveOccurred())
+				hostFingerprint = strings.Split(string(output), "\n")[0]
+			})
+			It("copies files over SCP", func() {
+				Consistently(runningBin.Out, time.Second*10).ShouldNot(gbytes.Say("Fingerprint not found, performing key-scan"))
+				Eventually(runningBin.Out, time.Second*10).Should(gbytes.Say("scp completed"))
+				Eventually(runningBin.Out, time.Second*10).Should(gbytes.Say(`"destination_name":"foo"`))
+				runningBin.Terminate().Wait()
+				content1, err := ioutil.ReadFile(pathWithDate("1.txt"))
+				Expect(err).NotTo(HaveOccurred())
+				Expect(content1).To(Equal([]byte("1")))
+				content2, err := ioutil.ReadFile(pathWithDate("subdir", "2.txt"))
+				Expect(err).NotTo(HaveOccurred())
+				Expect(content2).To(Equal([]byte("2")))
+			})
+		})
+
+		Context("invalid host finger print provided", func() {
+			BeforeEach(func() {
+				hostFingerprint = "localhost ssh-rsa totally-invalid"
+			})
+			It("fails to copy files over SCP", func() {
+				Consistently(runningBin.Out, time.Second*10).ShouldNot(gbytes.Say("Fingerprint not found, performing key-scan"))
+				Consistently(runningBin.Out, time.Second*10).ShouldNot(gbytes.Say("scp completed"))
+				Eventually(runningBin.Out, time.Second*10).Should(gbytes.Say("Host key verification failed"))
+				Expect(runningBin.Terminate().Wait().ExitCode()).ToNot(Equal(BeZero()))
+			})
 		})
 	})
 })
@@ -74,7 +115,7 @@ func runBackup(params ...string) *gexec.Session {
 	return session
 }
 
-func performBackup(scpServer, scpUser, scpDestination, scpKey string, scpPort int, sourceFolder string) *gexec.Session {
+func performBackup(scpServer, scpUser, scpDestination, scpKey, hostFingerprint string, scpPort int, sourceFolder string) *gexec.Session {
 	file, err := ioutil.TempFile("", "config.yml")
 	Expect(err).NotTo(HaveOccurred())
 
@@ -89,6 +130,7 @@ destinations:
     server: %s
     user: %s
     destination: %s
+    fingerprint: '%s'
     key: |
       %s
     port: %d
@@ -97,7 +139,7 @@ source_executable: true
 exit_if_in_progress: true
 cron_schedule: '*/5 * * * * *'
 cleanup_executable: true
-missing_properties_message: custom message`, scpServer, scpUser, scpDestination, scpKey, scpPort, sourceFolder,
+missing_properties_message: custom message`, scpServer, scpUser, scpDestination, hostFingerprint, scpKey, scpPort, sourceFolder,
 	)))
 	file.Close()
 
