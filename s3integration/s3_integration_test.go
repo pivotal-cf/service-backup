@@ -8,11 +8,11 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/nu7hatch/gouuid"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gbytes"
 	"github.com/onsi/gomega/gexec"
+	"github.com/satori/go.uuid"
 )
 
 func performBackup(
@@ -254,8 +254,7 @@ func createFileIn(sourceFolder string) (string, string) {
 	file, err := ioutil.TempFile(sourceFolder, "")
 	Expect(err).ToNot(HaveOccurred())
 
-	fileContentsUUID, err := uuid.NewV4()
-	Expect(err).ToNot(HaveOccurred())
+	fileContentsUUID := uuid.NewV4()
 
 	fileContents := fileContentsUUID.String()
 	_, err = file.Write([]byte(fileContents))
@@ -288,9 +287,7 @@ var _ = Describe("S3 Backup", func() {
 		endpointURL = "https://s3.amazonaws.com"
 		destBucket = existingBucketInDefaultRegion
 
-		destPathUUID, err := uuid.NewV4()
-		Expect(err).ToNot(HaveOccurred())
-		destPath = destPathUUID.String()
+		destPath = uuid.NewV4().String()
 	})
 
 	AfterEach(func() {
@@ -606,10 +603,8 @@ var _ = Describe("S3 Backup", func() {
 
 				BeforeEach(func() {
 					endpointURL = ""
-					bucketUUID, err := uuid.NewV4()
-					Expect(err).ToNot(HaveOccurred())
 
-					strippedUUID = bucketUUID.String()
+					strippedUUID = uuid.NewV4().String()
 					strippedUUID = strippedUUID[:10]
 
 					destBucket = existingBucketInDefaultRegion + strippedUUID
@@ -790,9 +785,7 @@ var _ = Describe("S3 Backup", func() {
 
 				Context("when the bucket does not exist", func() {
 					BeforeEach(func() {
-						bucketUUID, err := uuid.NewV4()
-						Expect(err).ToNot(HaveOccurred())
-						destBucket = "doesnotexist" + bucketUUID.String()
+						destBucket = "doesnotexist" + uuid.NewV4().String()
 
 						By("Not specifing a endpoint url")
 						endpointURL = ""
@@ -825,9 +818,7 @@ var _ = Describe("S3 Backup", func() {
 			)
 
 			It("fails to upload a directory", func() {
-				destPathUUID, err := uuid.NewV4()
-				Expect(err).ToNot(HaveOccurred())
-				destPath = destPathUUID.String()
+				destPath = uuid.NewV4().String()
 				By("Trying to upload the file to the blobstore")
 				session, err := performBackup(
 					invalidAwsAccessKeyID,

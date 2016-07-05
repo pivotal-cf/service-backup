@@ -9,11 +9,11 @@ import (
 	"strings"
 	"time"
 
-	"github.com/nu7hatch/gouuid"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gbytes"
 	"github.com/onsi/gomega/gexec"
+	"github.com/satori/go.uuid"
 )
 
 const (
@@ -43,8 +43,7 @@ var _ = Describe("Multiple destinations backup", func() {
 			Expect(os.Mkdir(filepath.Join(dirToBackup, "subdir"), 0755)).To(Succeed())
 			Expect(ioutil.WriteFile(filepath.Join(dirToBackup, "subdir", "2.txt"), []byte("2"), 0644)).To(Succeed())
 
-			destS3UUID, err := uuid.NewV4()
-			Expect(err).ToNot(HaveOccurred())
+			destS3UUID := uuid.NewV4()
 			destPathS3 = destS3UUID.String()
 
 			runningBin = runBackup(createConfigFile(`---
@@ -231,12 +230,8 @@ missing_properties_message: custom message`, unixUser.Username, destPathSCP1, pa
 			Expect(os.Mkdir(filepath.Join(dirToBackup, "subdir"), 0755)).To(Succeed())
 			Expect(ioutil.WriteFile(filepath.Join(dirToBackup, "subdir", "2.txt"), []byte("2"), 0644)).To(Succeed())
 
-			dest1S3UUID, err := uuid.NewV4()
-			Expect(err).ToNot(HaveOccurred())
-			dest1PathS3 = dest1S3UUID.String()
-			dest2S3UUID, err := uuid.NewV4()
-			Expect(err).ToNot(HaveOccurred())
-			dest2PathS3 = dest2S3UUID.String()
+			dest1PathS3 = uuid.NewV4().String()
+			dest2PathS3 = uuid.NewV4().String()
 
 			runningBin = runBackup(createConfigFile(`---
 destinations:

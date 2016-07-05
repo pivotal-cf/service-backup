@@ -5,10 +5,10 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/nu7hatch/gouuid"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	. "github.com/pivotal-cf-experimental/service-backup/backup"
+	"github.com/satori/go.uuid"
 )
 
 func createFilesIn(path string) int64 {
@@ -18,8 +18,7 @@ func createFilesIn(path string) int64 {
 		file, err := ioutil.TempFile(path, "")
 		Expect(err).ToNot(HaveOccurred())
 
-		fileContentsUUID, err := uuid.NewV4()
-		Expect(err).ToNot(HaveOccurred())
+		fileContentsUUID := uuid.NewV4()
 
 		fileContents := fileContentsUUID.String()
 		_, err = file.Write([]byte(fileContents))
