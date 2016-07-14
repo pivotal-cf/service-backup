@@ -8,5 +8,4 @@ ginkgo \
   -slowSpecThreshold=30 \
   -keepGoing \
   -cover \
-  -skipPackage release_tests \
   $@
