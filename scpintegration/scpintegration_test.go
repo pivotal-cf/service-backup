@@ -17,6 +17,11 @@ import (
 )
 
 var _ = Describe("SCP Backup", func() {
+	var (
+		consistencyThreshold = time.Second * 5
+		scpTimeout           = time.Second * 20
+	)
+
 	Context("When SCP server is correctly configured with flags", func() {
 		var (
 			runningBin      *gexec.Session
@@ -60,9 +65,9 @@ var _ = Describe("SCP Backup", func() {
 				hostFingerprint = ""
 			})
 			It("copies files over SCP", func() {
-				Eventually(runningBin.Out, time.Second*10).Should(gbytes.Say("Fingerprint not found, performing key-scan"))
-				Eventually(runningBin.Out, time.Second*10).Should(gbytes.Say("scp completed"))
-				Eventually(runningBin.Out, time.Second*10).Should(gbytes.Say(`"destination_name":"foo"`))
+				Eventually(runningBin.Out, scpTimeout).Should(gbytes.Say("Fingerprint not found, performing key-scan"))
+				Eventually(runningBin.Out, scpTimeout).Should(gbytes.Say("scp completed"))
+				Eventually(runningBin.Out, scpTimeout).Should(gbytes.Say(`"destination_name":"foo"`))
 				runningBin.Terminate().Wait()
 				content1, err := ioutil.ReadFile(pathWithDate("1.txt"))
 				Expect(err).NotTo(HaveOccurred())
@@ -80,10 +85,11 @@ var _ = Describe("SCP Backup", func() {
 				Expect(err).NotTo(HaveOccurred())
 				hostFingerprint = strings.Split(string(output), "\n")[0]
 			})
+
 			It("copies files over SCP", func() {
-				Consistently(runningBin.Out, time.Second*10).ShouldNot(gbytes.Say("Fingerprint not found, performing key-scan"))
-				Eventually(runningBin.Out, time.Second*10).Should(gbytes.Say("scp completed"))
-				Eventually(runningBin.Out, time.Second*10).Should(gbytes.Say(`"destination_name":"foo"`))
+				Consistently(runningBin.Out, consistencyThreshold).ShouldNot(gbytes.Say("Fingerprint not found, performing key-scan"))
+				Eventually(runningBin.Out, scpTimeout).Should(gbytes.Say("scp completed"))
+				Eventually(runningBin.Out, scpTimeout).Should(gbytes.Say(`"destination_name":"foo"`))
 				runningBin.Terminate().Wait()
 				content1, err := ioutil.ReadFile(pathWithDate("1.txt"))
 				Expect(err).NotTo(HaveOccurred())
@@ -99,9 +105,9 @@ var _ = Describe("SCP Backup", func() {
 				hostFingerprint = "localhost ssh-rsa totally-invalid"
 			})
 			It("fails to copy files over SCP", func() {
-				Consistently(runningBin.Out, time.Second*10).ShouldNot(gbytes.Say("Fingerprint not found, performing key-scan"))
-				Consistently(runningBin.Out, time.Second*10).ShouldNot(gbytes.Say("scp completed"))
-				Eventually(runningBin.Out, time.Second*10).Should(gbytes.Say("Host key verification failed"))
+				Consistently(runningBin.Out, consistencyThreshold).ShouldNot(gbytes.Say("Fingerprint not found, performing key-scan"))
+				Consistently(runningBin.Out, consistencyThreshold).ShouldNot(gbytes.Say("scp completed"))
+				Eventually(runningBin.Out, scpTimeout).Should(gbytes.Say("Host key verification failed"))
 				Expect(runningBin.Terminate().Wait().ExitCode()).ToNot(Equal(BeZero()))
 			})
 		})
