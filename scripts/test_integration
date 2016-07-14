@@ -17,18 +17,9 @@ AZURE_STORAGE_ACCESS_KEY="${AZURE_STORAGE_ACCESS_KEY:?}"
 pushd "${BASE_DIR}"
   go get -t -v -d ./...
   go install github.com/onsi/ginkgo/ginkgo
-  ginkgo \
-    -r \
-    -p \
-    -race \
-    -randomizeSuites \
-    -randomizeAllSpecs \
-    -slowSpecThreshold=30 \
-    -keepGoing \
-    -cover \
-    -skipPackage release_tests \
-    "$@"
+  $(dirname $0)/run_parallel_tests.sh azureintegration s3integration
+  $(dirname $0)/run_tests.sh scpintegration
 
-    go tool cover -func=backup/backup.coverprofile
+  go tool cover -func=backup/backup.coverprofile
 
 popd

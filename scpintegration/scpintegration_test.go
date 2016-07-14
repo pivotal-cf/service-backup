@@ -19,7 +19,7 @@ import (
 var _ = Describe("SCP Backup", func() {
 	var (
 		consistencyThreshold = time.Second * 5
-		scpTimeout           = time.Second * 20
+		scpTimeout           = time.Second * 10
 	)
 
 	Context("When SCP server is correctly configured with flags", func() {
