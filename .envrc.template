@@ -1,21 +1,21 @@
 source_env ../../../..
 
+# S3 integration tests
 export AWS_ACCESS_KEY_ID=
 export AWS_SECRET_ACCESS_KEY=
 export AWS_ACCESS_KEY_ID_RESTRICTED=
 export AWS_SECRET_ACCESS_KEY_RESTRICTED=
 
+# Azure integration tests
 export AZURE_STORAGE_ACCOUNT=
 export AZURE_STORAGE_ACCESS_KEY=
 
+# Release tests
 export BOSH_HOST=
 export BOSH_USERNAME=
 export BOSH_PASSWORD=
-
 export BOSH_PRIVATE_KEY_FILE=
-export BOSH_CA_CERT_PATH=
 
-export BOSH_MANIFEST_DIR=
 export S3_BOSH_MANIFEST=
 export AZURE_BOSH_MANIFEST=
 export SCP_BOSH_MANIFEST=
