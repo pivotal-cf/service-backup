@@ -74,7 +74,9 @@ func (a *AzureClient) uploadFile(localFilePath, remoteFilePath string, length ui
 
 	defer file.Close()
 
-	return exec.Command(a.azureCmd, fmt.Sprintf("--storageaccountkey=%s", a.accountKey), fmt.Sprintf("--remoteresource=%s", remoteFilePath), a.accountName, a.container, localFilePath).Run()
+	cmd := exec.Command(a.azureCmd, fmt.Sprintf("--remoteresource=%s", remoteFilePath), a.accountName, a.container, localFilePath)
+	cmd.Env = append(cmd.Env, fmt.Sprintf("BLOBXFER_STORAGEACCOUNTKEY=%s", a.accountKey))
+	return cmd.Run()
 }
 
 func (a *AzureClient) Name() string {

@@ -21,6 +21,8 @@ brew install python
 pip install blobxfer
 ```
 
+> NB: blobxfer version 0.11.1 or above is required to set the storage account key using an environment variable
+
 The S3 integration tests require access to a bucket called `service-backup-integration-test` with all permissions. Example policy is as follows:
 
 ```json
