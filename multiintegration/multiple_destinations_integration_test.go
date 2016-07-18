@@ -22,6 +22,8 @@ const (
 )
 
 var _ = Describe("Multiple destinations backup", func() {
+	var uploadTimeout = time.Second * 20
+
 	Context("When SCP and S3 destinations are correctly configured", func() {
 		var (
 			runningBin  *gexec.Session
@@ -81,8 +83,8 @@ missing_properties_message: custom message`, unixUser.Username, destPathSCP, pad
 		})
 
 		It("copies files with SCP", func() {
-			Eventually(runningBin.Out, time.Second*10).Should(gbytes.Say("scp completed"))
-			Eventually(runningBin.Out, time.Second*10).Should(gbytes.Say("s3 completed"))
+			Eventually(runningBin.Out, uploadTimeout).Should(gbytes.Say("scp completed"))
+			Eventually(runningBin.Out, uploadTimeout).Should(gbytes.Say("s3 completed"))
 			runningBin.Terminate().Wait()
 
 			content1, err := ioutil.ReadFile(pathWithDateForSCP(destPathSCP, "1.txt"))
@@ -95,8 +97,8 @@ missing_properties_message: custom message`, unixUser.Username, destPathSCP, pad
 		})
 
 		It("copies files to S3", func() {
-			Eventually(runningBin.Out, time.Second*10).Should(gbytes.Say("scp completed"))
-			Eventually(runningBin.Out, time.Second*10).Should(gbytes.Say("s3 completed"))
+			Eventually(runningBin.Out, uploadTimeout).Should(gbytes.Say("scp completed"))
+			Eventually(runningBin.Out, uploadTimeout).Should(gbytes.Say("s3 completed"))
 			runningBin.Terminate().Wait()
 
 			downloadFolder, err := ioutil.TempDir("", "backup-tests")
@@ -186,8 +188,8 @@ missing_properties_message: custom message`, unixUser.Username, destPathSCP1, pa
 		})
 
 		It("copies files with SCP to the first destination", func() {
-			Eventually(runningBin.Out, time.Second*10).Should(gbytes.Say("scp completed"))
-			Eventually(runningBin.Out, time.Second*10).Should(gbytes.Say("scp completed"))
+			Eventually(runningBin.Out, uploadTimeout).Should(gbytes.Say("scp completed"))
+			Eventually(runningBin.Out, uploadTimeout).Should(gbytes.Say("scp completed"))
 			runningBin.Terminate().Wait()
 
 			content1, err := ioutil.ReadFile(pathWithDateForSCP(destPathSCP1, "1.txt"))
@@ -200,8 +202,8 @@ missing_properties_message: custom message`, unixUser.Username, destPathSCP1, pa
 		})
 
 		It("copies files with SCP to the second destination", func() {
-			Eventually(runningBin.Out, time.Second*10).Should(gbytes.Say("scp completed"))
-			Eventually(runningBin.Out, time.Second*10).Should(gbytes.Say("scp completed"))
+			Eventually(runningBin.Out, uploadTimeout).Should(gbytes.Say("scp completed"))
+			Eventually(runningBin.Out, uploadTimeout).Should(gbytes.Say("scp completed"))
 			runningBin.Terminate().Wait()
 
 			content1, err := ioutil.ReadFile(pathWithDateForSCP(destPathSCP2, "1.txt"))
@@ -269,8 +271,8 @@ missing_properties_message: custom message`, existingBucketInDefaultRegion, dest
 		})
 
 		It("copies files to the first S3 destination", func() {
-			Eventually(runningBin.Out, time.Second*10).Should(gbytes.Say("s3 completed"))
-			Eventually(runningBin.Out, time.Second*10).Should(gbytes.Say("s3 completed"))
+			Eventually(runningBin.Out, uploadTimeout).Should(gbytes.Say("s3 completed"))
+			Eventually(runningBin.Out, uploadTimeout).Should(gbytes.Say("s3 completed"))
 			runningBin.Terminate().Wait()
 
 			downloadFolder, err := ioutil.TempDir("", "backup-tests")
@@ -294,8 +296,8 @@ missing_properties_message: custom message`, existingBucketInDefaultRegion, dest
 		})
 
 		It("copies files to the second S3 destination", func() {
-			Eventually(runningBin.Out, time.Second*10).Should(gbytes.Say("s3 completed"))
-			Eventually(runningBin.Out, time.Second*10).Should(gbytes.Say("s3 completed"))
+			Eventually(runningBin.Out, uploadTimeout).Should(gbytes.Say("s3 completed"))
+			Eventually(runningBin.Out, uploadTimeout).Should(gbytes.Say("s3 completed"))
 			runningBin.Terminate().Wait()
 
 			downloadFolder, err := ioutil.TempDir("", "backup-tests")
