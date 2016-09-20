@@ -268,23 +268,25 @@ var _ = Describe("Executor", func() {
 				})
 
 				Context("when a backup is already in progress", func() {
-					var blockUpload sync.WaitGroup
+					var blockfirstUpload sync.WaitGroup
 					var firstBackupInProgress sync.WaitGroup
 					var firstBackupCompleted sync.WaitGroup
+
 					BeforeEach(func() {
-						blockUpload.Add(1)
+						blockfirstUpload.Add(1)
 						firstBackupInProgress.Add(1)
 						firstBackupCompleted.Add(1)
 					})
+
 					JustBeforeEach(func() {
 						backuper.UploadStub = func(localPath string, _ lager.Logger) error {
-							blockUpload.Wait()
+							firstBackupInProgress.Done()
+							blockfirstUpload.Wait()
 							return nil
 						}
 						go func() {
 							//start the first upload
 							defer GinkgoRecover()
-							firstBackupInProgress.Done()
 							firstBackupErr := executor.RunOnce()
 							Expect(firstBackupErr).NotTo(HaveOccurred())
 							firstBackupCompleted.Done()
@@ -294,7 +296,7 @@ var _ = Describe("Executor", func() {
 					It("rejects the upload", func() {
 						firstBackupInProgress.Wait()
 						secondBackupErr := executor.RunOnce()
-						blockUpload.Done()
+						blockfirstUpload.Done()
 						firstBackupCompleted.Wait()
 
 						Expect(secondBackupErr).To(MatchError("backup operation rejected"))
