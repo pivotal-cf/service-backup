@@ -27,7 +27,8 @@ func main() {
 	})
 
 	if err != nil {
-		logger.Fatal("Error scheduling job", err)
+		logger.Error("Error scheduling job", err)
+		os.Exit(2)
 	}
 
 	schedulerRunner := ifrit.RunFunc(func(signals <-chan os.Signal, ready chan<- struct{}) error {
@@ -44,6 +45,7 @@ func main() {
 
 	err = <-process.Wait()
 	if err != nil {
-		logger.Fatal("Error running", err)
+		logger.Error("Error running", err)
+		os.Exit(2)
 	}
 }

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"log"
+	"os"
 	"os/exec"
 	"strconv"
 
@@ -42,7 +43,8 @@ func Parse(osArgs []string) (backup.Executor, string, lager.Logger) {
 
 	exitIfBackupInProgressBooleanValue, err := strconv.ParseBool(backupConfig.ExitIfInProgress)
 	if err != nil {
-		logger.Fatal("Invalid boolean value for exit_if_in_progress. Please set to true or false.", err)
+		logger.Error("Invalid boolean value for exit_if_in_progress. Please set to true or false.", err)
+		os.Exit(2)
 	}
 
 	uploader := backup.Uploader{}
@@ -93,7 +95,8 @@ func Parse(osArgs []string) (backup.Executor, string, lager.Logger) {
 				backupConfig.AzureCliPath,
 				basePath))
 		default:
-			logger.Fatal(fmt.Sprintf("Unknown destination type: %s", destination.DestType), nil)
+			logger.Error(fmt.Sprintf("Unknown destination type: %s", destination.DestType), nil)
+			os.Exit(2)
 		}
 	}
 
