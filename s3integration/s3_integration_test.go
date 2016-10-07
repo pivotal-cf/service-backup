@@ -833,6 +833,11 @@ var _ = Describe("S3 Backup", func() {
 				)
 				Expect(err).ToNot(HaveOccurred())
 				Eventually(session.Out).Should(gbytes.Say("Service-backup Started"))
+
+				By("logging the error")
+				Eventually(session.Out, awsTimeout).Should(gbytes.Say("ServiceBackup.Upload backup completed with error"))
+				Eventually(session.Out, awsTimeout).Should(gbytes.Say("InvalidAccessKeyId"))
+
 				session.Terminate().Wait()
 				Eventually(session).Should(gexec.Exit())
 
@@ -843,6 +848,7 @@ var _ = Describe("S3 Backup", func() {
 
 		Context("when the endpointURL is invalid", func() {
 			const invalidEndpointURL = "http://0.0.0.0:1234/"
+
 			It("gracefully fails to perform the upload", func() {
 				session, err := performBackup(
 					awsAccessKeyID,
@@ -855,9 +861,8 @@ var _ = Describe("S3 Backup", func() {
 					cleanupCmd,
 					cronSchedule,
 				)
+				Expect(err).ToNot(HaveOccurred())
 
-				Expect(err).ToNot(HaveOccurred())
-				Expect(err).ToNot(HaveOccurred())
 				Eventually(session.Out, awsTimeout).Should(gbytes.Say("Connection aborted"))
 
 				session.Terminate().Wait()
