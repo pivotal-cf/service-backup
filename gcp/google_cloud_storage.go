@@ -43,9 +43,9 @@ func (s *StorageClient) Upload(dirToUpload string, logger lager.Logger) error {
 	}
 	defer gcpClient.Close()
 
-	bucket := gcpClient.Bucket(s.bucketName)
-	if err := bucket.Create(ctx, s.gcpProjectID, nil); err != nil {
-		return errs("creating bucket", err) // TODO test
+	bucket, err := s.ensureBucketExists(gcpClient, ctx)
+	if err != nil {
+		return errs("creating bucket", err)
 	}
 
 	today := time.Now()
@@ -85,4 +85,15 @@ func (s *StorageClient) Upload(dirToUpload string, logger lager.Logger) error {
 	}
 
 	return nil
+}
+
+func (s *StorageClient) ensureBucketExists(gcpClient *storage.Client, ctx context.Context) (*storage.BucketHandle, error) {
+	bucket := gcpClient.Bucket(s.bucketName)
+	if err := bucket.Create(ctx, s.gcpProjectID, nil); err != nil {
+		if err.Error() == "googleapi: Error 409: You already own this bucket. Please select another name., conflict" {
+			return bucket, nil
+		}
+		return nil, err
+	}
+	return bucket, nil
 }

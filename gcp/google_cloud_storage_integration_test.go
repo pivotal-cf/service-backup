@@ -21,17 +21,26 @@ import (
 
 var _ = Describe("backups to Google Cloud Storage", func() {
 	var (
-		bucketName  string
-		bucket      *storage.BucketHandle
-		dirToBackup string
-		ctx         context.Context
+		bucketName     string
+		bucket         *storage.BucketHandle
+		dirToBackup    string
+		ctx            context.Context
+		gcpProjectName string
 
 		backuper *gcp.StorageClient
 	)
 
+	itBacksUpFiles := func() {
+		It("backs up files", func() {
+			Expect(readObject(ctx, bucket, "a.txt")).To(Equal("content for a.txt"))
+			Expect(readObject(ctx, bucket, "d1/b.txt")).To(Equal("content for b.txt"))
+			Expect(readObject(ctx, bucket, "d1/d2/c.txt")).To(Equal("content for c.txt"))
+		})
+	}
+
 	BeforeEach(func() {
 		gcpServiceAccountFilePath := envMustHave("SERVICE_BACKUP_TESTS_GCP_SERVICE_ACCOUNT_FILE")
-		gcpProjectName := envMustHave("SERVICE_BACKUP_TESTS_GCP_PROJECT_NAME")
+		gcpProjectName = envMustHave("SERVICE_BACKUP_TESTS_GCP_PROJECT_NAME")
 
 		var err error
 		dirToBackup, err = ioutil.TempDir("", "gcp-backup-tests")
@@ -47,6 +56,9 @@ var _ = Describe("backups to Google Cloud Storage", func() {
 		bucket = gcpClient.Bucket(bucketName)
 
 		backuper = gcp.New(gcpServiceAccountFilePath, gcpProjectName, bucketName)
+	})
+
+	JustBeforeEach(func() {
 		logger := lager.NewLogger("[GCP tests] ")
 		logger.RegisterSink(lager.NewWriterSink(GinkgoWriter, lager.DEBUG))
 		Expect(backuper.Upload(dirToBackup, logger)).To(Succeed())
@@ -57,10 +69,14 @@ var _ = Describe("backups to Google Cloud Storage", func() {
 		deleteBucket(ctx, bucket)
 	})
 
-	It("backs up files", func() {
-		Expect(readObject(ctx, bucket, "a.txt")).To(Equal("content for a.txt"))
-		Expect(readObject(ctx, bucket, "d1/b.txt")).To(Equal("content for b.txt"))
-		Expect(readObject(ctx, bucket, "d1/d2/c.txt")).To(Equal("content for c.txt"))
+	itBacksUpFiles()
+
+	Context("when the bucket already exists", func() {
+		BeforeEach(func() {
+			Expect(bucket.Create(ctx, gcpProjectName, nil)).To(Succeed())
+		})
+
+		itBacksUpFiles()
 	})
 })
 
