@@ -57,30 +57,37 @@ func (s *StorageClient) Upload(dirToUpload string, logger lager.Logger) error {
 			return nil
 		}
 
-		relativePath, err := filepath.Rel(dirToUpload, path)
-		if err != nil {
-			return err
+		if err := s.uploadFile(dirToUpload, path, today, ctx, bucket, logger); err != nil {
+			return errs("uploading file", err)
 		}
-
-		nameInBucket := fmt.Sprintf("%d/%02d/%02d/%s", today.Year(), today.Month(), today.Day(), relativePath)
-		logger.Info(fmt.Sprintf("will upload %s to bucket %s", nameInBucket, s.bucketName), nil)
-		obj := bucket.Object(nameInBucket)
-
-		bucketWriter := obj.NewWriter(ctx)
-		defer bucketWriter.Close()
-
-		file, err := os.Open(path)
-		if err != nil {
-			return err
-		}
-		defer file.Close()
-
-		if _, err := io.Copy(bucketWriter, file); err != nil {
-			return errs("writing file to bucket", err)
-		}
-
 		return nil
 	}); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (s *StorageClient) uploadFile(baseDir, fileAbsPath string, timeNow time.Time, ctx context.Context, bucket *storage.BucketHandle, logger lager.Logger) error {
+	relativePath, err := filepath.Rel(baseDir, fileAbsPath)
+	if err != nil {
+		return err
+	}
+
+	nameInBucket := fmt.Sprintf("%d/%02d/%02d/%s", timeNow.Year(), timeNow.Month(), timeNow.Day(), relativePath)
+	logger.Info(fmt.Sprintf("will upload %s to bucket %s", nameInBucket, s.bucketName), nil)
+	obj := bucket.Object(nameInBucket)
+
+	bucketWriter := obj.NewWriter(ctx)
+	defer bucketWriter.Close()
+
+	file, err := os.Open(fileAbsPath)
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+
+	if _, err := io.Copy(bucketWriter, file); err != nil {
 		return err
 	}
 
