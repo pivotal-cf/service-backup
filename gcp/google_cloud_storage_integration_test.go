@@ -36,7 +36,9 @@ var _ = Describe("backups to Google Cloud Storage", func() {
 		var err error
 		dirToBackup, err = ioutil.TempDir("", "gcp-backup-tests")
 		Expect(err).NotTo(HaveOccurred())
-		Expect(createFile("GCP FTW", dirToBackup, "should-back-up.txt"))
+		Expect(createFile("content for a.txt", dirToBackup, "a.txt"))
+		Expect(createFile("content for b.txt", dirToBackup, "d1", "b.txt"))
+		Expect(createFile("content for c.txt", dirToBackup, "d1", "d2", "c.txt"))
 
 		ctx = context.Background()
 		gcpClient, err := storage.NewClient(ctx, option.WithServiceAccountFile(gcpServiceAccountFilePath))
@@ -56,18 +58,9 @@ var _ = Describe("backups to Google Cloud Storage", func() {
 	})
 
 	It("backs up files", func() {
-		today := time.Now()
-		expectedObjectName := fmt.Sprintf("%d/%02d/%02d/%s", today.Year(), today.Month(), today.Day(), "should-back-up.txt")
-		bucketObj := bucket.Object(expectedObjectName)
-
-		objReader, err := bucketObj.NewReader(ctx)
-		Expect(err).NotTo(HaveOccurred())
-		defer objReader.Close()
-
-		remoteContents := new(bytes.Buffer)
-		_, err = io.Copy(remoteContents, objReader)
-		Expect(err).NotTo(HaveOccurred())
-		Expect(remoteContents.String()).To(Equal("GCP FTW"))
+		Expect(readObject(ctx, bucket, "a.txt")).To(Equal("content for a.txt"))
+		Expect(readObject(ctx, bucket, "d1/b.txt")).To(Equal("content for b.txt"))
+		Expect(readObject(ctx, bucket, "d1/d2/c.txt")).To(Equal("content for c.txt"))
 	})
 })
 
@@ -104,4 +97,21 @@ func deleteBucket(ctx context.Context, bucket *storage.BucketHandle) {
 		Expect(bucket.Object(obj.Name).Delete(ctx)).To(Succeed())
 	}
 	Expect(bucket.Delete(ctx)).To(Succeed())
+}
+
+func readObject(ctx context.Context, bucket *storage.BucketHandle, relativePath string) string {
+	bucketObj := bucket.Object(expectedNameInBucket(relativePath))
+	objReader, err := bucketObj.NewReader(ctx)
+	Expect(err).NotTo(HaveOccurred())
+	defer objReader.Close()
+
+	remoteContents := new(bytes.Buffer)
+	_, err = io.Copy(remoteContents, objReader)
+	Expect(err).NotTo(HaveOccurred())
+	return remoteContents.String()
+}
+
+func expectedNameInBucket(relativePath string) string {
+	today := time.Now()
+	return fmt.Sprintf("%d/%02d/%02d/%s", today.Year(), today.Month(), today.Day(), relativePath)
 }
