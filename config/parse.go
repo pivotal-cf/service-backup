@@ -20,7 +20,6 @@ import (
 	"github.com/pivotal-golang/lager"
 )
 
-//Parse ...
 func Parse(osArgs []string) (backup.Executor, string, lager.Logger) {
 	flags := flag.NewFlagSet(osArgs[0], flag.ExitOnError)
 
