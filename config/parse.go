@@ -15,6 +15,7 @@ import (
 	"github.com/pivotal-cf-experimental/service-backup/azure"
 	"github.com/pivotal-cf-experimental/service-backup/backup"
 	"github.com/pivotal-cf-experimental/service-backup/dummy"
+	"github.com/pivotal-cf-experimental/service-backup/gcp"
 	"github.com/pivotal-cf-experimental/service-backup/s3"
 	"github.com/pivotal-cf-experimental/service-backup/scp"
 	"github.com/pivotal-golang/lager"
@@ -47,7 +48,6 @@ func Parse(osArgs []string) (backup.Executor, string, lager.Logger) {
 	}
 
 	uploader := backup.Uploader{}
-	var basePath string
 
 	if len(backupConfig.Destinations) == 0 {
 		logger.Info("No destination provided - skipping backup")
@@ -64,7 +64,7 @@ func Parse(osArgs []string) (backup.Executor, string, lager.Logger) {
 		destinationConfig := destination.Config
 		switch destination.DestType {
 		case "s3":
-			basePath = fmt.Sprintf("%s/%s", destinationConfig["bucket_name"], destinationConfig["bucket_path"])
+			basePath := fmt.Sprintf("%s/%s", destinationConfig["bucket_name"], destinationConfig["bucket_path"])
 			uploader = append(uploader, s3.New(
 				destination.Name,
 				backupConfig.AwsCliPath,
@@ -74,7 +74,7 @@ func Parse(osArgs []string) (backup.Executor, string, lager.Logger) {
 				basePath,
 			))
 		case "scp":
-			basePath = destinationConfig["destination"].(string)
+			basePath := destinationConfig["destination"].(string)
 			uploader = append(uploader, scp.New(
 				destination.Name,
 				destinationConfig["server"].(string),
@@ -84,7 +84,7 @@ func Parse(osArgs []string) (backup.Executor, string, lager.Logger) {
 				basePath,
 				destinationConfig["fingerprint"].(string)))
 		case "azure":
-			basePath = destinationConfig["path"].(string)
+			basePath := destinationConfig["path"].(string)
 			uploader = append(uploader, azure.New(
 				destination.Name,
 				destinationConfig["storage_access_key"].(string),
@@ -93,6 +93,12 @@ func Parse(osArgs []string) (backup.Executor, string, lager.Logger) {
 				destinationConfig["blob_store_base_url"].(string),
 				backupConfig.AzureCliPath,
 				basePath))
+		case "gcs":
+			uploader = append(uploader, gcp.New(
+				os.Getenv("GCP_SERVICE_ACCOUNT_FILE"),
+				destinationConfig["project_id"].(string),
+				destinationConfig["bucket_name"].(string),
+			))
 		default:
 			logger.Error(fmt.Sprintf("Unknown destination type: %s", destination.DestType), nil)
 			os.Exit(2)

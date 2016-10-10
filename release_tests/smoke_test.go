@@ -2,6 +2,7 @@ package release_tests_test
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -11,11 +12,15 @@ import (
 	"strings"
 	"time"
 
+	yaml "gopkg.in/yaml.v2"
+
 	"github.com/pivotal-cf-experimental/service-backup/s3testclient"
 
+	gcs "cloud.google.com/go/storage"
 	"github.com/Azure/azure-sdk-for-go/storage"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	"google.golang.org/api/option"
 )
 
 var _ = Describe("smoke tests", func() {
@@ -158,6 +163,77 @@ var _ = Describe("smoke tests", func() {
 			}, time.Minute).Should(BeTrue())
 		})
 	})
+
+	Context("backing up to Google Cloud Storage", func() {
+		var (
+			ctx                       context.Context
+			bucket                    *gcs.BucketHandle
+			gcpServiceAccountFilePath string
+		)
+
+		BeforeEach(func() {
+			boshManifest = envMustHave("GCS_BOSH_MANIFEST")
+
+			var manifest struct {
+				InstanceGroups []struct {
+					Jobs []struct {
+						Properties struct {
+							ServiceBackup struct {
+								Destinations []struct {
+									Config struct {
+										ServiceAccountJSON string `yaml:"service_account_json"`
+										BucketName         string `yaml:"bucket_name"`
+									} `yaml:"config"`
+								} `yaml:"destinations"`
+							} `yaml:"service-backup"`
+						} `yaml:"properties"`
+					} `yaml:"jobs"`
+				} `yaml:"instance_groups"`
+			}
+			manifestBytes, err := ioutil.ReadFile(boshManifest)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(yaml.Unmarshal(manifestBytes, &manifest)).To(Succeed())
+
+			gcpServiceAccountFile, err := ioutil.TempFile("", "service-backup-system-tests")
+			Expect(err).NotTo(HaveOccurred())
+			defer gcpServiceAccountFile.Close()
+			gcpServiceAccountFilePath = gcpServiceAccountFile.Name()
+			_, err = gcpServiceAccountFile.WriteString(manifest.InstanceGroups[0].Jobs[0].Properties.ServiceBackup.Destinations[0].Config.ServiceAccountJSON)
+			Expect(err).NotTo(HaveOccurred())
+
+			ctx = context.Background()
+			gcpClient, err := gcs.NewClient(ctx, option.WithServiceAccountFile(gcpServiceAccountFile.Name()))
+			Expect(err).NotTo(HaveOccurred())
+			bucketName := manifest.InstanceGroups[0].Jobs[0].Properties.ServiceBackup.Destinations[0].Config.BucketName
+			bucket = gcpClient.Bucket(bucketName)
+		})
+
+		AfterEach(func() {
+			boshSSH("rm", "/tmp/"+toBackup)
+			deleteBucket(ctx, bucket)
+			Expect(os.Remove(gcpServiceAccountFilePath)).To(Succeed())
+		})
+
+		It("uploads files in the backup directory", func() {
+			Eventually(func() error {
+				today := time.Now()
+				path := fmt.Sprintf("%d/%02d/%02d/%s", today.Year(), today.Month(), today.Day(), toBackup)
+				gcsObject, err := bucket.Object(path).NewReader(ctx)
+				if err != nil {
+					return err
+				}
+				defer gcsObject.Close()
+				content, err := ioutil.ReadAll(gcsObject)
+				if err != nil {
+					return err
+				}
+				if string(content) != "This should end up on S3\n" {
+					return fmt.Errorf("file content was unexpected: '%s'", string(content))
+				}
+				return nil
+			}, time.Second*20).ShouldNot(HaveOccurred())
+		})
+	})
 })
 
 func envMustHave(key string) string {
@@ -170,4 +246,18 @@ func pathWithDate(path string) string {
 	today := time.Now()
 	datePath := fmt.Sprintf("%d/%02d/%02d", today.Year(), today.Month(), today.Day())
 	return path + "/" + datePath
+}
+
+// TODO de-dupe with method in GCP integration tests
+func deleteBucket(ctx context.Context, bucket *gcs.BucketHandle) {
+	objectsInBucket := bucket.Objects(ctx, nil)
+	for {
+		obj, err := objectsInBucket.Next()
+		if err == gcs.Done {
+			break
+		}
+		Expect(err).NotTo(HaveOccurred())
+		Expect(bucket.Object(obj.Name).Delete(ctx)).To(Succeed())
+	}
+	Expect(bucket.Delete(ctx)).To(Succeed())
 }

@@ -104,3 +104,7 @@ func (s *StorageClient) ensureBucketExists(gcpClient *storage.Client, ctx contex
 	}
 	return bucket, nil
 }
+
+func (c *StorageClient) Name() string {
+	return "gcs"
+}
