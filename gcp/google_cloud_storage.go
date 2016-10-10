@@ -39,7 +39,7 @@ func (s *StorageClient) Upload(dirToUpload string, logger lager.Logger) error {
 	ctx := context.Background()
 	gcpClient, err := storage.NewClient(ctx, option.WithServiceAccountFile(s.serviceAccountFilePath))
 	if err != nil {
-		return errs("creating Google Cloud Storage client", err) // TODO test
+		return errs("creating Google Cloud Storage client", err)
 	}
 	defer gcpClient.Close()
 
