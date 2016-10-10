@@ -15,6 +15,7 @@ import (
 	. "github.com/onsi/gomega"
 	"github.com/pborman/uuid"
 	"github.com/pivotal-cf-experimental/service-backup/gcp"
+	"github.com/pivotal-cf-experimental/service-backup/testhelpers"
 	"github.com/pivotal-golang/lager"
 	"google.golang.org/api/option"
 )
@@ -67,7 +68,7 @@ var _ = Describe("backups to Google Cloud Storage", func() {
 
 		AfterEach(func() {
 			Expect(os.RemoveAll(dirToBackup)).To(Succeed())
-			deleteBucket(ctx, bucket)
+			testhelpers.DeleteGCSBucket(ctx, bucket)
 		})
 
 		itBacksUpFiles()
@@ -113,19 +114,6 @@ func ensureDirExists(nameParts []string) (string, error) {
 		return "", err
 	}
 	return fullPath, nil
-}
-
-func deleteBucket(ctx context.Context, bucket *storage.BucketHandle) {
-	objectsInBucket := bucket.Objects(ctx, nil)
-	for {
-		obj, err := objectsInBucket.Next()
-		if err == storage.Done {
-			break
-		}
-		Expect(err).NotTo(HaveOccurred())
-		Expect(bucket.Object(obj.Name).Delete(ctx)).To(Succeed())
-	}
-	Expect(bucket.Delete(ctx)).To(Succeed())
 }
 
 func readObject(ctx context.Context, bucket *storage.BucketHandle, relativePath string) string {

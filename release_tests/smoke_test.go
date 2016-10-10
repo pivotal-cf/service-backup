@@ -15,6 +15,7 @@ import (
 	yaml "gopkg.in/yaml.v2"
 
 	"github.com/pivotal-cf-experimental/service-backup/s3testclient"
+	"github.com/pivotal-cf-experimental/service-backup/testhelpers"
 
 	gcs "cloud.google.com/go/storage"
 	"github.com/Azure/azure-sdk-for-go/storage"
@@ -210,7 +211,7 @@ var _ = Describe("smoke tests", func() {
 
 		AfterEach(func() {
 			boshSSH("rm", "/tmp/"+toBackup)
-			deleteBucket(ctx, bucket)
+			testhelpers.DeleteGCSBucket(ctx, bucket)
 			Expect(os.Remove(gcpServiceAccountFilePath)).To(Succeed())
 		})
 
@@ -246,18 +247,4 @@ func pathWithDate(path string) string {
 	today := time.Now()
 	datePath := fmt.Sprintf("%d/%02d/%02d", today.Year(), today.Month(), today.Day())
 	return path + "/" + datePath
-}
-
-// TODO de-dupe with method in GCP integration tests
-func deleteBucket(ctx context.Context, bucket *gcs.BucketHandle) {
-	objectsInBucket := bucket.Objects(ctx, nil)
-	for {
-		obj, err := objectsInBucket.Next()
-		if err == gcs.Done {
-			break
-		}
-		Expect(err).NotTo(HaveOccurred())
-		Expect(bucket.Object(obj.Name).Delete(ctx)).To(Succeed())
-	}
-	Expect(bucket.Delete(ctx)).To(Succeed())
 }
