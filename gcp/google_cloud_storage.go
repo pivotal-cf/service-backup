@@ -10,6 +10,7 @@ import (
 
 	"cloud.google.com/go/storage"
 	"github.com/pivotal-golang/lager"
+	"google.golang.org/api/iterator"
 	"google.golang.org/api/option"
 )
 
@@ -95,11 +96,23 @@ func (s *StorageClient) uploadFile(baseDir, fileAbsPath string, timeNow time.Tim
 }
 
 func (s *StorageClient) ensureBucketExists(gcpClient *storage.Client, ctx context.Context) (*storage.BucketHandle, error) {
+	bucketIterator := gcpClient.Buckets(ctx, s.gcpProjectID)
 	bucket := gcpClient.Bucket(s.bucketName)
-	if err := bucket.Create(ctx, s.gcpProjectID, nil); err != nil {
-		if err.Error() == "googleapi: Error 409: You already own this bucket. Please select another name., conflict" {
+	for {
+		attr, err := bucketIterator.Next()
+		if err == iterator.Done {
+			break
+		}
+		if err != nil {
+			return nil, err
+		}
+
+		if attr.Name == s.bucketName {
 			return bucket, nil
 		}
+	}
+
+	if err := bucket.Create(ctx, s.gcpProjectID, nil); err != nil {
 		return nil, err
 	}
 	return bucket, nil
