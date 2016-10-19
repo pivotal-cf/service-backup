@@ -105,10 +105,29 @@ var _ = Describe("smoke tests", func() {
 			Expect(client.DeleteRemotePath(bucketName, testPath)).To(Succeed())
 		})
 
-		It("Uploads files in the backup directory to S3", func() {
-			Eventually(func() bool {
-				return client.RemotePathExistsInBucket(bucketName, fmt.Sprintf("%s/%s", pathWithDate(testPath), toBackup))
-			}, time.Minute).Should(BeTrue())
+		Context("automatic backup", func() {
+			It("Uploads files in the backup directory to S3", func() {
+				Eventually(func() bool {
+					return client.RemotePathExistsInBucket(bucketName, fmt.Sprintf("%s/%s", pathWithDate(testPath), toBackup))
+				}, time.Minute).Should(BeTrue())
+			})
+		})
+
+		Context("manual backup", func() {
+			BeforeEach(func() {
+				boshSSH("sudo", "/var/vcap/bosh/bin/monit", "stop", "service-backup")
+			})
+
+			AfterEach(func() {
+				boshSSH("sudo", "/var/vcap/bosh/bin/monit", "start", "service-backup")
+			})
+
+			It("uploads files in the backup directory", func() {
+				boshSSH("sudo", "/var/vcap/jobs/service-backup/bin/manual-backup")
+				Eventually(func() bool {
+					return client.RemotePathExistsInBucket(bucketName, fmt.Sprintf("%s/%s", pathWithDate(testPath), toBackup))
+				}, time.Minute).Should(BeTrue())
+			})
 		})
 	})
 
@@ -133,12 +152,33 @@ var _ = Describe("smoke tests", func() {
 			Expect(err).NotTo(HaveOccurred())
 		})
 
-		It("Uploads files in the backup directory", func() {
-			Eventually(func() bool {
-				exists, err := azureBlobService.BlobExists(bucketName, fmt.Sprintf("%s/%s", pathWithDate(testPath), toBackup))
-				Expect(err).NotTo(HaveOccurred())
-				return exists
-			}, time.Minute).Should(BeTrue())
+		Context("automatic backup", func() {
+			It("Uploads files in the backup directory", func() {
+				Eventually(func() bool {
+					exists, err := azureBlobService.BlobExists(bucketName, fmt.Sprintf("%s/%s", pathWithDate(testPath), toBackup))
+					Expect(err).NotTo(HaveOccurred())
+					return exists
+				}, time.Minute).Should(BeTrue())
+			})
+		})
+
+		Context("manual backup", func() {
+			BeforeEach(func() {
+				boshSSH("sudo", "/var/vcap/bosh/bin/monit", "stop", "service-backup")
+			})
+
+			AfterEach(func() {
+				boshSSH("sudo", "/var/vcap/bosh/bin/monit", "start", "service-backup")
+			})
+
+			It("uploads files in the backup directory", func() {
+				boshSSH("sudo", "/var/vcap/jobs/service-backup/bin/manual-backup")
+				Eventually(func() bool {
+					exists, err := azureBlobService.BlobExists(bucketName, fmt.Sprintf("%s/%s", pathWithDate(testPath), toBackup))
+					Expect(err).NotTo(HaveOccurred())
+					return exists
+				}, time.Minute).Should(BeTrue())
+			})
 		})
 	})
 
@@ -158,10 +198,29 @@ var _ = Describe("smoke tests", func() {
 			boshSSH("rm", "/tmp/"+toBackup)
 		})
 
-		It("Uploads files in the backup directory", func() {
-			Eventually(func() bool {
-				return strings.Contains(boshSSH("find", "/home/vcap/backups", "'-type'", "f"), toBackup)
-			}, time.Minute).Should(BeTrue())
+		Context("automatic backup", func() {
+			It("Uploads files in the backup directory", func() {
+				Eventually(func() bool {
+					return strings.Contains(boshSSH("find", "/home/vcap/backups", "'-type'", "f"), toBackup)
+				}, time.Minute).Should(BeTrue())
+			})
+		})
+
+		Context("manual backup", func() {
+			BeforeEach(func() {
+				boshSSH("sudo", "/var/vcap/bosh/bin/monit", "stop", "service-backup")
+			})
+
+			AfterEach(func() {
+				boshSSH("sudo", "/var/vcap/bosh/bin/monit", "start", "service-backup")
+			})
+
+			It("Uploads files in the backup directory", func() {
+				boshSSH("sudo", "/var/vcap/jobs/service-backup/bin/manual-backup")
+				Eventually(func() bool {
+					return strings.Contains(boshSSH("find", "/home/vcap/backups", "'-type'", "f"), toBackup)
+				}, time.Minute).Should(BeTrue())
+			})
 		})
 	})
 
