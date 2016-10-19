@@ -215,24 +215,43 @@ var _ = Describe("smoke tests", func() {
 			Expect(os.Remove(gcpServiceAccountFilePath)).To(Succeed())
 		})
 
-		It("uploads files in the backup directory", func() {
-			Eventually(func() error {
-				today := time.Now()
-				path := fmt.Sprintf("%d/%02d/%02d/%s", today.Year(), today.Month(), today.Day(), toBackup)
-				gcsObject, err := bucket.Object(path).NewReader(ctx)
-				if err != nil {
-					return err
-				}
-				defer gcsObject.Close()
-				content, err := ioutil.ReadAll(gcsObject)
-				if err != nil {
-					return err
-				}
-				if string(content) != "This should end up on S3\n" {
-					return fmt.Errorf("file content was unexpected: '%s'", string(content))
-				}
-				return nil
-			}, time.Second*20).ShouldNot(HaveOccurred())
+		errorUploadingToGCS := func() error {
+			today := time.Now()
+			path := fmt.Sprintf("%d/%02d/%02d/%s", today.Year(), today.Month(), today.Day(), toBackup)
+			gcsObject, err := bucket.Object(path).NewReader(ctx)
+			if err != nil {
+				return err
+			}
+			defer gcsObject.Close()
+			content, err := ioutil.ReadAll(gcsObject)
+			if err != nil {
+				return err
+			}
+			if string(content) != "This should end up on S3\n" {
+				return fmt.Errorf("file content was unexpected: '%s'", string(content))
+			}
+			return nil
+		}
+
+		Context("automatic backup", func() {
+			It("uploads files in the backup directory", func() {
+				Eventually(errorUploadingToGCS, time.Second*20).ShouldNot(HaveOccurred())
+			})
+		})
+
+		Context("manual backup", func() {
+			BeforeEach(func() {
+				boshSSH("sudo", "/var/vcap/bosh/bin/monit", "stop", "service-backup")
+			})
+
+			AfterEach(func() {
+				boshSSH("sudo", "/var/vcap/bosh/bin/monit", "start", "service-backup")
+			})
+
+			It("uploads files in the backup directory", func() {
+				boshSSH("sudo", "/var/vcap/jobs/service-backup/bin/manual-backup")
+				Eventually(errorUploadingToGCS, time.Second*20).ShouldNot(HaveOccurred())
+			})
 		})
 	})
 })
