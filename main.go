@@ -14,7 +14,7 @@ var (
 )
 
 func main() {
-	executor, cronSchedule, logger := config.Parse(os.Args)
+	executor, cronSchedule, _, logger := config.Parse(os.Args)
 
 	if executor == nil {
 		return

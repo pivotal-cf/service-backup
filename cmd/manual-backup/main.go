@@ -13,7 +13,7 @@ var (
 )
 
 func main() {
-	executor, _, _ := config.Parse(os.Args)
+	executor, _, _, _ := config.Parse(os.Args)
 
 	if executor == nil {
 		return

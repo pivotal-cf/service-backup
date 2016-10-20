@@ -18,10 +18,11 @@ import (
 	"github.com/pivotal-cf-experimental/service-backup/gcp"
 	"github.com/pivotal-cf-experimental/service-backup/s3"
 	"github.com/pivotal-cf-experimental/service-backup/scp"
+	alerts "github.com/pivotal-cf/service-alerts-client/client"
 	"github.com/pivotal-golang/lager"
 )
 
-func Parse(osArgs []string) (backup.Executor, string, lager.Logger) {
+func Parse(osArgs []string) (backup.Executor, string, *alerts.ServiceAlertsClient, lager.Logger) {
 	flags := flag.NewFlagSet(osArgs[0], flag.ExitOnError)
 
 	backupConfigPath := osArgs[1]
@@ -47,6 +48,8 @@ func Parse(osArgs []string) (backup.Executor, string, lager.Logger) {
 		os.Exit(2)
 	}
 
+	alertsClient := parseAlertsClient(backupConfig)
+
 	uploader := backup.Uploader{}
 
 	if len(backupConfig.Destinations) == 0 {
@@ -57,7 +60,7 @@ func Parse(osArgs []string) (backup.Executor, string, lager.Logger) {
 		if backupConfig.CronSchedule == "" {
 			backupConfig.CronSchedule = "@monthly"
 		}
-		return dummyExecutor, backupConfig.CronSchedule, logger
+		return dummyExecutor, backupConfig.CronSchedule, alertsClient, logger
 	}
 
 	for _, destination := range backupConfig.Destinations {
@@ -119,7 +122,20 @@ func Parse(osArgs []string) (backup.Executor, string, lager.Logger) {
 		calculator,
 	)
 
-	return executor, backupConfig.CronSchedule, logger
+	return executor, backupConfig.CronSchedule, alertsClient, logger
+}
+
+func parseAlertsClient(backupConfig BackupConfig) *alerts.ServiceAlertsClient {
+	if backupConfig.Alerts == nil {
+		return nil
+	}
+
+	alertsConfig := alerts.Config{
+		CloudController:    backupConfig.Alerts.CloudController,
+		NotificationTarget: backupConfig.Alerts.NotificationTarget,
+	}
+
+	return alerts.New(alertsConfig, nil)
 }
 
 var logger lager.Logger
@@ -141,4 +157,9 @@ type BackupConfig struct {
 	ServiceIdentifierExecutable string            `yaml:"service_identifier_executable"`
 	AwsCliPath                  string            `yaml:"aws_cli_path"`
 	AzureCliPath                string            `yaml:"azure_cli_path"`
+	Alerts                      *struct {
+		ProductName        string                    `yaml:"product_name"`
+		NotificationTarget alerts.NotificationTarget `yaml:"notification_target"`
+		CloudController    alerts.CloudController    `yaml:"cloud_controller"`
+	}
 }
