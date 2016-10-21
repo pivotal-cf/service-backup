@@ -8,7 +8,7 @@ import (
 	"strconv"
 
 	"github.com/pivotal-cf-experimental/service-backup/backup"
-	"github.com/pivotal-golang/lager"
+	"code.cloudfoundry.org/lager"
 )
 
 type SCPClient struct {

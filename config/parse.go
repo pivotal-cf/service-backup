@@ -1,7 +1,6 @@
 package config
 
 import (
-	"flag"
 	"fmt"
 	"io/ioutil"
 	"log"
@@ -11,7 +10,7 @@ import (
 
 	"gopkg.in/yaml.v2"
 
-	"github.com/cloudfoundry-incubator/cf-lager"
+	"code.cloudfoundry.org/lager"
 	"github.com/pivotal-cf-experimental/service-backup/azure"
 	"github.com/pivotal-cf-experimental/service-backup/backup"
 	"github.com/pivotal-cf-experimental/service-backup/dummy"
@@ -19,13 +18,9 @@ import (
 	"github.com/pivotal-cf-experimental/service-backup/s3"
 	"github.com/pivotal-cf-experimental/service-backup/scp"
 	alerts "github.com/pivotal-cf/service-alerts-client/client"
-	"github.com/pivotal-golang/lager"
 )
 
-func Parse(osArgs []string) (backup.Executor, string, *alerts.ServiceAlertsClient, lager.Logger) {
-	flags := flag.NewFlagSet(osArgs[0], flag.ExitOnError)
-
-	backupConfigPath := osArgs[1]
+func Parse(backupConfigPath string, logger lager.Logger) (backup.Executor, string, *alerts.ServiceAlertsClient) {
 	var backupConfig = BackupConfig{}
 	configYAML, err := ioutil.ReadFile(backupConfigPath)
 
@@ -36,11 +31,6 @@ func Parse(osArgs []string) (backup.Executor, string, *alerts.ServiceAlertsClien
 	if err != nil {
 		log.Fatal(err)
 	}
-
-	cf_lager.AddFlags(flags)
-	flags.Parse(osArgs[2:])
-
-	logger, _ = cf_lager.New("ServiceBackup")
 
 	exitIfBackupInProgressBooleanValue, err := strconv.ParseBool(backupConfig.ExitIfInProgress)
 	if err != nil {
@@ -60,7 +50,7 @@ func Parse(osArgs []string) (backup.Executor, string, *alerts.ServiceAlertsClien
 		if backupConfig.CronSchedule == "" {
 			backupConfig.CronSchedule = "@monthly"
 		}
-		return dummyExecutor, backupConfig.CronSchedule, alertsClient, logger
+		return dummyExecutor, backupConfig.CronSchedule, alertsClient
 	}
 
 	for _, destination := range backupConfig.Destinations {
@@ -122,7 +112,7 @@ func Parse(osArgs []string) (backup.Executor, string, *alerts.ServiceAlertsClien
 		calculator,
 	)
 
-	return executor, backupConfig.CronSchedule, alertsClient, logger
+	return executor, backupConfig.CronSchedule, alertsClient
 }
 
 func parseAlertsClient(backupConfig BackupConfig) *alerts.ServiceAlertsClient {

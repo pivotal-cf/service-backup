@@ -4,8 +4,8 @@ import (
 	"log"
 	"os"
 
+	"code.cloudfoundry.org/lager"
 	"github.com/pivotal-cf-experimental/service-backup/config"
-	"github.com/pivotal-golang/lager"
 )
 
 var (
@@ -13,7 +13,10 @@ var (
 )
 
 func main() {
-	executor, _, _, _ := config.Parse(os.Args)
+	logger := lager.NewLogger("ServiceBackup")
+	logger.RegisterSink(lager.NewWriterSink(os.Stdout, lager.DEBUG))
+	configPath := os.Args[1]
+	executor, _, _ := config.Parse(configPath, logger)
 
 	if executor == nil {
 		return

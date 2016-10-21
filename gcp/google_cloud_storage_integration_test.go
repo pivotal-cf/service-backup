@@ -16,7 +16,7 @@ import (
 	"github.com/pborman/uuid"
 	"github.com/pivotal-cf-experimental/service-backup/gcp"
 	"github.com/pivotal-cf-experimental/service-backup/testhelpers"
-	"github.com/pivotal-golang/lager"
+	"code.cloudfoundry.org/lager"
 	"google.golang.org/api/option"
 )
 

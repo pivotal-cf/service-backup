@@ -7,7 +7,7 @@ import (
 
 	. "github.com/pivotal-cf-experimental/service-backup/backup"
 	"github.com/pivotal-cf-experimental/service-backup/backup/backupfakes"
-	"github.com/pivotal-golang/lager"
+	"code.cloudfoundry.org/lager"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"

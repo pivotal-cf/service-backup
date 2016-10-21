@@ -1,6 +1,7 @@
 package config_test
 
 import (
+	"code.cloudfoundry.org/lager"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/pivotal-cf-experimental/service-backup/backup"
@@ -9,6 +10,8 @@ import (
 )
 
 var _ = Describe("Parsing properties", func() {
+	logger := lager.NewLogger("config-unit-test")
+
 	Context("Valid backup config with alerts configured", func() {
 		var (
 			cron     string
@@ -16,7 +19,7 @@ var _ = Describe("Parsing properties", func() {
 			alerts   *alerts.ServiceAlertsClient
 		)
 		BeforeEach(func() {
-			executor, cron, alerts, _ = config.Parse([]string{"cmd", "fixtures/valid_backup_with_alerts.yml"})
+			executor, cron, alerts = config.Parse("fixtures/valid_backup_with_alerts.yml", logger)
 		})
 
 		It("has the correct cron", func() {
@@ -36,7 +39,7 @@ var _ = Describe("Parsing properties", func() {
 		var alerts *alerts.ServiceAlertsClient
 
 		BeforeEach(func() {
-			_, _, alerts, _ = config.Parse([]string{"cmd", "fixtures/valid_backup_without_alerts.yml"})
+			_, _, alerts = config.Parse("fixtures/valid_backup_without_alerts.yml", logger)
 		})
 
 		It("returns no alerts client", func() {

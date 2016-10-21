@@ -8,7 +8,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/pivotal-golang/lager"
+	"code.cloudfoundry.org/lager"
 	"github.com/satori/go.uuid"
 )
 

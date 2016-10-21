@@ -1,8 +1,8 @@
 package dummy
 
 import (
+	"code.cloudfoundry.org/lager"
 	"github.com/pivotal-cf-experimental/service-backup/backup"
-	"github.com/pivotal-golang/lager"
 )
 
 type dummyExecutor struct {

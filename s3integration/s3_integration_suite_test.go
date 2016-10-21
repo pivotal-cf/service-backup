@@ -8,7 +8,7 @@ import (
 	"testing"
 
 	"github.com/pivotal-cf-experimental/service-backup/s3testclient"
-	"github.com/pivotal-golang/lager"
+	"code.cloudfoundry.org/lager"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"

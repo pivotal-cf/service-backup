@@ -27,9 +27,9 @@ func performBackup(
 	cronSchedule string,
 ) (*gexec.Session, error) {
 
-	file, err := ioutil.TempFile("", "config.yml")
+	configFile, err := ioutil.TempFile("", "config.yml")
 	Expect(err).NotTo(HaveOccurred())
-	file.Write([]byte(fmt.Sprintf(`---
+	configFile.Write([]byte(fmt.Sprintf(`---
 destinations:
 - type: s3
   config:
@@ -47,9 +47,9 @@ cleanup_executable: %s
 missing_properties_message: custom message`, endpointURL, destBucket, destPath,
 		awsAccessKeyID, awsSecretAccessKey, sourceFolder, backupCreatorCmd, cronSchedule, cleanupCmd,
 	)))
-	file.Close()
+	configFile.Close()
 
-	backupCmd := exec.Command(pathToServiceBackupBinary, file.Name(), "--logLevel", "debug")
+	backupCmd := exec.Command(pathToServiceBackupBinary, configFile.Name())
 	return gexec.Start(backupCmd, GinkgoWriter, GinkgoWriter)
 }
 
@@ -66,9 +66,9 @@ func performBackupWithName(
 	cronSchedule string,
 ) (*gexec.Session, error) {
 
-	file, err := ioutil.TempFile("", "config.yml")
+	configFile, err := ioutil.TempFile("", "config.yml")
 	Expect(err).NotTo(HaveOccurred())
-	file.Write([]byte(fmt.Sprintf(`---
+	configFile.Write([]byte(fmt.Sprintf(`---
 destinations:
 - type: s3
   name: %s
@@ -87,9 +87,9 @@ cleanup_executable: %s
 missing_properties_message: custom message`, name, endpointURL, destBucket, destPath,
 		awsAccessKeyID, awsSecretAccessKey, sourceFolder, backupCreatorCmd, cronSchedule, cleanupCmd,
 	)))
-	file.Close()
+	configFile.Close()
 
-	backupCmd := exec.Command(pathToServiceBackupBinary, file.Name(), "--logLevel", "debug")
+	backupCmd := exec.Command(pathToServiceBackupBinary, configFile.Name())
 	return gexec.Start(backupCmd, GinkgoWriter, GinkgoWriter)
 }
 
@@ -106,9 +106,9 @@ func performBackupIfNotInProgress(
 	exitIfBackupInProgress bool,
 ) (*gexec.Session, error) {
 
-	file, err := ioutil.TempFile("", "config.yml")
+	configFile, err := ioutil.TempFile("", "config.yml")
 	Expect(err).NotTo(HaveOccurred())
-	file.Write([]byte(fmt.Sprintf(`---
+	configFile.Write([]byte(fmt.Sprintf(`---
 destinations:
 - type: s3
   config:
@@ -126,9 +126,9 @@ cleanup_executable: %s
 missing_properties_message: custom message`, endpointURL, destBucket, destPath,
 		awsAccessKeyID, awsSecretAccessKey, sourceFolder, backupCreatorCmd, fmt.Sprintf("%v", exitIfBackupInProgress), cronSchedule, cleanupCmd,
 	)))
-	file.Close()
+	configFile.Close()
 
-	backupCmd := exec.Command(pathToServiceBackupBinary, file.Name())
+	backupCmd := exec.Command(pathToServiceBackupBinary, configFile.Name())
 	return gexec.Start(backupCmd, GinkgoWriter, GinkgoWriter)
 }
 
@@ -143,9 +143,9 @@ func performManualBackup(
 	cleanupCmd string,
 ) (*gexec.Session, error) {
 
-	file, err := ioutil.TempFile("", "config.yml")
+	configFile, err := ioutil.TempFile("", "config.yml")
 	Expect(err).NotTo(HaveOccurred())
-	file.Write([]byte(fmt.Sprintf(`---
+	configFile.Write([]byte(fmt.Sprintf(`---
 destinations:
 - type: s3
   config:
@@ -163,9 +163,9 @@ cleanup_executable: %s
 missing_properties_message: custom message`, endpointURL, destBucket, destPath,
 		awsAccessKeyID, awsSecretAccessKey, sourceFolder, backupCreatorCmd, cronSchedule, cleanupCmd,
 	)))
-	file.Close()
+	configFile.Close()
 
-	manualBackupCmd := exec.Command(pathToManualBackupBinary, file.Name())
+	manualBackupCmd := exec.Command(pathToManualBackupBinary, configFile.Name())
 	return gexec.Start(manualBackupCmd, GinkgoWriter, GinkgoWriter)
 
 }
@@ -184,9 +184,9 @@ func performBackupWithServiceIdentifier(
 	serviceIdentifierCmd string,
 ) (*gexec.Session, error) {
 
-	file, err := ioutil.TempFile("", "config.yml")
+	configFile, err := ioutil.TempFile("", "config.yml")
 	Expect(err).NotTo(HaveOccurred())
-	file.Write([]byte(fmt.Sprintf(`---
+	configFile.Write([]byte(fmt.Sprintf(`---
 destinations:
 - type: s3
   name: %s
@@ -206,9 +206,9 @@ service_identifier_executable: %s
 missing_properties_message: custom message`, name, endpointURL, destBucket, destPath,
 		awsAccessKeyID, awsSecretAccessKey, sourceFolder, backupCreatorCmd, cronSchedule, cleanupCmd, serviceIdentifierCmd,
 	)))
-	file.Close()
+	configFile.Close()
 
-	backupCmd := exec.Command(pathToServiceBackupBinary, file.Name(), "--logLevel", "debug")
+	backupCmd := exec.Command(pathToServiceBackupBinary, configFile.Name())
 	return gexec.Start(backupCmd, GinkgoWriter, GinkgoWriter)
 }
 

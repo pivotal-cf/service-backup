@@ -3,18 +3,18 @@ package main
 import (
 	"os"
 
+	"code.cloudfoundry.org/lager"
+
 	"github.com/pivotal-cf-experimental/service-backup/config"
-	"github.com/pivotal-golang/lager"
 	"github.com/tedsuo/ifrit"
 	"gopkg.in/robfig/cron.v2"
 )
 
-var (
-	logger lager.Logger
-)
-
 func main() {
-	executor, cronSchedule, _, logger := config.Parse(os.Args)
+	logger := lager.NewLogger("ServiceBackup")
+	logger.RegisterSink(lager.NewWriterSink(os.Stdout, lager.DEBUG))
+	configPath := os.Args[1]
+	executor, cronSchedule, _ := config.Parse(configPath, logger)
 
 	if executor == nil {
 		return
