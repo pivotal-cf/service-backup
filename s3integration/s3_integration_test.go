@@ -1056,7 +1056,7 @@ var _ = Describe("S3 Backup", func() {
 cleanup_executable: ''
 cron_schedule: '%s'
 destinations: []
-exit_if_in_progress: 'false'
+exit_if_in_progress: false
 aws_cli_path: "/var/vcap/packages/aws-cli/bin/aws"
 azure_cli_path: "/var/vcap/packages/blobxfer/bin/blobxfer"
 missing_properties_message: Provide these missing fields in your manifest.

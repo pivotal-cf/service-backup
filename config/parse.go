@@ -6,7 +6,6 @@ import (
 	"log"
 	"os"
 	"os/exec"
-	"strconv"
 
 	"gopkg.in/yaml.v2"
 
@@ -30,12 +29,6 @@ func Parse(backupConfigPath string, logger lager.Logger) (backup.Executor, strin
 	err = yaml.Unmarshal([]byte(configYAML), &backupConfig)
 	if err != nil {
 		log.Fatal(err)
-	}
-
-	exitIfBackupInProgressBooleanValue, err := strconv.ParseBool(backupConfig.ExitIfInProgress)
-	if err != nil {
-		logger.Error("Invalid boolean value for exit_if_in_progress. Please set to true or false.", err)
-		os.Exit(2)
 	}
 
 	alertsClient := parseAlertsClient(backupConfig)
@@ -106,7 +99,7 @@ func Parse(backupConfigPath string, logger lager.Logger) (backup.Executor, strin
 		backupConfig.SourceExecutable,
 		backupConfig.CleanupExecutable,
 		backupConfig.ServiceIdentifierExecutable,
-		exitIfBackupInProgressBooleanValue,
+		backupConfig.ExitIfInProgress,
 		logger,
 		exec.Command,
 		calculator,
@@ -143,7 +136,7 @@ type BackupConfig struct {
 	CronSchedule                string            `yaml:"cron_schedule"`
 	CleanupExecutable           string            `yaml:"cleanup_executable"`
 	MissingPropertiesMessage    string            `yaml:"missing_properties_message"`
-	ExitIfInProgress            string            `yaml:"exit_if_in_progress"`
+	ExitIfInProgress            bool              `yaml:"exit_if_in_progress"`
 	ServiceIdentifierExecutable string            `yaml:"service_identifier_executable"`
 	AwsCliPath                  string            `yaml:"aws_cli_path"`
 	AzureCliPath                string            `yaml:"azure_cli_path"`
