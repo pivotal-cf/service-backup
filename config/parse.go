@@ -1,21 +1,15 @@
 package config
 
 import (
-	"fmt"
 	"io/ioutil"
 	"log"
-	"os"
 	"os/exec"
 
 	"gopkg.in/yaml.v2"
 
 	"code.cloudfoundry.org/lager"
-	"github.com/pivotal-cf-experimental/service-backup/azure"
 	"github.com/pivotal-cf-experimental/service-backup/backup"
 	"github.com/pivotal-cf-experimental/service-backup/dummy"
-	"github.com/pivotal-cf-experimental/service-backup/gcp"
-	"github.com/pivotal-cf-experimental/service-backup/s3"
-	"github.com/pivotal-cf-experimental/service-backup/scp"
 	alerts "github.com/pivotal-cf/service-alerts-client/client"
 )
 
@@ -33,8 +27,6 @@ func Parse(backupConfigPath string, logger lager.Logger) (backup.Executor, strin
 
 	alertsClient := parseAlertsClient(backupConfig)
 
-	uploader := backup.Uploader{}
-
 	if len(backupConfig.Destinations) == 0 {
 		logger.Info("No destination provided - skipping backup")
 		dummyExecutor := dummy.NewDummyExecutor(logger)
@@ -46,50 +38,8 @@ func Parse(backupConfigPath string, logger lager.Logger) (backup.Executor, strin
 		return dummyExecutor, backupConfig.CronSchedule, alertsClient
 	}
 
-	for _, destination := range backupConfig.Destinations {
-		destinationConfig := destination.Config
-		switch destination.DestType {
-		case "s3":
-			basePath := fmt.Sprintf("%s/%s", destinationConfig["bucket_name"], destinationConfig["bucket_path"])
-			uploader = append(uploader, s3.New(
-				destination.Name,
-				backupConfig.AwsCliPath,
-				destinationConfig["endpoint_url"].(string),
-				destinationConfig["access_key_id"].(string),
-				destinationConfig["secret_access_key"].(string),
-				basePath,
-			))
-		case "scp":
-			basePath := destinationConfig["destination"].(string)
-			uploader = append(uploader, scp.New(
-				destination.Name,
-				destinationConfig["server"].(string),
-				destinationConfig["port"].(int),
-				destinationConfig["user"].(string),
-				destinationConfig["key"].(string),
-				basePath,
-				destinationConfig["fingerprint"].(string)))
-		case "azure":
-			basePath := destinationConfig["path"].(string)
-			uploader = append(uploader, azure.New(
-				destination.Name,
-				destinationConfig["storage_access_key"].(string),
-				destinationConfig["storage_account"].(string),
-				destinationConfig["container"].(string),
-				destinationConfig["blob_store_base_url"].(string),
-				backupConfig.AzureCliPath,
-				basePath))
-		case "gcs":
-			uploader = append(uploader, gcp.New(
-				os.Getenv("GCP_SERVICE_ACCOUNT_FILE"),
-				destinationConfig["project_id"].(string),
-				destinationConfig["bucket_name"].(string),
-			))
-		default:
-			logger.Error(fmt.Sprintf("Unknown destination type: %s", destination.DestType), nil)
-			os.Exit(2)
-		}
-	}
+	backupers := ParseDestinations(backupConfig)
+	uploader := backup.NewUploader(backupers)
 
 	var calculator = &backup.FileSystemSizeCalculator{}
 

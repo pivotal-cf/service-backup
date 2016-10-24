@@ -3,11 +3,11 @@ package backup_test
 import (
 	"errors"
 
+	"code.cloudfoundry.org/lager"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/pivotal-cf-experimental/service-backup/backup"
 	"github.com/pivotal-cf-experimental/service-backup/backup/backupfakes"
-	"code.cloudfoundry.org/lager"
 )
 
 var _ = Describe("MultiBackuper", func() {
@@ -24,7 +24,7 @@ var _ = Describe("MultiBackuper", func() {
 		BeforeEach(func() {
 			backuperA = new(backupfakes.FakeBackuper)
 			backuperB = new(backupfakes.FakeBackuper)
-			uploader = backup.Uploader{backuperA, backuperB}
+			uploader = backup.NewUploader([]backup.Backuper{backuperA, backuperB})
 		})
 
 		JustBeforeEach(func() {

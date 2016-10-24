@@ -5,9 +5,9 @@ import (
 	"strings"
 	"sync"
 
-	. "github.com/pivotal-cf-experimental/service-backup/backup"
-	"github.com/pivotal-cf-experimental/service-backup/backup/backupfakes"
 	"code.cloudfoundry.org/lager"
+	"github.com/pivotal-cf-experimental/service-backup/backup"
+	"github.com/pivotal-cf-experimental/service-backup/backup/backupfakes"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -18,8 +18,8 @@ var _ = Describe("Executor", func() {
 	var (
 		providerFactory *backupfakes.FakeProviderFactory
 		execCmd         *exec.Cmd
-		executor        Executor
-		uploader        Uploader
+		executor        backup.Executor
+		uploader        backup.Uploader
 		backuper        *backupfakes.FakeBackuper
 		logger          lager.Logger
 		log             *gbytes.Buffer
@@ -32,7 +32,7 @@ var _ = Describe("Executor", func() {
 		logger.RegisterSink(lager.NewWriterSink(log, lager.DEBUG))
 
 		backuper = new(backupfakes.FakeBackuper)
-		uploader = Uploader{backuper}
+		uploader = backup.NewUploader([]backup.Backuper{backuper})
 		calculator = new(backupfakes.FakeSizeCalculator)
 		calculator.DirSizeReturns(200, nil)
 	})
@@ -57,7 +57,7 @@ var _ = Describe("Executor", func() {
 
 		Describe("source_executable not provided", func() {
 			JustBeforeEach(func() {
-				executor = NewExecutor(
+				executor = backup.NewExecutor(
 					uploader,
 					"source-folder",
 					"",
@@ -86,7 +86,7 @@ var _ = Describe("Executor", func() {
 
 		Describe("backup_guid", func() {
 			JustBeforeEach(func() {
-				executor = NewExecutor(
+				executor = backup.NewExecutor(
 					uploader,
 					"source-folder",
 					assetPath("fake-snapshotter"),
@@ -108,7 +108,7 @@ var _ = Describe("Executor", func() {
 
 		Describe("performIdentifyService", func() {
 			JustBeforeEach(func() {
-				executor = NewExecutor(
+				executor = backup.NewExecutor(
 					uploader,
 					"source-folder",
 					assetPath("fake-snapshotter"),
@@ -223,7 +223,7 @@ var _ = Describe("Executor", func() {
 			Context("when exit_if_in_progress is omitted or set to false", func() {
 				JustBeforeEach(func() {
 					exitIfBackupAlreadyInProgress := false
-					executor = NewExecutor(
+					executor = backup.NewExecutor(
 						uploader,
 						"source-folder",
 						assetPath("fake-snapshotter"),
@@ -254,7 +254,7 @@ var _ = Describe("Executor", func() {
 			Context("when exit_if_in_progress is set to true", func() {
 				JustBeforeEach(func() {
 					exitIfBackupInProgress = true
-					executor = NewExecutor(
+					executor = backup.NewExecutor(
 						uploader,
 						"source-folder",
 						assetPath("fake-snapshotter"),

@@ -7,11 +7,17 @@ import (
 	"code.cloudfoundry.org/lager"
 )
 
-type Uploader []Backuper
+type Uploader struct {
+	backupers []Backuper
+}
+
+func NewUploader(backupers []Backuper) Uploader {
+	return Uploader{backupers: backupers}
+}
 
 func (m Uploader) Upload(localPath string, logger lager.Logger) error {
 	var errors []error
-	for _, b := range m {
+	for _, b := range m.backupers {
 		sessionLogger := logger
 		if b.Name() != "" {
 			sessionLogger = logger.WithData(lager.Data{"destination_name": b.Name()})
