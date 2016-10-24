@@ -12,7 +12,7 @@ import (
 
 func main() {
 	logger := lager.NewLogger("ServiceBackup")
-	logger.RegisterSink(lager.NewWriterSink(os.Stdout, lager.DEBUG))
+	logger.RegisterSink(lager.NewWriterSink(os.Stdout, lager.INFO))
 	configPath := os.Args[1]
 	executor, cronSchedule, _ := config.Parse(configPath, logger)
 
