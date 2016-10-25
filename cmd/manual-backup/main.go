@@ -1,11 +1,12 @@
 package main
 
 import (
-	"log"
 	"os"
 
 	"code.cloudfoundry.org/lager"
+	"github.com/pivotal-cf-experimental/service-backup/backup"
 	"github.com/pivotal-cf-experimental/service-backup/config"
+	"github.com/pivotal-cf-experimental/service-backup/executor"
 )
 
 var (
@@ -14,15 +15,17 @@ var (
 
 func main() {
 	logger := lager.NewLogger("ServiceBackup")
-	logger.RegisterSink(lager.NewWriterSink(os.Stdout, lager.DEBUG))
-	configPath := os.Args[1]
-	executor, _, _ := config.Parse(configPath, logger)
+	logger.RegisterSink(lager.NewWriterSink(os.Stdout, lager.INFO))
 
-	if executor == nil {
-		return
-	}
+	configPath := os.Args[1]
+	backupConfig := config.Parse(configPath, logger)
+	backupers := config.ParseDestinations(backupConfig, logger)
+
+	executorFactory := executor.NewExecutoryFactory(backupConfig, backup.NewMultiBackuper(backupers), logger)
+	executor := executorFactory.NewExecutor()
 
 	if err := executor.RunOnce(); err != nil {
-		log.Fatalf("error running backup: %s\n", err)
+		logger.Error("Error running backup", err)
+		os.Exit(2)
 	}
 }

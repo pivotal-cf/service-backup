@@ -7,8 +7,8 @@ import (
 	"os/exec"
 	"strconv"
 
-	"github.com/pivotal-cf-experimental/service-backup/backup"
 	"code.cloudfoundry.org/lager"
+	"github.com/pivotal-cf-experimental/service-backup/backup"
 )
 
 type SCPClient struct {
@@ -85,7 +85,7 @@ func (client *SCPClient) Upload(localPath string, sessionLogger lager.Logger) er
 	remotePathGenerator := backup.RemotePathGenerator{}
 	remotePath := remotePathGenerator.RemotePathWithDate(client.basePath)
 
-	if err := client.ensureRemoteDirectoryExists(remotePath, privateKeyFileName, knownHostsFileName, sessionLogger); err != nil {
+	if err = client.ensureRemoteDirectoryExists(remotePath, privateKeyFileName, knownHostsFileName, sessionLogger); err != nil {
 		return err
 	}
 

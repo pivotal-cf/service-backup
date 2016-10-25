@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"os"
 
+	"code.cloudfoundry.org/lager"
+
 	"github.com/pivotal-cf-experimental/service-backup/azure"
 	"github.com/pivotal-cf-experimental/service-backup/backup"
 	"github.com/pivotal-cf-experimental/service-backup/gcp"
@@ -11,7 +13,7 @@ import (
 	"github.com/pivotal-cf-experimental/service-backup/scp"
 )
 
-func ParseDestinations(backupConfig BackupConfig) []backup.Backuper {
+func ParseDestinations(backupConfig BackupConfig, logger lager.Logger) []backup.Backuper {
 	var backupers []backup.Backuper
 
 	for _, destination := range backupConfig.Destinations {
@@ -35,8 +37,8 @@ func ParseDestinations(backupConfig BackupConfig) []backup.Backuper {
 				destinationConfig["port"].(int),
 				destinationConfig["user"].(string),
 				destinationConfig["key"].(string),
-				destinationConfig["fingerprint"].(string),
 				basePath,
+				destinationConfig["fingerprint"].(string),
 			))
 		case "azure":
 			basePath := destinationConfig["path"].(string)

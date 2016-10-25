@@ -16,7 +16,7 @@ var _ = Describe("MultiBackuper", func() {
 			localPath = "local/path"
 			backuperA *backupfakes.FakeBackuper
 			backuperB *backupfakes.FakeBackuper
-			uploader  backup.Uploader
+			uploader  backup.MultiBackuper
 			logger    lager.Logger
 			uploadErr error
 		)
@@ -24,7 +24,7 @@ var _ = Describe("MultiBackuper", func() {
 		BeforeEach(func() {
 			backuperA = new(backupfakes.FakeBackuper)
 			backuperB = new(backupfakes.FakeBackuper)
-			uploader = backup.NewUploader([]backup.Backuper{backuperA, backuperB})
+			uploader = backup.NewMultiBackuper([]backup.Backuper{backuperA, backuperB})
 		})
 
 		JustBeforeEach(func() {

@@ -1,4 +1,4 @@
-package backup_test
+package executor_test
 
 import (
 	"os/exec"
@@ -8,6 +8,7 @@ import (
 	"code.cloudfoundry.org/lager"
 	"github.com/pivotal-cf-experimental/service-backup/backup"
 	"github.com/pivotal-cf-experimental/service-backup/backup/backupfakes"
+	"github.com/pivotal-cf-experimental/service-backup/executor"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -18,8 +19,8 @@ var _ = Describe("Executor", func() {
 	var (
 		providerFactory *backupfakes.FakeProviderFactory
 		execCmd         *exec.Cmd
-		executor        backup.Executor
-		uploader        backup.Uploader
+		backupExecutor  backup.Executor
+		uploader        backup.MultiBackuper
 		backuper        *backupfakes.FakeBackuper
 		logger          lager.Logger
 		log             *gbytes.Buffer
@@ -32,7 +33,7 @@ var _ = Describe("Executor", func() {
 		logger.RegisterSink(lager.NewWriterSink(log, lager.DEBUG))
 
 		backuper = new(backupfakes.FakeBackuper)
-		uploader = backup.NewUploader([]backup.Backuper{backuper})
+		uploader = backup.NewMultiBackuper([]backup.Backuper{backuper})
 		calculator = new(backupfakes.FakeSizeCalculator)
 		calculator.DirSizeReturns(200, nil)
 	})
@@ -57,7 +58,7 @@ var _ = Describe("Executor", func() {
 
 		Describe("source_executable not provided", func() {
 			JustBeforeEach(func() {
-				executor = backup.NewExecutor(
+				backupExecutor = executor.NewExecutor(
 					uploader,
 					"source-folder",
 					"",
@@ -69,7 +70,7 @@ var _ = Describe("Executor", func() {
 					calculator,
 				)
 
-				runOnceErr = executor.RunOnce()
+				runOnceErr = backupExecutor.RunOnce()
 			})
 
 			It("should continue with upload", func() {
@@ -86,7 +87,7 @@ var _ = Describe("Executor", func() {
 
 		Describe("backup_guid", func() {
 			JustBeforeEach(func() {
-				executor = backup.NewExecutor(
+				backupExecutor = executor.NewExecutor(
 					uploader,
 					"source-folder",
 					assetPath("fake-snapshotter"),
@@ -98,7 +99,7 @@ var _ = Describe("Executor", func() {
 					calculator,
 				)
 
-				runOnceErr = executor.RunOnce()
+				runOnceErr = backupExecutor.RunOnce()
 			})
 
 			It("logs with a guid for the backup", func() {
@@ -108,7 +109,7 @@ var _ = Describe("Executor", func() {
 
 		Describe("performIdentifyService", func() {
 			JustBeforeEach(func() {
-				executor = backup.NewExecutor(
+				backupExecutor = executor.NewExecutor(
 					uploader,
 					"source-folder",
 					assetPath("fake-snapshotter"),
@@ -120,7 +121,7 @@ var _ = Describe("Executor", func() {
 					calculator,
 				)
 
-				runOnceErr = executor.RunOnce()
+				runOnceErr = backupExecutor.RunOnce()
 			})
 
 			Context("when provided service identifier", func() {
@@ -148,8 +149,6 @@ var _ = Describe("Executor", func() {
 					It("logs with the identifier for each event", func() {
 						Expect(log).To(gbytes.Say("Perform backup started"))
 						Expect(log).To(gbytes.Say(`"backup_guid":`))
-						Expect(log).To(gbytes.Say(`"identifier":"unit-identifier"`))
-						Expect(log).To(gbytes.Say("Perform backup debug info"))
 						Expect(log).To(gbytes.Say(`"identifier":"unit-identifier"`))
 						Expect(log).To(gbytes.Say("Perform backup completed successfully"))
 						Expect(log).To(gbytes.Say(`"identifier":"unit-identifier"`))
@@ -223,7 +222,7 @@ var _ = Describe("Executor", func() {
 			Context("when exit_if_in_progress is omitted or set to false", func() {
 				JustBeforeEach(func() {
 					exitIfBackupAlreadyInProgress := false
-					executor = backup.NewExecutor(
+					backupExecutor = executor.NewExecutor(
 						uploader,
 						"source-folder",
 						assetPath("fake-snapshotter"),
@@ -238,12 +237,12 @@ var _ = Describe("Executor", func() {
 
 				Context("when a backup is already in progress", func() {
 					JustBeforeEach(func() {
-						firstBackupErr := executor.RunOnce()
+						firstBackupErr := backupExecutor.RunOnce()
 						Expect(firstBackupErr).NotTo(HaveOccurred())
 					})
 
 					It("starts the upload", func() {
-						secondBackupErr := executor.RunOnce()
+						secondBackupErr := backupExecutor.RunOnce()
 						Expect(secondBackupErr).NotTo(HaveOccurred())
 						Expect(providerFactory.ExecCommandCallCount()).To(Equal(2))
 						Expect(log).To(gbytes.Say("Upload backup started"))
@@ -254,7 +253,7 @@ var _ = Describe("Executor", func() {
 			Context("when exit_if_in_progress is set to true", func() {
 				JustBeforeEach(func() {
 					exitIfBackupInProgress = true
-					executor = backup.NewExecutor(
+					backupExecutor = executor.NewExecutor(
 						uploader,
 						"source-folder",
 						assetPath("fake-snapshotter"),
@@ -287,7 +286,7 @@ var _ = Describe("Executor", func() {
 						go func() {
 							//start the first upload
 							defer GinkgoRecover()
-							firstBackupErr := executor.RunOnce()
+							firstBackupErr := backupExecutor.RunOnce()
 							Expect(firstBackupErr).NotTo(HaveOccurred())
 							firstBackupCompleted.Done()
 						}()
@@ -295,7 +294,7 @@ var _ = Describe("Executor", func() {
 
 					It("rejects the upload", func() {
 						firstBackupInProgress.Wait()
-						secondBackupErr := executor.RunOnce()
+						secondBackupErr := backupExecutor.RunOnce()
 						blockfirstUpload.Done()
 						firstBackupCompleted.Wait()
 

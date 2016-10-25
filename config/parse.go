@@ -2,76 +2,31 @@ package config
 
 import (
 	"io/ioutil"
-	"log"
-	"os/exec"
+	"os"
 
 	"gopkg.in/yaml.v2"
 
 	"code.cloudfoundry.org/lager"
-	"github.com/pivotal-cf-experimental/service-backup/backup"
-	"github.com/pivotal-cf-experimental/service-backup/dummy"
 	alerts "github.com/pivotal-cf/service-alerts-client/client"
 )
 
-func Parse(backupConfigPath string, logger lager.Logger) (backup.Executor, string, *alerts.ServiceAlertsClient) {
+func Parse(backupConfigPath string, logger lager.Logger) BackupConfig {
 	var backupConfig = BackupConfig{}
-	configYAML, err := ioutil.ReadFile(backupConfigPath)
 
+	configYAML, err := ioutil.ReadFile(backupConfigPath)
 	if err != nil {
-		log.Fatal(err)
+		logger.Error("Error reading config file", err)
+		os.Exit(2)
 	}
+
 	err = yaml.Unmarshal([]byte(configYAML), &backupConfig)
 	if err != nil {
-		log.Fatal(err)
+		logger.Error("Error unmarshalling config file", err)
+		os.Exit(2)
 	}
 
-	alertsClient := parseAlertsClient(backupConfig)
-
-	if len(backupConfig.Destinations) == 0 {
-		logger.Info("No destination provided - skipping backup")
-		dummyExecutor := dummy.NewDummyExecutor(logger)
-		// Default cronSchedule to monthly if not provided when destination is also not provided
-		// This is needed to successfully run the dummy executor and not exit
-		if backupConfig.CronSchedule == "" {
-			backupConfig.CronSchedule = "@monthly"
-		}
-		return dummyExecutor, backupConfig.CronSchedule, alertsClient
-	}
-
-	backupers := ParseDestinations(backupConfig)
-	uploader := backup.NewUploader(backupers)
-
-	var calculator = &backup.FileSystemSizeCalculator{}
-
-	executor := backup.NewExecutor(
-		uploader,
-		backupConfig.SourceFolder,
-		backupConfig.SourceExecutable,
-		backupConfig.CleanupExecutable,
-		backupConfig.ServiceIdentifierExecutable,
-		backupConfig.ExitIfInProgress,
-		logger,
-		exec.Command,
-		calculator,
-	)
-
-	return executor, backupConfig.CronSchedule, alertsClient
+	return backupConfig
 }
-
-func parseAlertsClient(backupConfig BackupConfig) *alerts.ServiceAlertsClient {
-	if backupConfig.Alerts == nil {
-		return nil
-	}
-
-	alertsConfig := alerts.Config{
-		CloudController:    backupConfig.Alerts.CloudController,
-		NotificationTarget: backupConfig.Alerts.NotificationTarget,
-	}
-
-	return alerts.New(alertsConfig, nil)
-}
-
-var logger lager.Logger
 
 type destinationType struct {
 	DestType string `yaml:"type"`
@@ -95,4 +50,8 @@ type BackupConfig struct {
 		NotificationTarget alerts.NotificationTarget `yaml:"notification_target"`
 		CloudController    alerts.CloudController    `yaml:"cloud_controller"`
 	}
+}
+
+func (b BackupConfig) NoDestinations() bool {
+	return len(b.Destinations) == 0
 }

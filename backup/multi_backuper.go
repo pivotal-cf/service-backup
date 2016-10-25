@@ -7,15 +7,15 @@ import (
 	"code.cloudfoundry.org/lager"
 )
 
-type Uploader struct {
+type MultiBackuper struct {
 	backupers []Backuper
 }
 
-func NewUploader(backupers []Backuper) Uploader {
-	return Uploader{backupers: backupers}
+func NewMultiBackuper(backupers []Backuper) MultiBackuper {
+	return MultiBackuper{backupers: backupers}
 }
 
-func (m Uploader) Upload(localPath string, logger lager.Logger) error {
+func (m MultiBackuper) Upload(localPath string, logger lager.Logger) error {
 	var errors []error
 	for _, b := range m.backupers {
 		sessionLogger := logger

@@ -1,4 +1,4 @@
-package backup
+package executor
 
 import (
 	"errors"
@@ -9,30 +9,13 @@ import (
 	"time"
 
 	"code.cloudfoundry.org/lager"
+	"github.com/pivotal-cf-experimental/service-backup/backup"
 	"github.com/satori/go.uuid"
 )
 
-//go:generate counterfeiter -o backupfakes/fake_provider_factory.go . ProviderFactory
-type ProviderFactory interface {
-	ExecCommand(string, ...string) *exec.Cmd
-}
-
-//ExecCommand fakeable exec.Command
-type ExecCommand func(string, ...string) *exec.Cmd
-
-type Executor interface {
-	RunOnce() error
-}
-
-//go:generate counterfeiter -o backupfakes/fake_backuper.go . Backuper
-type Backuper interface {
-	Upload(localPath string, sessionLogger lager.Logger) error
-	Name() string
-}
-
-type backup struct {
+type Executor struct {
 	sync.Mutex
-	uploader               Uploader
+	uploader               backup.MultiBackuper
 	sourceFolder           string
 	backupCreatorCmd       string
 	cleanupCmd             string
@@ -40,23 +23,21 @@ type backup struct {
 	exitIfBackupInProgress bool
 	backupInProgress       bool
 	logger                 lager.Logger
-	execCommand            ExecCommand
-	calculator             SizeCalculator
+	execCommand            backup.ExecCommand
+	calculator             backup.SizeCalculator
 }
 
-//NewExecutor ...
 func NewExecutor(
-	uploader Uploader,
-	sourceFolder,
+	uploader backup.MultiBackuper, sourceFolder,
 	backupCreatorCmd,
 	cleanupCmd,
 	serviceIdentifierCmd string,
 	exitIfInProgress bool,
 	logger lager.Logger,
-	execCommand ExecCommand,
-	calculator SizeCalculator,
-) Executor {
-	return &backup{
+	execCommand backup.ExecCommand,
+	calculator backup.SizeCalculator,
+) backup.Executor {
+	return &Executor{
 		uploader:               uploader,
 		sourceFolder:           sourceFolder,
 		backupCreatorCmd:       backupCreatorCmd,
@@ -70,7 +51,7 @@ func NewExecutor(
 	}
 }
 
-func (b *backup) backupCanBeStarted() bool {
+func (b *Executor) backupCanBeStarted() bool {
 	b.Lock()
 	defer b.Unlock()
 	if b.backupInProgress && b.exitIfBackupInProgress {
@@ -80,13 +61,13 @@ func (b *backup) backupCanBeStarted() bool {
 	return true
 }
 
-func (b *backup) doneBackup() {
+func (b *Executor) doneBackup() {
 	b.Lock()
 	defer b.Unlock()
 	b.backupInProgress = false
 }
 
-func (b *backup) RunOnce() error {
+func (b *Executor) RunOnce() error {
 	sessionLogger := b.logger.WithData(lager.Data{"backup_guid": uuid.NewV4().String()})
 
 	if !b.backupCanBeStarted() {
@@ -116,7 +97,7 @@ func (b *backup) RunOnce() error {
 	return nil
 }
 
-func (b *backup) identifyService(sessionLogger lager.Logger) lager.Logger {
+func (b *Executor) identifyService(sessionLogger lager.Logger) lager.Logger {
 	args := strings.Split(b.serviceIdentifierCmd, " ")
 
 	_, err := os.Stat(args[0])
@@ -142,7 +123,7 @@ func (b *backup) identifyService(sessionLogger lager.Logger) lager.Logger {
 	)
 }
 
-func (b *backup) performBackup(sessionLogger lager.Logger) error {
+func (b *Executor) performBackup(sessionLogger lager.Logger) error {
 	if b.backupCreatorCmd == "" {
 		sessionLogger.Info("source_executable not provided, skipping performing of backup")
 		return nil
@@ -151,8 +132,7 @@ func (b *backup) performBackup(sessionLogger lager.Logger) error {
 	args := strings.Split(b.backupCreatorCmd, " ")
 	cmd := exec.Command(args[0], args[1:]...)
 
-	out, err := cmd.CombinedOutput()
-	sessionLogger.Debug("Perform backup debug info", lager.Data{"cmd": b.backupCreatorCmd, "out": string(out)})
+	_, err := cmd.CombinedOutput()
 
 	if err != nil {
 		sessionLogger.Error("Perform backup completed with error", err)
@@ -163,7 +143,7 @@ func (b *backup) performBackup(sessionLogger lager.Logger) error {
 	return nil
 }
 
-func (b *backup) performCleanup(sessionLogger lager.Logger) error {
+func (b *Executor) performCleanup(sessionLogger lager.Logger) error {
 	if b.cleanupCmd == "" {
 		sessionLogger.Info("Cleanup command not provided")
 		return nil
@@ -173,8 +153,7 @@ func (b *backup) performCleanup(sessionLogger lager.Logger) error {
 	args := strings.Split(b.cleanupCmd, " ")
 	cmd := exec.Command(args[0], args[1:]...)
 
-	out, err := cmd.CombinedOutput()
-	sessionLogger.Debug("Cleanup debug info", lager.Data{"cmd": b.cleanupCmd, "out": string(out)})
+	_, err := cmd.CombinedOutput()
 
 	if err != nil {
 		sessionLogger.Error("Cleanup completed with error", err)
@@ -185,7 +164,7 @@ func (b *backup) performCleanup(sessionLogger lager.Logger) error {
 	return nil
 }
 
-func (b *backup) uploadBackup(sessionLogger lager.Logger) error {
+func (b *Executor) uploadBackup(sessionLogger lager.Logger) error {
 	sessionLogger.Info("Upload backup started")
 
 	startTime := time.Now()
