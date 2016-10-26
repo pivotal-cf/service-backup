@@ -1,0 +1,13 @@
+---
+destinations:
+- type: s3
+  config:
+    endpoint_url: www.s3.com
+    bucket_name: a_bucket
+    bucket_path: a_bucket_path
+    access_key_id: AKAIADCIWI@ICFIJ
+    secret_access_key: ASCDMIACDNI@UD937e9237aSCDAS
+source_folder: .
+cron_schedule: "*/5 * * * * *"
+aws_cli_path: path/to/aws_cli
+azure_cli_path: path/to/azure_cli

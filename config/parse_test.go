@@ -18,7 +18,8 @@ var _ = Describe("Parse", func() {
 
 	Context("with all optional fields", func() {
 		It("returns a backup config", func() {
-			backupConfig, _ := config.Parse("fixtures/valid_config.yml", logger)
+			backupConfig, err := config.Parse("fixtures/valid_config_with_optional_fields.yml", logger)
+			Expect(err).NotTo(HaveOccurred())
 
 			Expect(backupConfig.Destinations).To(Equal([]config.Destination{
 				{
@@ -42,7 +43,7 @@ var _ = Describe("Parse", func() {
 			Expect(backupConfig.ServiceIdentifierExecutable).To(Equal("whoami"))
 			Expect(backupConfig.AwsCliPath).To(Equal("path/to/aws_cli"))
 			Expect(backupConfig.AzureCliPath).To(Equal("path/to/azure_cli"))
-			Expect(backupConfig.Alerts).To(Equal(config.Alerts{
+			Expect(backupConfig.Alerts).To(Equal(&config.Alerts{
 				ProductName: "MySQL",
 				Config: alerts.Config{
 					CloudController: alerts.CloudController{
@@ -67,6 +68,37 @@ var _ = Describe("Parse", func() {
 					GlobalTimeoutSeconds: 42,
 				},
 			}))
+		})
+	})
+
+	Context("with only mandatory fields", func() {
+		It("returns a backup config", func() {
+			backupConfig, err := config.Parse("fixtures/valid_minimal_config.yml", logger)
+			Expect(err).NotTo(HaveOccurred())
+
+			Expect(backupConfig.Destinations).To(Equal([]config.Destination{
+				{
+					Type: "s3",
+					Name: "",
+					Config: map[string]interface{}{
+						"endpoint_url":      "www.s3.com",
+						"bucket_name":       "a_bucket",
+						"bucket_path":       "a_bucket_path",
+						"access_key_id":     "AKAIADCIWI@ICFIJ",
+						"secret_access_key": "ASCDMIACDNI@UD937e9237aSCDAS",
+					},
+				},
+			}))
+			Expect(backupConfig.SourceFolder).To(Equal("."))
+			Expect(backupConfig.SourceExecutable).To(Equal(""))
+			Expect(backupConfig.CronSchedule).To(Equal("*/5 * * * * *"))
+			Expect(backupConfig.CleanupExecutable).To(Equal(""))
+			Expect(backupConfig.MissingPropertiesMessage).To(Equal(""))
+			Expect(backupConfig.ExitIfInProgress).To(BeFalse())
+			Expect(backupConfig.ServiceIdentifierExecutable).To(Equal(""))
+			Expect(backupConfig.AwsCliPath).To(Equal("path/to/aws_cli"))
+			Expect(backupConfig.AzureCliPath).To(Equal("path/to/azure_cli"))
+			Expect(backupConfig.Alerts).To(BeNil())
 		})
 	})
 

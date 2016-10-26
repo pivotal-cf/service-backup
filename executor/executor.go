@@ -28,7 +28,8 @@ type Executor struct {
 }
 
 func NewExecutor(
-	uploader backup.MultiBackuper, sourceFolder,
+	uploader backup.MultiBackuper,
+	sourceFolder,
 	backupCreatorCmd,
 	cleanupCmd,
 	serviceIdentifierCmd string,
@@ -51,6 +52,11 @@ func NewExecutor(
 	}
 }
 
+type ServiceInstanceError struct {
+	error
+	ServiceInstanceID string
+}
+
 func (e *Executor) backupCanBeStarted() bool {
 	e.Lock()
 	defer e.Unlock()
@@ -70,23 +76,36 @@ func (e *Executor) doneBackup() {
 func (e *Executor) RunOnce() error {
 	sessionLogger := e.logger.WithData(lager.Data{"backup_guid": uuid.NewV4().String()})
 
+	serviceInstanceID := e.identifyService(sessionLogger)
+	if serviceInstanceID != "" {
+		sessionLogger = sessionLogger.Session(
+			"WithIdentifier",
+			lager.Data{"identifier": serviceInstanceID},
+		)
+	}
+
 	if !e.backupCanBeStarted() {
 		err := errors.New("backup operation rejected")
 		sessionLogger.Error("Backup currently in progress, exiting. Another backup will not be able to start until this is completed.", err)
-		return err
+		return ServiceInstanceError{
+			error:             err,
+			ServiceInstanceID: serviceInstanceID,
+		}
 	}
 	defer e.doneBackup()
 
-	if e.serviceIdentifierCmd != "" {
-		sessionLogger = e.identifyService(sessionLogger)
-	}
-
 	if err := e.performBackup(sessionLogger); err != nil {
-		return err
+		return ServiceInstanceError{
+			error:             err,
+			ServiceInstanceID: serviceInstanceID,
+		}
 	}
 
 	if err := e.uploadBackup(sessionLogger); err != nil {
-		return err
+		return ServiceInstanceError{
+			error:             err,
+			ServiceInstanceID: serviceInstanceID,
+		}
 	}
 
 	// Do not return error if cleanup command failed.
@@ -97,13 +116,17 @@ func (e *Executor) RunOnce() error {
 	return nil
 }
 
-func (e *Executor) identifyService(sessionLogger lager.Logger) lager.Logger {
+func (e *Executor) identifyService(sessionLogger lager.Logger) string {
+	if e.serviceIdentifierCmd == "" {
+		return ""
+	}
+
 	args := strings.Split(e.serviceIdentifierCmd, " ")
 
 	_, err := os.Stat(args[0])
 	if err != nil {
 		sessionLogger.Error("Service identifier command not found", err)
-		return sessionLogger
+		return ""
 	}
 
 	cmd := e.execCommand(args[0], args[1:]...)
@@ -111,16 +134,10 @@ func (e *Executor) identifyService(sessionLogger lager.Logger) lager.Logger {
 
 	if err != nil {
 		sessionLogger.Error("Service identifier command returned error", err)
-		return sessionLogger
+		return ""
 	}
 
-	sessionName := "WithIdentifier"
-	sessionIdentifier := strings.TrimSpace(string(out))
-
-	return sessionLogger.Session(
-		sessionName,
-		lager.Data{"identifier": sessionIdentifier},
-	)
+	return strings.TrimSpace(string(out))
 }
 
 func (e *Executor) performBackup(sessionLogger lager.Logger) error {

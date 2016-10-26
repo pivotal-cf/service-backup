@@ -1,11 +1,14 @@
 package scheduler
 
 import (
+	"fmt"
 	"os"
 
 	"code.cloudfoundry.org/lager"
 	"github.com/pivotal-cf-experimental/service-backup/backup"
 	"github.com/pivotal-cf-experimental/service-backup/config"
+	"github.com/pivotal-cf-experimental/service-backup/executor"
+	alerts "github.com/pivotal-cf/service-alerts-client/client"
 	"github.com/tedsuo/ifrit"
 	cron "gopkg.in/robfig/cron.v2"
 )
@@ -15,13 +18,23 @@ type Scheduler struct {
 	logger       lager.Logger
 }
 
-func NewScheduler(executor backup.Executor, backupConfig config.BackupConfig, logger lager.Logger) Scheduler {
+func NewScheduler(e backup.Executor, backupConfig config.BackupConfig, alertsClient *alerts.ServiceAlertsClient, logger lager.Logger) Scheduler {
 	scheduler := cron.New()
 
 	_, err := scheduler.AddFunc(backupConfig.CronSchedule, func() {
-		backupErr := executor.RunOnce()
+		backupErr := e.RunOnce()
 		if backupErr != nil {
-			logger.Info("Alerts not configured.", lager.Data{})
+			if alertsClient == nil {
+				logger.Info("Alerts not configured.", lager.Data{})
+			} else {
+				logger.Info("Sending alert.", lager.Data{})
+				content := fmt.Sprintf("A backup run has failed with the following error: %s", backupErr)
+				if err := alertsClient.SendServiceAlert(backupConfig.Alerts.ProductName, "Service Backup Failed", backupErr.(executor.ServiceInstanceError).ServiceInstanceID, content); err != nil {
+					logger.Error("error sending service alert", err, lager.Data{})
+					return
+				}
+				logger.Info("Sent alert.", lager.Data{})
+			}
 		}
 	})
 	if err != nil {

@@ -4,8 +4,8 @@ package backupfakes
 import (
 	"sync"
 
-	"github.com/pivotal-cf-experimental/service-backup/backup"
 	"code.cloudfoundry.org/lager"
+	"github.com/pivotal-cf-experimental/service-backup/backup"
 )
 
 type FakeBackuper struct {

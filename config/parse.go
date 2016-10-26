@@ -48,7 +48,7 @@ type BackupConfig struct {
 	ServiceIdentifierExecutable string        `yaml:"service_identifier_executable"`
 	AwsCliPath                  string        `yaml:"aws_cli_path"`
 	AzureCliPath                string        `yaml:"azure_cli_path"`
-	Alerts                      Alerts        `yaml:"alerts"`
+	Alerts                      *Alerts       `yaml:"alerts,omitempty"`
 }
 
 func (b BackupConfig) NoDestinations() bool {

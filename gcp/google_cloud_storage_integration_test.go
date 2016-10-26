@@ -11,12 +11,12 @@ import (
 	"time"
 
 	"cloud.google.com/go/storage"
+	"code.cloudfoundry.org/lager"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/pborman/uuid"
 	"github.com/pivotal-cf-experimental/service-backup/gcp"
 	"github.com/pivotal-cf-experimental/service-backup/testhelpers"
-	"code.cloudfoundry.org/lager"
 	"google.golang.org/api/option"
 )
 

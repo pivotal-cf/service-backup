@@ -1,6 +1,7 @@
 package main
 
 import (
+	"log"
 	"os"
 	"os/exec"
 
@@ -11,6 +12,7 @@ import (
 	"github.com/pivotal-cf-experimental/service-backup/dummy"
 	"github.com/pivotal-cf-experimental/service-backup/executor"
 	"github.com/pivotal-cf-experimental/service-backup/scheduler"
+	alerts "github.com/pivotal-cf/service-alerts-client/client"
 )
 
 func main() {
@@ -47,6 +49,14 @@ func main() {
 		)
 	}
 
-	scheduler := scheduler.NewScheduler(backupExecutor, backupConfig, logger)
+	logFlags := log.Ldate | log.Ltime | log.Lmicroseconds | log.LUTC
+	alertsLogger := log.New(os.Stderr, "[ServiceBackup] ", logFlags)
+
+	var alertsClient *alerts.ServiceAlertsClient
+	if backupConfig.Alerts != nil {
+		alertsClient = alerts.New(backupConfig.Alerts.Config, alertsLogger)
+	}
+
+	scheduler := scheduler.NewScheduler(backupExecutor, backupConfig, alertsClient, logger)
 	scheduler.Run()
 }

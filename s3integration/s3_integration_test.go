@@ -1,8 +1,10 @@
 package s3integration_test
 
 import (
+	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"net/http"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -124,11 +126,74 @@ destinations:
 source_folder: %s
 source_executable: %s
 aws_cli_path: aws
-exit_if_in_progress: %s
+exit_if_in_progress: %v
 cron_schedule: '%s'
 cleanup_executable: %s
 missing_properties_message: custom message`, endpointURL, destBucket, destPath,
-		awsAccessKeyID, awsSecretAccessKey, sourceFolder, backupCreatorCmd, fmt.Sprintf("%v", exitIfBackupInProgress), cronSchedule, cleanupCmd,
+		awsAccessKeyID, awsSecretAccessKey, sourceFolder, backupCreatorCmd, exitIfBackupInProgress, cronSchedule, cleanupCmd,
+	)))
+	configFile.Close()
+
+	backupCmd := exec.Command(pathToServiceBackupBinary, configFile.Name())
+	return gexec.Start(backupCmd, GinkgoWriter, GinkgoWriter)
+}
+
+func performBackupIfNotInProgressWithAlerts(
+	awsAccessKeyID,
+	awsSecretAccessKey,
+	sourceFolder,
+	destBucket,
+	destPath,
+	endpointURL,
+	backupCreatorCmd,
+	cleanupCmd,
+	cronSchedule,
+	serviceIdentifierCmd string,
+	exitIfBackupInProgress bool,
+	cfApiURL string,
+	notificationServerURL string,
+	uaaURL string,
+) (*gexec.Session, error) {
+
+	configFile, err := ioutil.TempFile("", "config.yml")
+	Expect(err).NotTo(HaveOccurred())
+	configFile.Write([]byte(fmt.Sprintf(`---
+destinations:
+- type: s3
+  config:
+    endpoint_url: %s
+    bucket_name: %s
+    bucket_path: %s
+    access_key_id: %s
+    secret_access_key: %s
+source_folder: %s
+source_executable: %s
+aws_cli_path: aws
+exit_if_in_progress: %v
+cron_schedule: '%s'
+cleanup_executable: %s
+missing_properties_message: custom message
+service_identifier_executable: %s
+alerts:
+  product_name: PointlessDB
+  config:
+    cloud_controller:
+      url: %s
+      user: admin
+      password: password
+    notification_target:
+      url: %s
+      skip_ssl_validation: false
+      cf_org: cf_org
+      cf_space: cf_space
+      reply_to: me@example.com
+      authentication:
+        uaa:
+          url: %s
+          client_id: client_id
+          client_secret: client_secret
+    timeout_seconds: 60`, endpointURL, destBucket, destPath,
+		awsAccessKeyID, awsSecretAccessKey, sourceFolder, backupCreatorCmd, exitIfBackupInProgress, cronSchedule, cleanupCmd, serviceIdentifierCmd, cfApiURL, notificationServerURL, uaaURL,
 	)))
 	configFile.Close()
 
@@ -994,6 +1059,226 @@ var _ = Describe("S3 Backup", func() {
 						Expect(cfServer.ReceivedRequests()).To(HaveLen(0))
 						Expect(uaaServer.ReceivedRequests()).To(HaveLen(0))
 						Expect(notificationServer.ReceivedRequests()).To(HaveLen(0))
+					})
+				})
+
+				Context("and alerts are configured", func() {
+					var notificationRequestBodyFields map[string]string
+
+					cfOrgResponseBody := `{
+  "total_results": 1,
+  "total_pages": 1,
+  "prev_url": null,
+  "next_url": null,
+  "resources": [
+    {
+      "metadata": {
+        "guid": "org_guid",
+        "url": "/v2/organizations/org_guid",
+        "created_at": "2016-07-05T12:52:08Z",
+        "updated_at": null
+      },
+      "entity": {
+        "name": "test-org",
+        "billing_enabled": false,
+        "quota_definition_guid": "b2c23d15-7343-4f47-a4e9-5b50574bc746",
+        "status": "active",
+        "quota_definition_url": "/v2/quota_definitions/b2c23d15-7343-4f47-a4e9-5b50574bc746",
+        "spaces_url": "/v2/organizations/org_guid/spaces",
+        "domains_url": "/v2/organizations/org_guid/domains",
+        "private_domains_url": "/v2/organizations/org_guid/private_domains",
+        "users_url": "/v2/organizations/org_guid/users",
+        "managers_url": "/v2/organizations/org_guid/managers",
+        "billing_managers_url": "/v2/organizations/org_guid/billing_managers",
+        "auditors_url": "/v2/organizations/org_guid/auditors",
+        "app_events_url": "/v2/organizations/org_guid/app_events",
+        "space_quota_definitions_url": "/v2/organizations/org_guid/space_quota_definitions"
+      }
+    }
+  ]
+}`
+
+					cfSpacesForOrgResponse := `{
+  "total_results": 1,
+  "total_pages": 1,
+  "prev_url": null,
+  "next_url": null,
+  "resources": [
+    {
+      "metadata": {
+        "guid": "space_guid",
+        "url": "/v2/spaces/3e6ca4d8-738f-46cb-989b-14290b887b47",
+        "created_at": "2016-07-05T13:12:01Z",
+        "updated_at": null
+      },
+      "entity": {
+        "name": "test-space",
+        "organization_guid": "org_guid",
+        "space_quota_definition_guid": null,
+        "allow_ssh": true,
+        "organization_url": "/v2/organizations/org_guid",
+        "developers_url": "/v2/spaces/3e6ca4d8-738f-46cb-989b-14290b887b47/developers",
+        "managers_url": "/v2/spaces/3e6ca4d8-738f-46cb-989b-14290b887b47/managers",
+        "auditors_url": "/v2/spaces/3e6ca4d8-738f-46cb-989b-14290b887b47/auditors",
+        "apps_url": "/v2/spaces/3e6ca4d8-738f-46cb-989b-14290b887b47/apps",
+        "routes_url": "/v2/spaces/3e6ca4d8-738f-46cb-989b-14290b887b47/routes",
+        "domains_url": "/v2/spaces/3e6ca4d8-738f-46cb-989b-14290b887b47/domains",
+        "service_instances_url": "/v2/spaces/3e6ca4d8-738f-46cb-989b-14290b887b47/service_instances",
+        "app_events_url": "/v2/spaces/3e6ca4d8-738f-46cb-989b-14290b887b47/app_events",
+        "events_url": "/v2/spaces/3e6ca4d8-738f-46cb-989b-14290b887b47/events",
+        "security_groups_url": "/v2/spaces/3e6ca4d8-738f-46cb-989b-14290b887b47/security_groups"
+      }
+    }
+  ]
+}`
+
+					BeforeEach(func() {
+						notificationRequestBodyFields = map[string]string{}
+
+						cfToken := "what a token"
+						notificationsToken := "token for notifications"
+
+						uaaServer.AppendHandlers(
+							ghttp.CombineHandlers(
+								ghttp.VerifyRequest("POST", "/oauth/token", ""),
+								ghttp.VerifyBasicAuth("cf", ""),
+								ghttp.VerifyFormKV("grant_type", "password"),
+								ghttp.VerifyFormKV("username", "admin"),
+								ghttp.VerifyFormKV("password", "password"),
+								ghttp.RespondWithJSONEncoded(http.StatusOK, map[string]interface{}{
+									"access_token": cfToken,
+									"token_type":   "bearer",
+									"expires_in":   43199,
+									"scope":        "cloud_controller.read",
+									"jti":          "a-id-for-cf-token",
+								}, http.Header{}),
+							),
+							ghttp.CombineHandlers(
+								ghttp.VerifyRequest("POST", "/oauth/token", ""),
+								ghttp.VerifyBasicAuth("client_id", "client_secret"),
+								ghttp.VerifyFormKV("grant_type", "client_credentials"),
+								ghttp.RespondWithJSONEncoded(http.StatusOK, map[string]interface{}{
+									"access_token": notificationsToken,
+									"token_type":   "bearer",
+									"expires_in":   43199,
+									"scope":        "clients.read password.write clients.secret clients.write uaa.admin scim.write scim.read",
+									"jti":          "a-id-for-notifications-token",
+								}, http.Header{}),
+							),
+						)
+
+						cfServer.AppendHandlers(
+							ghttp.CombineHandlers(
+								ghttp.VerifyRequest("GET", "/v2/organizations", "q=name:cf_org"),
+								ghttp.VerifyHeader(http.Header{
+									"Authorization": {fmt.Sprintf("Bearer %s", cfToken)},
+								}),
+								ghttp.RespondWith(http.StatusOK, cfOrgResponseBody, http.Header{}),
+							),
+							ghttp.CombineHandlers(
+								ghttp.VerifyRequest("GET", "/v2/organizations/org_guid/spaces", "q=name:cf_space"),
+								ghttp.VerifyHeader(http.Header{
+									"Authorization": {fmt.Sprintf("Bearer %s", cfToken)},
+								}),
+								ghttp.RespondWith(http.StatusOK, cfSpacesForOrgResponse, http.Header{}),
+							),
+						)
+
+						notificationServer.AppendHandlers(ghttp.CombineHandlers(
+							ghttp.VerifyRequest("POST", "/spaces/space_guid"),
+							ghttp.VerifyHeader(http.Header{
+								"X-NOTIFICATIONS-VERSION": {"1"},
+								"Authorization":           {fmt.Sprintf("Bearer %s", notificationsToken)},
+							}),
+							ghttp.RespondWith(http.StatusOK, nil, http.Header{}),
+							func(_ http.ResponseWriter, req *http.Request) {
+								defer func() {
+									GinkgoRecover()
+									req.Body.Close()
+								}()
+								Expect(json.NewDecoder(req.Body).Decode(&notificationRequestBodyFields)).To(Succeed())
+							},
+						))
+					})
+
+					Context("without a service identifier command", func() {
+						It("accepts the first, rejects subsequent backup requests, and sends an alert", func() {
+							everySecond := "*/1 * * * * *"
+							noServiceIdentifier := ""
+
+							backupProcess, err := performBackupIfNotInProgressWithAlerts(
+								awsAccessKeyID,
+								awsSecretAccessKey,
+								sourceFolder,
+								destBucket,
+								destPath,
+								endpointURL,
+								backupCreatorCmd,
+								cleanupCmd,
+								everySecond,
+								noServiceIdentifier,
+								exitIfInProgress,
+								cfServer.URL(),
+								notificationServer.URL(),
+								uaaServer.URL(),
+							)
+							Expect(err).ToNot(HaveOccurred())
+
+							Eventually(backupProcess, awsTimeout).Should(gbytes.Say("Perform backup started"))
+							Eventually(backupProcess, awsTimeout).Should(gbytes.Say("Backup currently in progress, exiting. Another backup will not be able to start until this is completed."))
+							Eventually(backupProcess, awsTimeout).Should(gbytes.Say("Sending alert."))
+							Eventually(backupProcess, awsTimeout).Should(gbytes.Say("Sent alert."))
+							Eventually(backupProcess.Terminate()).Should(gexec.Exit())
+
+							Expect(cfServer.ReceivedRequests()).To(HaveLen(2))
+							Expect(uaaServer.ReceivedRequests()).To(HaveLen(2))
+							Expect(notificationServer.ReceivedRequests()).To(HaveLen(1))
+
+							Expect(notificationRequestBodyFields["subject"]).To(ContainSubstring("PointlessDB"))
+							Expect(notificationRequestBodyFields["subject"]).To(ContainSubstring("Service Backup Failed"))
+							Expect(notificationRequestBodyFields["text"]).To(ContainSubstring("Alert from PointlessDB:"))
+							Expect(notificationRequestBodyFields["text"]).To(ContainSubstring("A backup run has failed with the following error:"))
+						})
+					})
+
+					Context("with a service identifier command", func() {
+						It("accepts the first, rejects subsequent backup requests, and sends an alert", func() {
+							everySecond := "*/1 * * * * *"
+							serviceIdentifierCmd := assetPath("fake-service-identifier")
+
+							backupProcess, err := performBackupIfNotInProgressWithAlerts(
+								awsAccessKeyID,
+								awsSecretAccessKey,
+								sourceFolder,
+								destBucket,
+								destPath,
+								endpointURL,
+								backupCreatorCmd,
+								cleanupCmd,
+								everySecond,
+								serviceIdentifierCmd,
+								exitIfInProgress,
+								cfServer.URL(),
+								notificationServer.URL(),
+								uaaServer.URL(),
+							)
+							Expect(err).ToNot(HaveOccurred())
+
+							Eventually(backupProcess, awsTimeout).Should(gbytes.Say("Perform backup started"))
+							Eventually(backupProcess, awsTimeout).Should(gbytes.Say("Backup currently in progress, exiting. Another backup will not be able to start until this is completed."))
+							Eventually(backupProcess, awsTimeout).Should(gbytes.Say("Sending alert."))
+							Eventually(backupProcess, awsTimeout).Should(gbytes.Say("Sent alert."))
+							Eventually(backupProcess.Terminate()).Should(gexec.Exit())
+
+							Expect(cfServer.ReceivedRequests()).To(HaveLen(2))
+							Expect(uaaServer.ReceivedRequests()).To(HaveLen(2))
+							Expect(notificationServer.ReceivedRequests()).To(HaveLen(1))
+
+							Expect(notificationRequestBodyFields["subject"]).To(ContainSubstring("PointlessDB"))
+							Expect(notificationRequestBodyFields["subject"]).To(ContainSubstring("Service Backup Failed"))
+							Expect(notificationRequestBodyFields["text"]).To(ContainSubstring("Alert from PointlessDB, service instance FakeIdentifier:"))
+							Expect(notificationRequestBodyFields["text"]).To(ContainSubstring("A backup run has failed with the following error:"))
+						})
 					})
 				})
 			})

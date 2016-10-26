@@ -1,6 +1,7 @@
 package executor_test
 
 import (
+	"errors"
 	"os/exec"
 	"strings"
 	"sync"
@@ -54,6 +55,50 @@ var _ = Describe("Executor", func() {
 
 		JustBeforeEach(func() {
 			providerFactory.ExecCommandReturns(execCmd)
+		})
+
+		Describe("failures backing up", func() {
+			var serviceIdentifierCmd string
+
+			JustBeforeEach(func() {
+				backupExecutor = executor.NewExecutor(
+					uploader,
+					"source-folder",
+					"",
+					assetPath("fake-cleanup"),
+					serviceIdentifierCmd,
+					exitIfBackupInProgress,
+					logger,
+					providerFactory.ExecCommand,
+					calculator,
+				)
+
+				runOnceErr = backupExecutor.RunOnce()
+			})
+
+			BeforeEach(func() {
+				serviceIdentifierCmd = ""
+				backuper.UploadReturns(errors.New("oioi"))
+			})
+
+			It("returns an error", func() {
+				Expect(runOnceErr).To(MatchError("oioi"))
+				Expect(runOnceErr).To(BeAssignableToTypeOf(executor.ServiceInstanceError{}))
+				Expect(runOnceErr.(executor.ServiceInstanceError).ServiceInstanceID).To(Equal(""))
+			})
+
+			Context("when the service identifier command is set", func() {
+				BeforeEach(func() {
+					serviceIdentifierCmd = assetPath("fake-service-identifier")
+					execCmd = exec.Command(assetPath("fake-service-identifier"))
+				})
+
+				It("returns an error", func() {
+					Expect(runOnceErr).To(MatchError("oioi"))
+					Expect(runOnceErr).To(BeAssignableToTypeOf(executor.ServiceInstanceError{}))
+					Expect(runOnceErr.(executor.ServiceInstanceError).ServiceInstanceID).To(Equal("unit-identifier"))
+				})
+			})
 		})
 
 		Describe("source_executable not provided", func() {
@@ -125,7 +170,6 @@ var _ = Describe("Executor", func() {
 			})
 
 			Context("when provided service identifier", func() {
-
 				Context("returns an identifier", func() {
 					BeforeEach(func() {
 						execCmd = exec.Command(assetPath("fake-service-identifier"))
@@ -166,7 +210,7 @@ var _ = Describe("Executor", func() {
 					Expect(log).To(gbytes.Say(`"size_in_bytes":200`))
 				})
 
-				Context("returns an error", func() {
+				Context("service identifier executable returns an error", func() {
 					BeforeEach(func() {
 						execCmd = exec.Command(assetPath("fake-error-service-identifier"))
 					})
