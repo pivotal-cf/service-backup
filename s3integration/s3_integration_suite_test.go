@@ -7,8 +7,8 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/pivotal-cf-experimental/service-backup/s3testclient"
 	"code.cloudfoundry.org/lager"
+	"github.com/pivotal-cf-experimental/service-backup/s3testclient"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"

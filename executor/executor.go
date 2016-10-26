@@ -51,54 +51,54 @@ func NewExecutor(
 	}
 }
 
-func (b *Executor) backupCanBeStarted() bool {
-	b.Lock()
-	defer b.Unlock()
-	if b.backupInProgress && b.exitIfBackupInProgress {
+func (e *Executor) backupCanBeStarted() bool {
+	e.Lock()
+	defer e.Unlock()
+	if e.backupInProgress && e.exitIfBackupInProgress {
 		return false
 	}
-	b.backupInProgress = true
+	e.backupInProgress = true
 	return true
 }
 
-func (b *Executor) doneBackup() {
-	b.Lock()
-	defer b.Unlock()
-	b.backupInProgress = false
+func (e *Executor) doneBackup() {
+	e.Lock()
+	defer e.Unlock()
+	e.backupInProgress = false
 }
 
-func (b *Executor) RunOnce() error {
-	sessionLogger := b.logger.WithData(lager.Data{"backup_guid": uuid.NewV4().String()})
+func (e *Executor) RunOnce() error {
+	sessionLogger := e.logger.WithData(lager.Data{"backup_guid": uuid.NewV4().String()})
 
-	if !b.backupCanBeStarted() {
+	if !e.backupCanBeStarted() {
 		err := errors.New("backup operation rejected")
 		sessionLogger.Error("Backup currently in progress, exiting. Another backup will not be able to start until this is completed.", err)
 		return err
 	}
-	defer b.doneBackup()
+	defer e.doneBackup()
 
-	if b.serviceIdentifierCmd != "" {
-		sessionLogger = b.identifyService(sessionLogger)
+	if e.serviceIdentifierCmd != "" {
+		sessionLogger = e.identifyService(sessionLogger)
 	}
 
-	if err := b.performBackup(sessionLogger); err != nil {
+	if err := e.performBackup(sessionLogger); err != nil {
 		return err
 	}
 
-	if err := b.uploadBackup(sessionLogger); err != nil {
+	if err := e.uploadBackup(sessionLogger); err != nil {
 		return err
 	}
 
 	// Do not return error if cleanup command failed.
-	b.performCleanup(sessionLogger)
+	e.performCleanup(sessionLogger)
 
-	sessionLogger = b.logger
+	sessionLogger = e.logger
 
 	return nil
 }
 
-func (b *Executor) identifyService(sessionLogger lager.Logger) lager.Logger {
-	args := strings.Split(b.serviceIdentifierCmd, " ")
+func (e *Executor) identifyService(sessionLogger lager.Logger) lager.Logger {
+	args := strings.Split(e.serviceIdentifierCmd, " ")
 
 	_, err := os.Stat(args[0])
 	if err != nil {
@@ -106,7 +106,7 @@ func (b *Executor) identifyService(sessionLogger lager.Logger) lager.Logger {
 		return sessionLogger
 	}
 
-	cmd := b.execCommand(args[0], args[1:]...)
+	cmd := e.execCommand(args[0], args[1:]...)
 	out, err := cmd.CombinedOutput()
 
 	if err != nil {
@@ -123,13 +123,13 @@ func (b *Executor) identifyService(sessionLogger lager.Logger) lager.Logger {
 	)
 }
 
-func (b *Executor) performBackup(sessionLogger lager.Logger) error {
-	if b.backupCreatorCmd == "" {
+func (e *Executor) performBackup(sessionLogger lager.Logger) error {
+	if e.backupCreatorCmd == "" {
 		sessionLogger.Info("source_executable not provided, skipping performing of backup")
 		return nil
 	}
 	sessionLogger.Info("Perform backup started")
-	args := strings.Split(b.backupCreatorCmd, " ")
+	args := strings.Split(e.backupCreatorCmd, " ")
 	cmd := exec.Command(args[0], args[1:]...)
 
 	_, err := cmd.CombinedOutput()
@@ -143,14 +143,14 @@ func (b *Executor) performBackup(sessionLogger lager.Logger) error {
 	return nil
 }
 
-func (b *Executor) performCleanup(sessionLogger lager.Logger) error {
-	if b.cleanupCmd == "" {
+func (e *Executor) performCleanup(sessionLogger lager.Logger) error {
+	if e.cleanupCmd == "" {
 		sessionLogger.Info("Cleanup command not provided")
 		return nil
 	}
 	sessionLogger.Info("Cleanup started")
 
-	args := strings.Split(b.cleanupCmd, " ")
+	args := strings.Split(e.cleanupCmd, " ")
 	cmd := exec.Command(args[0], args[1:]...)
 
 	_, err := cmd.CombinedOutput()
@@ -164,11 +164,11 @@ func (b *Executor) performCleanup(sessionLogger lager.Logger) error {
 	return nil
 }
 
-func (b *Executor) uploadBackup(sessionLogger lager.Logger) error {
+func (e *Executor) uploadBackup(sessionLogger lager.Logger) error {
 	sessionLogger.Info("Upload backup started")
 
 	startTime := time.Now()
-	err := b.uploader.Upload(b.sourceFolder, sessionLogger)
+	err := e.uploader.Upload(e.sourceFolder, sessionLogger)
 	duration := time.Since(startTime)
 
 	if err != nil {
@@ -176,7 +176,7 @@ func (b *Executor) uploadBackup(sessionLogger lager.Logger) error {
 		return err
 	}
 
-	size, _ := b.calculator.DirSize(b.sourceFolder)
+	size, _ := e.calculator.DirSize(e.sourceFolder)
 	sessionLogger.Info("Upload backup completed successfully", lager.Data{
 		"duration_in_seconds": duration.Seconds(),
 		"size_in_bytes":       size,

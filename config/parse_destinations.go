@@ -18,7 +18,7 @@ func ParseDestinations(backupConfig BackupConfig, logger lager.Logger) []backup.
 
 	for _, destination := range backupConfig.Destinations {
 		destinationConfig := destination.Config
-		switch destination.DestType {
+		switch destination.Type {
 		case "s3":
 			basePath := fmt.Sprintf("%s/%s", destinationConfig["bucket_name"], destinationConfig["bucket_path"])
 			backupers = append(backupers, s3.New(
@@ -58,7 +58,7 @@ func ParseDestinations(backupConfig BackupConfig, logger lager.Logger) []backup.
 				destinationConfig["bucket_name"].(string),
 			))
 		default:
-			logger.Error(fmt.Sprintf("Unknown destination type: %s", destination.DestType), nil)
+			logger.Error(fmt.Sprintf("Unknown destination type: %s", destination.Type), nil)
 			os.Exit(2)
 		}
 	}

@@ -12,6 +12,7 @@ import (
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gbytes"
 	"github.com/onsi/gomega/gexec"
+	"github.com/onsi/gomega/ghttp"
 	"github.com/satori/go.uuid"
 )
 
@@ -104,6 +105,9 @@ func performBackupIfNotInProgress(
 	cleanupCmd,
 	cronSchedule string,
 	exitIfBackupInProgress bool,
+	cfApiURL string,
+	notificationServerURL string,
+	uaaURL string,
 ) (*gexec.Session, error) {
 
 	configFile, err := ioutil.TempFile("", "config.yml")
@@ -914,12 +918,19 @@ var _ = Describe("S3 Backup", func() {
 
 	Context("when exit_if_in_progress is configured", func() {
 		var (
-			sourceFolder   string
-			downloadFolder string
+			notificationServer *ghttp.Server
+			uaaServer          *ghttp.Server
+			cfServer           *ghttp.Server
+			sourceFolder       string
+			downloadFolder     string
 		)
 
 		BeforeEach(func() {
 			var err error
+
+			notificationServer = ghttp.NewServer()
+			uaaServer = ghttp.NewServer()
+			cfServer = ghttp.NewServer()
 
 			sourceFolder, err = ioutil.TempDir("", "")
 			Expect(err).ToNot(HaveOccurred())
@@ -944,53 +955,47 @@ var _ = Describe("S3 Backup", func() {
 		AfterEach(func() {
 			os.Remove(sourceFolder)
 			os.Remove(downloadFolder)
+
+			notificationServer.Close()
+			uaaServer.Close()
+			cfServer.Close()
 		})
 
 		Context("when exit_if_in_progress is true", func() {
 			exitIfInProgress := true
 
 			Context("when a backup is in progress", func() {
-				It("accepts the first, rejects subsequent backup requests", func() {
-					sessionForBackupThatGoesThrough, err1 := performBackupIfNotInProgress(
-						awsAccessKeyID,
-						awsSecretAccessKey,
-						sourceFolder,
-						destBucket,
-						destPath,
-						endpointURL,
-						backupCreatorCmd,
-						cleanupCmd,
-						cronSchedule,
-						exitIfInProgress,
-					)
+				Context("and alerts are not configured", func() {
+					It("accepts the first, rejects subsequent backup requests, and logs that alerts are not configured", func() {
+						everySecond := "*/1 * * * * *"
 
-					sessionForBackupThatGetsRejected, err2 := performBackupIfNotInProgress(
-						awsAccessKeyID,
-						awsSecretAccessKey,
-						sourceFolder,
-						destBucket,
-						destPath,
-						endpointURL,
-						backupCreatorCmd,
-						cleanupCmd,
-						cronSchedule,
-						exitIfInProgress,
-					)
+						backupProcess, err := performBackupIfNotInProgress(
+							awsAccessKeyID,
+							awsSecretAccessKey,
+							sourceFolder,
+							destBucket,
+							destPath,
+							endpointURL,
+							backupCreatorCmd,
+							cleanupCmd,
+							everySecond,
+							exitIfInProgress,
+							cfServer.URL(),
+							notificationServer.URL(),
+							uaaServer.URL(),
+						)
+						Expect(err).ToNot(HaveOccurred())
 
-					Expect(err1).ToNot(HaveOccurred())
-					Expect(err2).ToNot(HaveOccurred())
+						Eventually(backupProcess, awsTimeout).Should(gbytes.Say("Perform backup started"))
+						Eventually(backupProcess, awsTimeout).Should(gbytes.Say("Backup currently in progress, exiting. Another backup will not be able to start until this is completed."))
+						Eventually(backupProcess, awsTimeout).Should(gbytes.Say("Alerts not configured."))
+						Eventually(backupProcess.Terminate()).Should(gexec.Exit())
 
-					Eventually(sessionForBackupThatGoesThrough.Out, awsTimeout).Should(gbytes.Say("Perform backup started"))
-					Eventually(sessionForBackupThatGetsRejected.Out, awsTimeout).Should(gbytes.Say("Backup currently in progress, exiting. Another backup will not be able to start until this is completed."))
-					Eventually(sessionForBackupThatGoesThrough.Out, awsTimeout).Should(gbytes.Say("Cleanup completed"))
-
-					sessionForBackupThatGoesThrough.Terminate().Wait()
-					sessionForBackupThatGetsRejected.Terminate().Wait()
-
-					Eventually(sessionForBackupThatGoesThrough).Should(gexec.Exit())
-					Eventually(sessionForBackupThatGetsRejected).Should(gexec.Exit())
+						Expect(cfServer.ReceivedRequests()).To(HaveLen(0))
+						Expect(uaaServer.ReceivedRequests()).To(HaveLen(0))
+						Expect(notificationServer.ReceivedRequests()).To(HaveLen(0))
+					})
 				})
-
 			})
 		})
 
@@ -1010,6 +1015,9 @@ var _ = Describe("S3 Backup", func() {
 						cleanupCmd,
 						cronSchedule,
 						exitIfInProgress,
+						cfServer.URL(),
+						notificationServer.URL(),
+						uaaServer.URL(),
 					)
 
 					secondBackupRequest, err := performBackupIfNotInProgress(
@@ -1023,6 +1031,9 @@ var _ = Describe("S3 Backup", func() {
 						cleanupCmd,
 						cronSchedule,
 						exitIfInProgress,
+						cfServer.URL(),
+						notificationServer.URL(),
+						uaaServer.URL(),
 					)
 
 					Expect(err).ToNot(HaveOccurred())

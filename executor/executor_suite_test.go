@@ -9,7 +9,7 @@ import (
 	"testing"
 )
 
-func TestBackup(t *testing.T) {
+func TestExecutor(t *testing.T) {
 	RegisterFailHandler(Fail)
 	RunSpecs(t, "Executor Suite")
 }

@@ -16,18 +16,13 @@ type Scheduler struct {
 }
 
 func NewScheduler(executor backup.Executor, backupConfig config.BackupConfig, logger lager.Logger) Scheduler {
-	if backupConfig.NoDestinations() {
-		logger.Info("No destination provided - skipping backup")
-		// Default cronSchedule to monthly if not provided when destination is also not provided
-		// This is needed to successfully run the dummy executor and not exit
-		if backupConfig.CronSchedule == "" {
-			backupConfig.CronSchedule = "@monthly"
-		}
-	}
-
 	scheduler := cron.New()
+
 	_, err := scheduler.AddFunc(backupConfig.CronSchedule, func() {
-		executor.RunOnce()
+		backupErr := executor.RunOnce()
+		if backupErr != nil {
+			logger.Info("Alerts not configured.", lager.Data{})
+		}
 	})
 	if err != nil {
 		logger.Error("Error scheduling job", err)
