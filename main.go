@@ -9,7 +9,6 @@ import (
 
 	"github.com/pivotal-cf-experimental/service-backup/backup"
 	"github.com/pivotal-cf-experimental/service-backup/config"
-	"github.com/pivotal-cf-experimental/service-backup/dummy"
 	"github.com/pivotal-cf-experimental/service-backup/executor"
 	"github.com/pivotal-cf-experimental/service-backup/scheduler"
 	alerts "github.com/pivotal-cf/service-alerts-client/client"
@@ -34,7 +33,7 @@ func main() {
 		if backupConfig.CronSchedule == "" {
 			backupConfig.CronSchedule = "@monthly"
 		}
-		backupExecutor = dummy.NewDummyExecutor(logger)
+		backupExecutor = executor.NewDummyExecutor(logger)
 	} else {
 		backupExecutor = executor.NewExecutor(
 			backup.NewMultiBackuper(backupers),

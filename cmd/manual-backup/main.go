@@ -7,7 +7,6 @@ import (
 	"code.cloudfoundry.org/lager"
 	"github.com/pivotal-cf-experimental/service-backup/backup"
 	"github.com/pivotal-cf-experimental/service-backup/config"
-	"github.com/pivotal-cf-experimental/service-backup/dummy"
 	"github.com/pivotal-cf-experimental/service-backup/executor"
 )
 
@@ -34,7 +33,7 @@ func main() {
 		if backupConfig.CronSchedule == "" {
 			backupConfig.CronSchedule = "@monthly"
 		}
-		backupExecutor = dummy.NewDummyExecutor(logger)
+		backupExecutor = executor.NewDummyExecutor(logger)
 	} else {
 		backupExecutor = executor.NewExecutor(
 			backup.NewMultiBackuper(backupers),
