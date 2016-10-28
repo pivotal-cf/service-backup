@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"time"
 
 	. "github.com/onsi/gomega"
 	"github.com/pivotal-cf-experimental/service-backup/s3"
@@ -73,5 +74,11 @@ func (c *S3TestClient) DeleteBucket(bucketName string) {
 	cmd := c.S3Cmd("rb", "--force", fmt.Sprintf("s3://%s", bucketName))
 
 	err = c.RunCommand(cmd, "delete bucket")
-	Expect(err).ToNot(HaveOccurred())
+	if err != nil {
+		// Try again, because s3 is flaky
+		time.Sleep(10 * time.Second)
+		cmd = c.S3Cmd("rb", "--force", fmt.Sprintf("s3://%s", bucketName))
+		err = c.RunCommand(cmd, "retry delete bucket")
+		Expect(err).ToNot(HaveOccurred())
+	}
 }
