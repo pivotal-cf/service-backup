@@ -1357,7 +1357,7 @@ source_executable:
 source_folder:`, cronSchedule)))
 			file.Close()
 
-			backupCmd := exec.Command(pathToServiceBackupBinary, file.Name(), "--logLevel", "debug")
+			backupCmd := exec.Command(pathToServiceBackupBinary, file.Name())
 			session, err = gexec.Start(backupCmd, GinkgoWriter, GinkgoWriter)
 
 			Expect(err).ToNot(HaveOccurred())
