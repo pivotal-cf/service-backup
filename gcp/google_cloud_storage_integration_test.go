@@ -28,6 +28,7 @@ var _ = Describe("backups to Google Cloud Storage", func() {
 			dirToBackup    string
 			ctx            context.Context
 			gcpProjectName string
+			name           string
 
 			backuper *gcp.StorageClient
 		)
@@ -56,8 +57,9 @@ var _ = Describe("backups to Google Cloud Storage", func() {
 			Expect(err).NotTo(HaveOccurred())
 			bucketName = fmt.Sprintf("service-backup-test-%s", uuid.New())
 			bucket = gcpClient.Bucket(bucketName)
+			name = "google_cloud_destination"
 
-			backuper = gcp.New(gcpServiceAccountFilePath, gcpProjectName, bucketName)
+			backuper = gcp.New(name, gcpServiceAccountFilePath, gcpProjectName, bucketName)
 		})
 
 		JustBeforeEach(func() {
@@ -85,7 +87,7 @@ var _ = Describe("backups to Google Cloud Storage", func() {
 	Describe("failed backups", func() {
 		Context("when the service account credentials are invalid", func() {
 			It("returns an error", func() {
-				backuper := gcp.New("idontexist", "", "")
+				backuper := gcp.New("icanbeanything", "idontexist", "", "")
 				logger := lager.NewLogger("[GCP tests] ")
 				logger.RegisterSink(lager.NewWriterSink(GinkgoWriter, lager.DEBUG))
 				Expect(backuper.Upload("", logger)).To(MatchError(ContainSubstring("error creating Google Cloud Storage client")))

@@ -53,6 +53,7 @@ func ParseDestinations(backupConfig BackupConfig, logger lager.Logger) []backup.
 			))
 		case "gcs":
 			backupers = append(backupers, gcp.New(
+				destination.Name,
 				os.Getenv("GCP_SERVICE_ACCOUNT_FILE"),
 				destinationConfig["project_id"].(string),
 				destinationConfig["bucket_name"].(string),

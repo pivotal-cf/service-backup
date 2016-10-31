@@ -18,13 +18,15 @@ type StorageClient struct {
 	serviceAccountFilePath string
 	gcpProjectID           string
 	bucketName             string
+	name                   string
 }
 
-func New(serviceAccountFilePath, gcpProjectID, bucketName string) *StorageClient {
+func New(name, serviceAccountFilePath, gcpProjectID, bucketName string) *StorageClient {
 	return &StorageClient{
 		serviceAccountFilePath: serviceAccountFilePath,
 		gcpProjectID:           gcpProjectID,
 		bucketName:             bucketName,
+		name:                   name,
 	}
 }
 
@@ -118,6 +120,6 @@ func (s *StorageClient) ensureBucketExists(gcpClient *storage.Client, ctx contex
 	return bucket, nil
 }
 
-func (c *StorageClient) Name() string {
-	return "gcs"
+func (s *StorageClient) Name() string {
+	return s.name
 }
