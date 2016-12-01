@@ -109,7 +109,6 @@ func performBackupIfNotInProgress(
 	exitIfBackupInProgress bool,
 	cfApiURL string,
 	notificationServerURL string,
-	uaaURL string,
 ) (*gexec.Session, error) {
 
 	configFile, err := ioutil.TempFile("", "config.yml")
@@ -152,7 +151,6 @@ func performBackupIfNotInProgressWithAlerts(
 	exitIfBackupInProgress bool,
 	cfApiURL string,
 	notificationServerURL string,
-	uaaURL string,
 ) (*gexec.Session, error) {
 
 	configFile, err := ioutil.TempFile("", "config.yml")
@@ -181,19 +179,17 @@ alerts:
       url: %s
       user: admin
       password: password
-    notification_target:
-      url: %s
-      skip_ssl_validation: false
+    notifications:
+      service_url: %s
       cf_org: cf_org
       cf_space: cf_space
       reply_to: me@example.com
-      authentication:
-        uaa:
-          url: %s
-          client_id: client_id
-          client_secret: client_secret
-    timeout_seconds: 60`, endpointURL, destBucket, destPath,
-		awsAccessKeyID, awsSecretAccessKey, sourceFolder, backupCreatorCmd, exitIfBackupInProgress, cronSchedule, cleanupCmd, serviceIdentifierCmd, cfApiURL, notificationServerURL, uaaURL,
+      client_id: client_id
+      client_secret: client_secret
+    timeout_seconds: 60
+    skip_ssl_validation: false
+    `, endpointURL, destBucket, destPath,
+		awsAccessKeyID, awsSecretAccessKey, sourceFolder, backupCreatorCmd, exitIfBackupInProgress, cronSchedule, cleanupCmd, serviceIdentifierCmd, cfApiURL, notificationServerURL,
 	)))
 	configFile.Close()
 
@@ -1047,7 +1043,6 @@ var _ = Describe("S3 Backup", func() {
 							exitIfInProgress,
 							cfServer.URL(),
 							notificationServer.URL(),
-							uaaServer.URL(),
 						)
 						Expect(err).ToNot(HaveOccurred())
 
@@ -1066,71 +1061,71 @@ var _ = Describe("S3 Backup", func() {
 					var notificationRequestBodyFields map[string]string
 
 					cfOrgResponseBody := `{
-  "total_results": 1,
-  "total_pages": 1,
-  "prev_url": null,
-  "next_url": null,
-  "resources": [
-    {
-      "metadata": {
-        "guid": "org_guid",
-        "url": "/v2/organizations/org_guid",
-        "created_at": "2016-07-05T12:52:08Z",
-        "updated_at": null
-      },
-      "entity": {
-        "name": "test-org",
-        "billing_enabled": false,
-        "quota_definition_guid": "b2c23d15-7343-4f47-a4e9-5b50574bc746",
-        "status": "active",
-        "quota_definition_url": "/v2/quota_definitions/b2c23d15-7343-4f47-a4e9-5b50574bc746",
-        "spaces_url": "/v2/organizations/org_guid/spaces",
-        "domains_url": "/v2/organizations/org_guid/domains",
-        "private_domains_url": "/v2/organizations/org_guid/private_domains",
-        "users_url": "/v2/organizations/org_guid/users",
-        "managers_url": "/v2/organizations/org_guid/managers",
-        "billing_managers_url": "/v2/organizations/org_guid/billing_managers",
-        "auditors_url": "/v2/organizations/org_guid/auditors",
-        "app_events_url": "/v2/organizations/org_guid/app_events",
-        "space_quota_definitions_url": "/v2/organizations/org_guid/space_quota_definitions"
-      }
-    }
-  ]
-}`
+            "total_results": 1,
+            "total_pages": 1,
+            "prev_url": null,
+            "next_url": null,
+            "resources": [
+              {
+                "metadata": {
+                  "guid": "org_guid",
+                  "url": "/v2/organizations/org_guid",
+                  "created_at": "2016-07-05T12:52:08Z",
+                  "updated_at": null
+                },
+                "entity": {
+                  "name": "test-org",
+                  "billing_enabled": false,
+                  "quota_definition_guid": "b2c23d15-7343-4f47-a4e9-5b50574bc746",
+                  "status": "active",
+                  "quota_definition_url": "/v2/quota_definitions/b2c23d15-7343-4f47-a4e9-5b50574bc746",
+                  "spaces_url": "/v2/organizations/org_guid/spaces",
+                  "domains_url": "/v2/organizations/org_guid/domains",
+                  "private_domains_url": "/v2/organizations/org_guid/private_domains",
+                  "users_url": "/v2/organizations/org_guid/users",
+                  "managers_url": "/v2/organizations/org_guid/managers",
+                  "billing_managers_url": "/v2/organizations/org_guid/billing_managers",
+                  "auditors_url": "/v2/organizations/org_guid/auditors",
+                  "app_events_url": "/v2/organizations/org_guid/app_events",
+                  "space_quota_definitions_url": "/v2/organizations/org_guid/space_quota_definitions"
+                }
+              }
+            ]
+          }`
 
 					cfSpacesForOrgResponse := `{
-  "total_results": 1,
-  "total_pages": 1,
-  "prev_url": null,
-  "next_url": null,
-  "resources": [
-    {
-      "metadata": {
-        "guid": "space_guid",
-        "url": "/v2/spaces/3e6ca4d8-738f-46cb-989b-14290b887b47",
-        "created_at": "2016-07-05T13:12:01Z",
-        "updated_at": null
-      },
-      "entity": {
-        "name": "test-space",
-        "organization_guid": "org_guid",
-        "space_quota_definition_guid": null,
-        "allow_ssh": true,
-        "organization_url": "/v2/organizations/org_guid",
-        "developers_url": "/v2/spaces/3e6ca4d8-738f-46cb-989b-14290b887b47/developers",
-        "managers_url": "/v2/spaces/3e6ca4d8-738f-46cb-989b-14290b887b47/managers",
-        "auditors_url": "/v2/spaces/3e6ca4d8-738f-46cb-989b-14290b887b47/auditors",
-        "apps_url": "/v2/spaces/3e6ca4d8-738f-46cb-989b-14290b887b47/apps",
-        "routes_url": "/v2/spaces/3e6ca4d8-738f-46cb-989b-14290b887b47/routes",
-        "domains_url": "/v2/spaces/3e6ca4d8-738f-46cb-989b-14290b887b47/domains",
-        "service_instances_url": "/v2/spaces/3e6ca4d8-738f-46cb-989b-14290b887b47/service_instances",
-        "app_events_url": "/v2/spaces/3e6ca4d8-738f-46cb-989b-14290b887b47/app_events",
-        "events_url": "/v2/spaces/3e6ca4d8-738f-46cb-989b-14290b887b47/events",
-        "security_groups_url": "/v2/spaces/3e6ca4d8-738f-46cb-989b-14290b887b47/security_groups"
-      }
-    }
-  ]
-}`
+            "total_results": 1,
+            "total_pages": 1,
+            "prev_url": null,
+            "next_url": null,
+            "resources": [
+              {
+                "metadata": {
+                  "guid": "space_guid",
+                  "url": "/v2/spaces/3e6ca4d8-738f-46cb-989b-14290b887b47",
+                  "created_at": "2016-07-05T13:12:01Z",
+                  "updated_at": null
+                },
+                "entity": {
+                  "name": "test-space",
+                  "organization_guid": "org_guid",
+                  "space_quota_definition_guid": null,
+                  "allow_ssh": true,
+                  "organization_url": "/v2/organizations/org_guid",
+                  "developers_url": "/v2/spaces/3e6ca4d8-738f-46cb-989b-14290b887b47/developers",
+                  "managers_url": "/v2/spaces/3e6ca4d8-738f-46cb-989b-14290b887b47/managers",
+                  "auditors_url": "/v2/spaces/3e6ca4d8-738f-46cb-989b-14290b887b47/auditors",
+                  "apps_url": "/v2/spaces/3e6ca4d8-738f-46cb-989b-14290b887b47/apps",
+                  "routes_url": "/v2/spaces/3e6ca4d8-738f-46cb-989b-14290b887b47/routes",
+                  "domains_url": "/v2/spaces/3e6ca4d8-738f-46cb-989b-14290b887b47/domains",
+                  "service_instances_url": "/v2/spaces/3e6ca4d8-738f-46cb-989b-14290b887b47/service_instances",
+                  "app_events_url": "/v2/spaces/3e6ca4d8-738f-46cb-989b-14290b887b47/app_events",
+                  "events_url": "/v2/spaces/3e6ca4d8-738f-46cb-989b-14290b887b47/events",
+                  "security_groups_url": "/v2/spaces/3e6ca4d8-738f-46cb-989b-14290b887b47/security_groups"
+                }
+              }
+            ]
+          }`
 
 					BeforeEach(func() {
 						notificationRequestBodyFields = map[string]string{}
@@ -1167,7 +1162,30 @@ var _ = Describe("S3 Backup", func() {
 							),
 						)
 
+						cfInfoResponseBody := `
+            {
+                "name": "",
+                "build": "",
+                "support": "http://support.cloudfoundry.com",
+                "version": 0,
+                "description": "",
+                "authorization_endpoint": "",
+                "token_endpoint": "` + uaaServer.URL() + `",
+                "min_cli_version": null,
+                "min_recommended_cli_version": null,
+                "api_version": "2.57.0",
+                "app_ssh_endpoint": "",
+                "app_ssh_host_key_fingerprint": "",
+                "app_ssh_oauth_client": "",
+                "logging_endpoint": "",
+                "doppler_logging_endpoint": ""
+            }`
+
 						cfServer.AppendHandlers(
+							ghttp.CombineHandlers(
+								ghttp.VerifyRequest("GET", "/v2/info", ""),
+								ghttp.RespondWith(http.StatusOK, cfInfoResponseBody, http.Header{}),
+							),
 							ghttp.CombineHandlers(
 								ghttp.VerifyRequest("GET", "/v2/organizations", "q=name:cf_org"),
 								ghttp.VerifyHeader(http.Header{
@@ -1220,7 +1238,6 @@ var _ = Describe("S3 Backup", func() {
 								exitIfInProgress,
 								cfServer.URL(),
 								notificationServer.URL(),
-								uaaServer.URL(),
 							)
 							Expect(err).ToNot(HaveOccurred())
 
@@ -1230,7 +1247,7 @@ var _ = Describe("S3 Backup", func() {
 							Eventually(backupProcess, awsTimeout).Should(gbytes.Say("Sent alert."))
 							Eventually(backupProcess.Terminate()).Should(gexec.Exit())
 
-							Expect(cfServer.ReceivedRequests()).To(HaveLen(2))
+							Expect(cfServer.ReceivedRequests()).To(HaveLen(3))
 							Expect(uaaServer.ReceivedRequests()).To(HaveLen(2))
 							Expect(notificationServer.ReceivedRequests()).To(HaveLen(1))
 
@@ -1260,7 +1277,6 @@ var _ = Describe("S3 Backup", func() {
 								exitIfInProgress,
 								cfServer.URL(),
 								notificationServer.URL(),
-								uaaServer.URL(),
 							)
 							Expect(err).ToNot(HaveOccurred())
 
@@ -1270,7 +1286,7 @@ var _ = Describe("S3 Backup", func() {
 							Eventually(backupProcess, awsTimeout).Should(gbytes.Say("Sent alert."))
 							Eventually(backupProcess.Terminate()).Should(gexec.Exit())
 
-							Expect(cfServer.ReceivedRequests()).To(HaveLen(2))
+							Expect(cfServer.ReceivedRequests()).To(HaveLen(3))
 							Expect(uaaServer.ReceivedRequests()).To(HaveLen(2))
 							Expect(notificationServer.ReceivedRequests()).To(HaveLen(1))
 
@@ -1302,7 +1318,6 @@ var _ = Describe("S3 Backup", func() {
 						exitIfInProgress,
 						cfServer.URL(),
 						notificationServer.URL(),
-						uaaServer.URL(),
 					)
 
 					secondBackupRequest, err := performBackupIfNotInProgress(
@@ -1318,7 +1333,6 @@ var _ = Describe("S3 Backup", func() {
 						exitIfInProgress,
 						cfServer.URL(),
 						notificationServer.URL(),
-						uaaServer.URL(),
 					)
 
 					Expect(err).ToNot(HaveOccurred())

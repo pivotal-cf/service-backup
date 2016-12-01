@@ -81,21 +81,16 @@ var _ = Describe("Parse", func() {
 							User:     "admin",
 							Password: "password",
 						},
-						NotificationTarget: alerts.NotificationTarget{
-							URL:               "https://notifications.cf.com",
-							SkipSSLValidation: boolPointer(true),
-							CFOrg:             "system",
-							CFSpace:           "mysql-notifications",
-							ReplyTo:           "me@example.com",
-							Authentication: alerts.Authentication{
-								UAA: alerts.UAA{
-									URL:          "https://uaa.cf.com",
-									ClientID:     "admin",
-									ClientSecret: "password",
-								},
-							},
+						Notifications: alerts.Notifications{
+							ServiceURL:   "https://notifications.cf.com",
+							CFOrg:        "system",
+							CFSpace:      "mysql-notifications",
+							ReplyTo:      "me@example.com",
+							ClientID:     "admin",
+							ClientSecret: "password",
 						},
 						GlobalTimeoutSeconds: 42,
+						SkipSSLValidation:    boolPointer(true),
 					},
 				}))
 			})

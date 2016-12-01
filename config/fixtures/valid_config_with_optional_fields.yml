@@ -24,15 +24,12 @@ alerts:
       url: https://api.cf.com
       user: admin
       password: password
-    notification_target:
-      url: https://notifications.cf.com
-      skip_ssl_validation: true
+    notifications:
+      service_url: https://notifications.cf.com
       cf_org: system
       cf_space: mysql-notifications
       reply_to: me@example.com
-      authentication:
-        uaa:
-          url: https://uaa.cf.com
-          client_id: admin
-          client_secret: password
+      client_id: admin
+      client_secret: password
     timeout_seconds: 42
+    skip_ssl_validation: true
