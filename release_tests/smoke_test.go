@@ -185,11 +185,7 @@ var _ = Describe("smoke tests", func() {
 	Context("backing up to SCP", func() {
 		BeforeEach(func() {
 			boshManifest = envMustHave("SCP_BOSH_MANIFEST")
-
-			publicKeyFile := strings.Replace(boshManifest, ".yml", ".pub", -1)
-			publicKeyBytes, err := ioutil.ReadFile(publicKeyFile)
-			Expect(err).NotTo(HaveOccurred())
-			publicKey := strings.TrimSpace(string(publicKeyBytes))
+			publicKey := envMustHave("SCP_PUBLIC_KEY")
 
 			boshSSH(fmt.Sprintf("sudo mkdir -p ~vcap/.ssh && echo %s | sudo tee -a ~vcap/.ssh/authorized_keys", publicKey))
 		})
