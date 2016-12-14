@@ -13,7 +13,12 @@ import (
 	"github.com/pivotal-cf-experimental/service-backup/scp"
 )
 
-func ParseDestinations(backupConfig BackupConfig, logger lager.Logger) []backup.Backuper {
+//go:generate counterfeiter -o configfakes/fake_system_trust_store_locator.go . SystemTrustStoreLocator
+type SystemTrustStoreLocator interface {
+	Path() (string, error)
+}
+
+func ParseDestinations(backupConfig BackupConfig, systemTrustStoreLocator SystemTrustStoreLocator, logger lager.Logger) ([]backup.Backuper, error) {
 	var backupers []backup.Backuper
 
 	for _, destination := range backupConfig.Destinations {
@@ -21,6 +26,11 @@ func ParseDestinations(backupConfig BackupConfig, logger lager.Logger) []backup.
 		switch destination.Type {
 		case "s3":
 			basePath := fmt.Sprintf("%s/%s", destinationConfig["bucket_name"], destinationConfig["bucket_path"])
+			systemTrustStorePath, err := systemTrustStoreLocator.Path()
+			if err != nil {
+				logger.Error("error locating system trust store for S3", err)
+				return nil, err
+			}
 			backupers = append(backupers, s3.New(
 				destination.Name,
 				backupConfig.AwsCliPath,
@@ -28,6 +38,7 @@ func ParseDestinations(backupConfig BackupConfig, logger lager.Logger) []backup.
 				destinationConfig["access_key_id"].(string),
 				destinationConfig["secret_access_key"].(string),
 				basePath,
+				systemTrustStorePath,
 			))
 		case "scp":
 			basePath := destinationConfig["destination"].(string)
@@ -59,10 +70,11 @@ func ParseDestinations(backupConfig BackupConfig, logger lager.Logger) []backup.
 				destinationConfig["bucket_name"].(string),
 			))
 		default:
-			logger.Error(fmt.Sprintf("Unknown destination type: %s", destination.Type), nil)
-			os.Exit(2)
+			err := fmt.Errorf("unknown destination type: %s", destination.Type)
+			logger.Error("error parsing destinations", err)
+			return nil, err
 		}
 	}
 
-	return backupers
+	return backupers, nil
 }

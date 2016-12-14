@@ -8,6 +8,7 @@ import (
 	"github.com/pivotal-cf-experimental/service-backup/backup"
 	"github.com/pivotal-cf-experimental/service-backup/config"
 	"github.com/pivotal-cf-experimental/service-backup/executor"
+	"github.com/pivotal-cf-experimental/service-backup/systemtruststorelocator"
 )
 
 var (
@@ -23,7 +24,11 @@ func main() {
 	if err != nil {
 		os.Exit(2)
 	}
-	backupers := config.ParseDestinations(backupConfig, logger)
+	systemTrustStoreLocator := systemtruststorelocator.New(config.RealFileSystem{})
+	backupers, err := config.ParseDestinations(backupConfig, systemTrustStoreLocator, logger)
+	if err != nil {
+		os.Exit(2)
+	}
 
 	var backupExecutor backup.Executor
 	if backupConfig.NoDestinations() {

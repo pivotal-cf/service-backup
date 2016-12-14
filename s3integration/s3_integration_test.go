@@ -974,7 +974,6 @@ var _ = Describe("S3 Backup", func() {
 				Eventually(session.Out).Should(gbytes.Say("Error scheduling job"))
 			})
 		})
-
 	})
 
 	Context("when exit_if_in_progress is configured", func() {
@@ -1319,6 +1318,7 @@ var _ = Describe("S3 Backup", func() {
 						cfServer.URL(),
 						notificationServer.URL(),
 					)
+					Expect(err).ToNot(HaveOccurred())
 
 					secondBackupRequest, err := performBackupIfNotInProgress(
 						awsAccessKeyID,

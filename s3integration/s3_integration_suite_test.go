@@ -68,6 +68,9 @@ func beforeSuiteFirstNode() []byte {
 	}
 
 	var err error
+	_, err = os.Stat("/etc/ssl/certs/ca-certificates.crt")
+	Expect(err).NotTo(HaveOccurred(), "Must have a Linux system trust store.\nTo create a dummy Ubuntu system trust store run: ./scripts/create_dummy_ubuntu_system_trust_store.sh\n")
+
 	pathToServiceBackupBinary, err = gexec.Build("github.com/pivotal-cf-experimental/service-backup")
 	Expect(err).ToNot(HaveOccurred())
 	pathToManualBackupBinary, err = gexec.Build("github.com/pivotal-cf-experimental/service-backup/cmd/manual-backup")

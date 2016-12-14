@@ -11,22 +11,24 @@ import (
 )
 
 type S3CliClient struct {
-	name        string
-	awsCmdPath  string
-	accessKey   string
-	secretKey   string
-	endpointURL string
-	basePath    string
+	name                 string
+	awsCmdPath           string
+	accessKey            string
+	secretKey            string
+	endpointURL          string
+	basePath             string
+	systemTrustStorePath string
 }
 
-func New(name, awsCmdPath, endpointURL, accessKey, secretKey, basePath string) *S3CliClient {
+func New(name, awsCmdPath, endpointURL, accessKey, secretKey, basePath, systemTrustStorePath string) *S3CliClient {
 	return &S3CliClient{
-		name:        name,
-		awsCmdPath:  awsCmdPath,
-		endpointURL: endpointURL,
-		accessKey:   accessKey,
-		secretKey:   secretKey,
-		basePath:    basePath,
+		name:                 name,
+		awsCmdPath:           awsCmdPath,
+		endpointURL:          endpointURL,
+		accessKey:            accessKey,
+		secretKey:            secretKey,
+		basePath:             basePath,
+		systemTrustStorePath: systemTrustStorePath,
 	}
 }
 
@@ -36,6 +38,7 @@ func (c *S3CliClient) S3Cmd(args ...string) *exec.Cmd {
 	if c.endpointURL != "" {
 		cmdArgs = append(cmdArgs, "--endpoint-url", c.endpointURL)
 	}
+	cmdArgs = append(cmdArgs, "--ca-bundle", c.systemTrustStorePath)
 	cmdArgs = append(cmdArgs, "s3")
 	cmdArgs = append(cmdArgs, args...)
 
