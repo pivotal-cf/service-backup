@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"code.cloudfoundry.org/lager"
-	"github.com/pivotal-cf-experimental/service-backup/backup"
+	"github.com/pivotal-cf/service-backup/backup"
 	"github.com/satori/go.uuid"
 )
 

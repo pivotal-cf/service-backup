@@ -7,7 +7,7 @@ import (
 	"os/exec"
 
 	"code.cloudfoundry.org/lager"
-	"github.com/pivotal-cf-experimental/service-backup/backup"
+	"github.com/pivotal-cf/service-backup/backup"
 )
 
 type AzureClient struct {

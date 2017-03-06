@@ -14,8 +14,8 @@ import (
 
 	yaml "gopkg.in/yaml.v2"
 
-	"github.com/pivotal-cf-experimental/service-backup/s3testclient"
-	"github.com/pivotal-cf-experimental/service-backup/testhelpers"
+	"github.com/pivotal-cf/service-backup/s3testclient"
+	"github.com/pivotal-cf/service-backup/testhelpers"
 
 	gcs "cloud.google.com/go/storage"
 	"github.com/Azure/azure-sdk-for-go/storage"

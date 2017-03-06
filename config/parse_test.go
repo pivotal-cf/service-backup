@@ -4,7 +4,7 @@ import (
 	"code.cloudfoundry.org/lager"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	"github.com/pivotal-cf-experimental/service-backup/config"
+	"github.com/pivotal-cf/service-backup/config"
 	alerts "github.com/pivotal-cf/service-alerts-client/client"
 )
 

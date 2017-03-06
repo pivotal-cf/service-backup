@@ -4,7 +4,7 @@ package configfakes
 import (
 	"sync"
 
-	"github.com/pivotal-cf-experimental/service-backup/config"
+	"github.com/pivotal-cf/service-backup/config"
 )
 
 type FakeSystemTrustStoreLocator struct {

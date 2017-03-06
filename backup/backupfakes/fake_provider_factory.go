@@ -5,7 +5,7 @@ import (
 	"os/exec"
 	"sync"
 
-	"github.com/pivotal-cf-experimental/service-backup/backup"
+	"github.com/pivotal-cf/service-backup/backup"
 )
 
 type FakeProviderFactory struct {

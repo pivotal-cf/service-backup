@@ -6,8 +6,8 @@ import (
 	"code.cloudfoundry.org/lager"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	"github.com/pivotal-cf-experimental/service-backup/backup"
-	"github.com/pivotal-cf-experimental/service-backup/backup/backupfakes"
+	"github.com/pivotal-cf/service-backup/backup"
+	"github.com/pivotal-cf/service-backup/backup/backupfakes"
 )
 
 var _ = Describe("MultiBackuper", func() {

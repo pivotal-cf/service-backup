@@ -13,7 +13,7 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gexec"
-	"github.com/pivotal-cf-experimental/service-backup/s3testclient"
+	"github.com/pivotal-cf/service-backup/s3testclient"
 
 	"testing"
 )
@@ -96,7 +96,7 @@ var _ = SynchronizedBeforeSuite(func() []byte {
 
 	addToAuthorizedKeys(publicKeyPath)
 
-	pathToServiceBackupBinary, err = gexec.Build("github.com/pivotal-cf-experimental/service-backup")
+	pathToServiceBackupBinary, err = gexec.Build("github.com/pivotal-cf/service-backup")
 	Expect(err).ToNot(HaveOccurred())
 
 	awsAccessKeyID = os.Getenv(awsAccessKeyIDEnvKey)

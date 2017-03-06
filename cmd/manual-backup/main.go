@@ -5,10 +5,10 @@ import (
 	"os/exec"
 
 	"code.cloudfoundry.org/lager"
-	"github.com/pivotal-cf-experimental/service-backup/backup"
-	"github.com/pivotal-cf-experimental/service-backup/config"
-	"github.com/pivotal-cf-experimental/service-backup/executor"
-	"github.com/pivotal-cf-experimental/service-backup/systemtruststorelocator"
+	"github.com/pivotal-cf/service-backup/backup"
+	"github.com/pivotal-cf/service-backup/config"
+	"github.com/pivotal-cf/service-backup/executor"
+	"github.com/pivotal-cf/service-backup/systemtruststorelocator"
 )
 
 var (

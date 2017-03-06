@@ -5,7 +5,7 @@ import (
 	"os"
 	"sync"
 
-	"github.com/pivotal-cf-experimental/service-backup/systemtruststorelocator"
+	"github.com/pivotal-cf/service-backup/systemtruststorelocator"
 )
 
 type FakeFileSystem struct {

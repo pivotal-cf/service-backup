@@ -7,7 +7,7 @@ import (
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	. "github.com/pivotal-cf-experimental/service-backup/backup"
+	. "github.com/pivotal-cf/service-backup/backup"
 	"github.com/satori/go.uuid"
 )
 

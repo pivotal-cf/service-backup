@@ -6,11 +6,11 @@ import (
 
 	"code.cloudfoundry.org/lager"
 
-	"github.com/pivotal-cf-experimental/service-backup/azure"
-	"github.com/pivotal-cf-experimental/service-backup/backup"
-	"github.com/pivotal-cf-experimental/service-backup/gcp"
-	"github.com/pivotal-cf-experimental/service-backup/s3"
-	"github.com/pivotal-cf-experimental/service-backup/scp"
+	"github.com/pivotal-cf/service-backup/azure"
+	"github.com/pivotal-cf/service-backup/backup"
+	"github.com/pivotal-cf/service-backup/gcp"
+	"github.com/pivotal-cf/service-backup/s3"
+	"github.com/pivotal-cf/service-backup/scp"
 )
 
 //go:generate counterfeiter -o configfakes/fake_system_trust_store_locator.go . SystemTrustStoreLocator

@@ -7,9 +7,9 @@ import (
 	"time"
 
 	. "github.com/onsi/gomega"
-	"github.com/pivotal-cf-experimental/service-backup/config"
-	"github.com/pivotal-cf-experimental/service-backup/s3"
-	"github.com/pivotal-cf-experimental/service-backup/systemtruststorelocator"
+	"github.com/pivotal-cf/service-backup/config"
+	"github.com/pivotal-cf/service-backup/s3"
+	"github.com/pivotal-cf/service-backup/systemtruststorelocator"
 )
 
 type S3TestClient struct {

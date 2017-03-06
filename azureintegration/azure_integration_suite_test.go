@@ -39,7 +39,7 @@ var (
 var _ = SynchronizedBeforeSuite(func() []byte {
 	var err error
 
-	pathToServiceBackupBinary, err = gexec.Build("github.com/pivotal-cf-experimental/service-backup")
+	pathToServiceBackupBinary, err = gexec.Build("github.com/pivotal-cf/service-backup")
 	Expect(err).ToNot(HaveOccurred())
 
 	forOtherNodes, err := json.Marshal(TestData{

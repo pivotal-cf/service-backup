@@ -15,8 +15,8 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/pborman/uuid"
-	"github.com/pivotal-cf-experimental/service-backup/gcp"
-	"github.com/pivotal-cf-experimental/service-backup/testhelpers"
+	"github.com/pivotal-cf/service-backup/gcp"
+	"github.com/pivotal-cf/service-backup/testhelpers"
 	"google.golang.org/api/option"
 )
 

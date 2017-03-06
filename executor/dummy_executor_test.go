@@ -1,8 +1,8 @@
 package executor_test
 
 import (
-	"github.com/pivotal-cf-experimental/service-backup/backup"
-	. "github.com/pivotal-cf-experimental/service-backup/executor"
+	"github.com/pivotal-cf/service-backup/backup"
+	. "github.com/pivotal-cf/service-backup/executor"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"

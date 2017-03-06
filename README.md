@@ -4,7 +4,7 @@ Utility to provide mechanism for backing up services
 ## Usage
 
 This is intended to be used with the
-[service-backup-release](https://github.com/pivotal-cf-experimental/service-backup-release). Further instructions can be found in that repository.
+[service-backup-release](https://github.com/pivotal-cf/service-backup-release). Further instructions can be found in that repository.
 
 ## Development
 

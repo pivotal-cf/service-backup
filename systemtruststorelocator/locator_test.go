@@ -4,8 +4,8 @@ import (
 	"errors"
 	"os"
 
-	"github.com/pivotal-cf-experimental/service-backup/systemtruststorelocator"
-	"github.com/pivotal-cf-experimental/service-backup/systemtruststorelocator/locatorfakes"
+	"github.com/pivotal-cf/service-backup/systemtruststorelocator"
+	"github.com/pivotal-cf/service-backup/systemtruststorelocator/locatorfakes"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"

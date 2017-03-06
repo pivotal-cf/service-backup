@@ -6,7 +6,7 @@ import (
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	"github.com/pivotal-cf-experimental/service-backup/s3"
+	"github.com/pivotal-cf/service-backup/s3"
 )
 
 var _ = Describe("S3", func() {

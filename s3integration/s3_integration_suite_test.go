@@ -8,7 +8,7 @@ import (
 	"testing"
 
 	"code.cloudfoundry.org/lager"
-	"github.com/pivotal-cf-experimental/service-backup/s3testclient"
+	"github.com/pivotal-cf/service-backup/s3testclient"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -71,9 +71,9 @@ func beforeSuiteFirstNode() []byte {
 	_, err = os.Stat("/etc/ssl/certs/ca-certificates.crt")
 	Expect(err).NotTo(HaveOccurred(), "Must have a Linux system trust store.\nTo create a dummy Ubuntu system trust store run: ./scripts/create_dummy_ubuntu_system_trust_store.sh\n")
 
-	pathToServiceBackupBinary, err = gexec.Build("github.com/pivotal-cf-experimental/service-backup")
+	pathToServiceBackupBinary, err = gexec.Build("github.com/pivotal-cf/service-backup")
 	Expect(err).ToNot(HaveOccurred())
-	pathToManualBackupBinary, err = gexec.Build("github.com/pivotal-cf-experimental/service-backup/cmd/manual-backup")
+	pathToManualBackupBinary, err = gexec.Build("github.com/pivotal-cf/service-backup/cmd/manual-backup")
 	Expect(err).ToNot(HaveOccurred())
 
 	c := config{
