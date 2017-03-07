@@ -197,7 +197,7 @@ var _ = Describe("smoke tests", func() {
 		Context("automatic backup", func() {
 			It("Uploads files in the backup directory", func() {
 				Eventually(func() bool {
-					return strings.Contains(boshSSH("find", "/home/vcap/backups", "'-type'", "f"), toBackup)
+					return strings.Contains(boshSSH("sudo", "find", "/home/vcap/backups", "'-type'", "f"), toBackup)
 				}, time.Minute).Should(BeTrue())
 			})
 		})
@@ -214,7 +214,7 @@ var _ = Describe("smoke tests", func() {
 			It("Uploads files in the backup directory", func() {
 				boshSSH("sudo", "/var/vcap/jobs/service-backup/bin/manual-backup")
 				Eventually(func() bool {
-					return strings.Contains(boshSSH("find", "/home/vcap/backups", "'-type'", "f"), toBackup)
+					return strings.Contains(boshSSH("sudo", "find", "/home/vcap/backups", "'-type'", "f"), toBackup)
 				}, time.Minute).Should(BeTrue())
 			})
 		})
