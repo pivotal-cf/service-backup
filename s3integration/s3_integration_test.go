@@ -1254,6 +1254,7 @@ var _ = Describe("S3 Backup", func() {
 							Expect(notificationRequestBodyFields["subject"]).To(ContainSubstring("Service Backup Failed"))
 							Expect(notificationRequestBodyFields["text"]).To(ContainSubstring("Alert from PointlessDB:"))
 							Expect(notificationRequestBodyFields["text"]).To(ContainSubstring("A backup run has failed with the following error:"))
+							Expect(notificationRequestBodyFields["text"]).To(ContainSubstring("Backup currently in progress, exiting. Another backup will not be able to start until this is completed."))
 						})
 					})
 
@@ -1293,6 +1294,7 @@ var _ = Describe("S3 Backup", func() {
 							Expect(notificationRequestBodyFields["subject"]).To(ContainSubstring("Service Backup Failed"))
 							Expect(notificationRequestBodyFields["text"]).To(ContainSubstring("Alert from PointlessDB, service instance FakeIdentifier:"))
 							Expect(notificationRequestBodyFields["text"]).To(ContainSubstring("A backup run has failed with the following error:"))
+							Expect(notificationRequestBodyFields["text"]).To(ContainSubstring("Backup currently in progress, exiting. Another backup will not be able to start until this is completed."))
 						})
 					})
 				})

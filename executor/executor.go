@@ -85,8 +85,9 @@ func (e *Executor) RunOnce() error {
 	}
 
 	if !e.backupCanBeStarted() {
-		err := errors.New("backup operation rejected")
-		sessionLogger.Error("Backup currently in progress, exiting. Another backup will not be able to start until this is completed.", err)
+		errMsg := "Backup currently in progress, exiting. Another backup will not be able to start until this is completed."
+		err := errors.New(errMsg)
+		sessionLogger.Error(errMsg, err)
 		return ServiceInstanceError{
 			error:             err,
 			ServiceInstanceID: serviceInstanceID,

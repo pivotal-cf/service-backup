@@ -342,7 +342,7 @@ var _ = Describe("Executor", func() {
 						blockfirstUpload.Done()
 						firstBackupCompleted.Wait()
 
-						Expect(secondBackupErr).To(MatchError("backup operation rejected"))
+						Expect(secondBackupErr).To(MatchError("Backup currently in progress, exiting. Another backup will not be able to start until this is completed."))
 						Expect(strings.Count(string(log.Contents()), "Perform backup started")).To(Equal(1))
 						Expect(log.Contents()).To(ContainSubstring("Backup currently in progress, exiting. Another backup will not be able to start until this is completed."))
 					})
