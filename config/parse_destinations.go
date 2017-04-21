@@ -35,6 +35,7 @@ func ParseDestinations(backupConfig BackupConfig, systemTrustStoreLocator System
 				destination.Name,
 				backupConfig.AwsCliPath,
 				destinationConfig["endpoint_url"].(string),
+				destinationConfig["region"].(string),
 				destinationConfig["access_key_id"].(string),
 				destinationConfig["secret_access_key"].(string),
 				basePath,

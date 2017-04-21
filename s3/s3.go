@@ -16,15 +16,17 @@ type S3CliClient struct {
 	accessKey            string
 	secretKey            string
 	endpointURL          string
+	region               string
 	basePath             string
 	systemTrustStorePath string
 }
 
-func New(name, awsCmdPath, endpointURL, accessKey, secretKey, basePath, systemTrustStorePath string) *S3CliClient {
+func New(name, awsCmdPath, endpointURL, region, accessKey, secretKey, basePath, systemTrustStorePath string) *S3CliClient {
 	return &S3CliClient{
 		name:                 name,
 		awsCmdPath:           awsCmdPath,
 		endpointURL:          endpointURL,
+		region:               region,
 		accessKey:            accessKey,
 		secretKey:            secretKey,
 		basePath:             basePath,
@@ -38,6 +40,11 @@ func (c *S3CliClient) S3Cmd(args ...string) *exec.Cmd {
 	if c.endpointURL != "" {
 		cmdArgs = append(cmdArgs, "--endpoint-url", c.endpointURL)
 	}
+
+	if c.region != "" {
+		cmdArgs = append(cmdArgs, "--region", c.region)
+	}
+
 	cmdArgs = append(cmdArgs, "--ca-bundle", c.systemTrustStorePath)
 	cmdArgs = append(cmdArgs, "s3")
 	cmdArgs = append(cmdArgs, args...)

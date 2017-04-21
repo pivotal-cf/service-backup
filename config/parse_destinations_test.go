@@ -23,6 +23,32 @@ var _ = Describe("ParseDestinations", func() {
 	})
 
 	Context("when S3 is configured", func() {
+		BeforeEach(func() {
+			systemTrustStoreLocator.PathReturns("/path/to/truststore", nil)
+		})
+
+		It("returns a list of 1 backuper", func() {
+			backupConfig := config.BackupConfig{
+				Destinations: []config.Destination{
+					{
+						Type: "s3",
+						Config: map[string]interface{}{
+							"bucket_name":       "some-bucket",
+							"bucket_path":       "some-bucket-path",
+							"endpoint_url":      "some-endpoint-url",
+							"region":            "a-region",
+							"access_key_id":     "some-access-key-id",
+							"secret_access_key": "some-secret-access-key",
+						},
+					},
+				},
+			}
+			backupers, err := config.ParseDestinations(backupConfig, systemTrustStoreLocator, logger)
+
+			Expect(err).NotTo(HaveOccurred())
+			Expect(len(backupers)).To(Equal(1))
+		})
+
 		Context("when the system trust store cannot be located", func() {
 			BeforeEach(func() {
 				systemTrustStoreLocator.PathReturns("", errors.New("could not locate system trust store"))

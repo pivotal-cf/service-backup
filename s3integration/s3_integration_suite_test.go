@@ -20,9 +20,12 @@ const (
 	awsSecretAccessKeyEnvKey           = "AWS_SECRET_ACCESS_KEY"
 	awsAccessKeyIDEnvKeyRestricted     = "AWS_ACCESS_KEY_ID_RESTRICTED"
 	awsSecretAccessKeyEnvKeyRestricted = "AWS_SECRET_ACCESS_KEY_RESTRICTED"
-	existingBucketInNonDefaultRegion   = "service-backup-integration-test"
-	existingBucketInDefaultRegion      = "service-backup-integration-test2"
-	awsTimeout                         = "40s"
+
+	integrationTestBucketNamePrefix  = "service-backup-integration-"
+	existingBucketInNonDefaultRegion = integrationTestBucketNamePrefix + "test"
+	existingBucketInDefaultRegion    = integrationTestBucketNamePrefix + "test2"
+
+	awsTimeout = "40s"
 
 	cronSchedule = "*/5 * * * * *" // every 5 seconds of every minute of every day etc
 )
@@ -35,7 +38,6 @@ var (
 	awsSecretAccessKey           string
 	awsAccessKeyIDRestricted     string
 	awsSecretAccessKeyRestricted string
-	destPath                     string
 
 	s3TestClient *s3testclient.S3TestClient
 )

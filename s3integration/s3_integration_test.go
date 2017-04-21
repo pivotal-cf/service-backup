@@ -18,346 +18,25 @@ import (
 	"github.com/satori/go.uuid"
 )
 
-func performBackup(
-	awsAccessKeyID,
-	awsSecretAccessKey,
-	sourceFolder,
-	destBucket,
-	destPath,
-	endpointURL,
-	backupCreatorCmd,
-	cleanupCmd,
-	cronSchedule string,
-) (*gexec.Session, error) {
-
-	configFile, err := ioutil.TempFile("", "config.yml")
-	Expect(err).NotTo(HaveOccurred())
-	configFile.Write([]byte(fmt.Sprintf(`---
-destinations:
-- type: s3
-  config:
-    endpoint_url: '%s'
-    bucket_name: %s
-    bucket_path: %s
-    access_key_id: %s
-    secret_access_key: %s
-source_folder: %s
-source_executable: %s
-aws_cli_path: aws
-exit_if_in_progress: false
-cron_schedule: '%s'
-cleanup_executable: %s
-missing_properties_message: custom message`, endpointURL, destBucket, destPath,
-		awsAccessKeyID, awsSecretAccessKey, sourceFolder, backupCreatorCmd, cronSchedule, cleanupCmd,
-	)))
-	configFile.Close()
-
-	backupCmd := exec.Command(pathToServiceBackupBinary, configFile.Name())
-	return gexec.Start(backupCmd, GinkgoWriter, GinkgoWriter)
-}
-
-func performBackupWithName(
-	name,
-	awsAccessKeyID,
-	awsSecretAccessKey,
-	sourceFolder,
-	destBucket,
-	destPath,
-	endpointURL,
-	backupCreatorCmd,
-	cleanupCmd,
-	cronSchedule string,
-) (*gexec.Session, error) {
-
-	configFile, err := ioutil.TempFile("", "config.yml")
-	Expect(err).NotTo(HaveOccurred())
-	configFile.Write([]byte(fmt.Sprintf(`---
-destinations:
-- type: s3
-  name: %s
-  config:
-    endpoint_url: '%s'
-    bucket_name: %s
-    bucket_path: %s
-    access_key_id: %s
-    secret_access_key: %s
-source_folder: %s
-source_executable: %s
-aws_cli_path: aws
-exit_if_in_progress: false
-cron_schedule: '%s'
-cleanup_executable: %s
-missing_properties_message: custom message`, name, endpointURL, destBucket, destPath,
-		awsAccessKeyID, awsSecretAccessKey, sourceFolder, backupCreatorCmd, cronSchedule, cleanupCmd,
-	)))
-	configFile.Close()
-
-	backupCmd := exec.Command(pathToServiceBackupBinary, configFile.Name())
-	return gexec.Start(backupCmd, GinkgoWriter, GinkgoWriter)
-}
-
-func performBackupIfNotInProgress(
-	awsAccessKeyID,
-	awsSecretAccessKey,
-	sourceFolder,
-	destBucket,
-	destPath,
-	endpointURL,
-	backupCreatorCmd,
-	cleanupCmd,
-	cronSchedule string,
-	exitIfBackupInProgress bool,
-	cfApiURL string,
-	notificationServerURL string,
-) (*gexec.Session, error) {
-
-	configFile, err := ioutil.TempFile("", "config.yml")
-	Expect(err).NotTo(HaveOccurred())
-	configFile.Write([]byte(fmt.Sprintf(`---
-destinations:
-- type: s3
-  config:
-    endpoint_url: %s
-    bucket_name: %s
-    bucket_path: %s
-    access_key_id: %s
-    secret_access_key: %s
-source_folder: %s
-source_executable: %s
-aws_cli_path: aws
-exit_if_in_progress: %v
-cron_schedule: '%s'
-cleanup_executable: %s
-missing_properties_message: custom message`, endpointURL, destBucket, destPath,
-		awsAccessKeyID, awsSecretAccessKey, sourceFolder, backupCreatorCmd, exitIfBackupInProgress, cronSchedule, cleanupCmd,
-	)))
-	configFile.Close()
-
-	backupCmd := exec.Command(pathToServiceBackupBinary, configFile.Name())
-	return gexec.Start(backupCmd, GinkgoWriter, GinkgoWriter)
-}
-
-func performBackupIfNotInProgressWithAlerts(
-	awsAccessKeyID,
-	awsSecretAccessKey,
-	sourceFolder,
-	destBucket,
-	destPath,
-	endpointURL,
-	backupCreatorCmd,
-	cleanupCmd,
-	cronSchedule,
-	serviceIdentifierCmd string,
-	exitIfBackupInProgress bool,
-	cfApiURL string,
-	notificationServerURL string,
-) (*gexec.Session, error) {
-
-	configFile, err := ioutil.TempFile("", "config.yml")
-	Expect(err).NotTo(HaveOccurred())
-	configFile.Write([]byte(fmt.Sprintf(`---
-destinations:
-- type: s3
-  config:
-    endpoint_url: %s
-    bucket_name: %s
-    bucket_path: %s
-    access_key_id: %s
-    secret_access_key: %s
-source_folder: %s
-source_executable: %s
-aws_cli_path: aws
-exit_if_in_progress: %v
-cron_schedule: '%s'
-cleanup_executable: %s
-missing_properties_message: custom message
-service_identifier_executable: %s
-alerts:
-  product_name: PointlessDB
-  config:
-    cloud_controller:
-      url: %s
-      user: admin
-      password: password
-    notifications:
-      service_url: %s
-      cf_org: cf_org
-      cf_space: cf_space
-      reply_to: me@example.com
-      client_id: client_id
-      client_secret: client_secret
-    timeout_seconds: 60
-    skip_ssl_validation: false
-    `, endpointURL, destBucket, destPath,
-		awsAccessKeyID, awsSecretAccessKey, sourceFolder, backupCreatorCmd, exitIfBackupInProgress, cronSchedule, cleanupCmd, serviceIdentifierCmd, cfApiURL, notificationServerURL,
-	)))
-	configFile.Close()
-
-	backupCmd := exec.Command(pathToServiceBackupBinary, configFile.Name())
-	return gexec.Start(backupCmd, GinkgoWriter, GinkgoWriter)
-}
-
-func performManualBackup(
-	awsAccessKeyID,
-	awsSecretAccessKey,
-	sourceFolder,
-	destBucket,
-	destPath,
-	endpointURL,
-	backupCreatorCmd,
-	cleanupCmd string,
-) (*gexec.Session, error) {
-
-	configFile, err := ioutil.TempFile("", "config.yml")
-	Expect(err).NotTo(HaveOccurred())
-	configFile.Write([]byte(fmt.Sprintf(`---
-destinations:
-- type: s3
-  config:
-    endpoint_url: %s
-    bucket_name: %s
-    bucket_path: %s
-    access_key_id: %s
-    secret_access_key: %s
-source_folder: %s
-source_executable: %s
-aws_cli_path: aws
-exit_if_in_progress: false
-cron_schedule: '%s'
-cleanup_executable: %s
-missing_properties_message: custom message`, endpointURL, destBucket, destPath,
-		awsAccessKeyID, awsSecretAccessKey, sourceFolder, backupCreatorCmd, cronSchedule, cleanupCmd,
-	)))
-	configFile.Close()
-
-	manualBackupCmd := exec.Command(pathToManualBackupBinary, configFile.Name())
-	return gexec.Start(manualBackupCmd, GinkgoWriter, GinkgoWriter)
-
-}
-
-func performBackupWithServiceIdentifier(
-	name,
-	awsAccessKeyID,
-	awsSecretAccessKey,
-	sourceFolder,
-	destBucket,
-	destPath,
-	endpointURL,
-	backupCreatorCmd,
-	cleanupCmd,
-	cronSchedule,
-	serviceIdentifierCmd string,
-) (*gexec.Session, error) {
-
-	configFile, err := ioutil.TempFile("", "config.yml")
-	Expect(err).NotTo(HaveOccurred())
-	configFile.Write([]byte(fmt.Sprintf(`---
-destinations:
-- type: s3
-  name: %s
-  config:
-    endpoint_url: %s
-    bucket_name: %s
-    bucket_path: %s
-    access_key_id: %s
-    secret_access_key: %s
-source_folder: %s
-source_executable: %s
-aws_cli_path: aws
-exit_if_in_progress: false
-cron_schedule: '%s'
-cleanup_executable: %s
-service_identifier_executable: %s
-missing_properties_message: custom message`, name, endpointURL, destBucket, destPath,
-		awsAccessKeyID, awsSecretAccessKey, sourceFolder, backupCreatorCmd, cronSchedule, cleanupCmd, serviceIdentifierCmd,
-	)))
-	configFile.Close()
-
-	backupCmd := exec.Command(pathToServiceBackupBinary, configFile.Name())
-	return gexec.Start(backupCmd, GinkgoWriter, GinkgoWriter)
-}
-
-func pathWithDate(path string) string {
-	today := time.Now()
-	datePath := fmt.Sprintf("%d/%02d/%02d", today.Year(), today.Month(), today.Day())
-	return path + "/" + datePath
-}
-
-func createFilesToUpload(sourceFolder string, smallFile bool) map[string]string {
-	createdFiles := map[string]string{}
-
-	var rootFile string
-	var contents string
-
-	if smallFile {
-		rootFile, contents = createFileIn(sourceFolder)
-	} else {
-		rootFile, contents = createLargeFileIn(sourceFolder)
-	}
-
-	createdFiles[rootFile] = contents
-
-	dir1 := filepath.Join(sourceFolder, "dir1")
-	err := os.Mkdir(dir1, 0777)
-	Expect(err).ToNot(HaveOccurred())
-
-	dir1File, contents := createFileIn(dir1)
-
-	createdFiles["dir1/"+dir1File] = contents
-
-	dir2 := filepath.Join(dir1, "dir2")
-	err = os.Mkdir(dir2, 0777)
-	Expect(err).ToNot(HaveOccurred())
-
-	dir2File, contents := createFileIn(dir2)
-	createdFiles["dir1/dir2/"+dir2File] = contents
-
-	return createdFiles
-}
-
-func createFileIn(sourceFolder string) (string, string) {
-	file, err := ioutil.TempFile(sourceFolder, "")
-	Expect(err).ToNot(HaveOccurred())
-
-	fileContentsUUID := uuid.NewV4()
-
-	fileContents := fileContentsUUID.String()
-	_, err = file.Write([]byte(fileContents))
-	Expect(err).ToNot(HaveOccurred())
-
-	fileName := filepath.Base(file.Name())
-	return fileName, fileContents
-}
-
-func createLargeFileIn(sourceFolder string) (string, string) {
-	file, err := ioutil.TempFile(sourceFolder, "")
-	Expect(err).ToNot(HaveOccurred())
-
-	fileContents := string(make([]byte, 100*1000*1024))
-	_, err = file.Write([]byte(fileContents))
-	Expect(err).ToNot(HaveOccurred())
-
-	fileName := filepath.Base(file.Name())
-	return fileName, fileContents
-}
-
 var _ = Describe("S3 Backup", func() {
 	var (
-		destBucket       string
+		region           string
+		bucketName       string
+		bucketPath       string
 		backupCreatorCmd string
 		cleanupCmd       string
 	)
 
 	BeforeEach(func() {
 		endpointURL = "https://s3.amazonaws.com"
-		destBucket = existingBucketInDefaultRegion
-
-		destPath = uuid.NewV4().String()
+		region = ""
+		bucketName = existingBucketInDefaultRegion
+		bucketPath = uuid.NewV4().String()
 	})
 
 	AfterEach(func() {
-		if destBucket == existingBucketInDefaultRegion || destBucket == existingBucketInNonDefaultRegion {
-			Expect(s3TestClient.DeleteRemotePath(destBucket, pathWithDate(destPath))).To(Succeed())
+		if bucketName == existingBucketInDefaultRegion || bucketName == existingBucketInNonDefaultRegion {
+			Expect(s3TestClient.DeleteRemotePath(bucketName, pathWithDate(bucketPath), region)).To(Succeed())
 		}
 	})
 
@@ -408,9 +87,10 @@ var _ = Describe("S3 Backup", func() {
 							awsAccessKeyID,
 							awsSecretAccessKey,
 							sourceFolder,
-							destBucket,
-							destPath,
+							bucketName,
+							bucketPath,
 							endpointURL,
+							region,
 							backupCreatorCmd,
 							cleanupCmd,
 							cronSchedule,
@@ -423,8 +103,8 @@ var _ = Describe("S3 Backup", func() {
 
 						By("Downloading the uploaded files from the blobstore")
 						err = s3TestClient.DownloadRemoteDirectory(
-							destBucket,
-							pathWithDate(destPath),
+							bucketName,
+							pathWithDate(bucketPath),
 							downloadFolder,
 						)
 						Expect(err).ToNot(HaveOccurred())
@@ -461,9 +141,10 @@ var _ = Describe("S3 Backup", func() {
 								awsAccessKeyID,
 								awsSecretAccessKey,
 								sourceFolder,
-								destBucket,
-								destPath,
+								bucketName,
+								bucketPath,
 								endpointURL,
+								region,
 								backupCreatorCmd,
 								cleanupCmd,
 								cronSchedule,
@@ -501,9 +182,10 @@ var _ = Describe("S3 Backup", func() {
 									awsAccessKeyID,
 									awsSecretAccessKey,
 									sourceFolder,
-									destBucket,
-									destPath,
+									bucketName,
+									bucketPath,
 									endpointURL,
+									region,
 									backupCreatorCmd,
 									cleanupCmd,
 									cronSchedule,
@@ -542,9 +224,10 @@ var _ = Describe("S3 Backup", func() {
 							awsAccessKeyID,
 							awsSecretAccessKey,
 							sourceFolder,
-							destBucket,
-							destPath,
+							bucketName,
+							bucketPath,
 							endpointURL,
+							region,
 							backupCreatorCmd,
 							cleanupCmd,
 						)
@@ -556,8 +239,8 @@ var _ = Describe("S3 Backup", func() {
 
 						By("Downloading the uploaded files from the blobstore")
 						err = s3TestClient.DownloadRemoteDirectory(
-							destBucket,
-							pathWithDate(destPath),
+							bucketName,
+							pathWithDate(bucketPath),
 							downloadFolder,
 						)
 						Expect(err).ToNot(HaveOccurred())
@@ -586,9 +269,10 @@ var _ = Describe("S3 Backup", func() {
 								"wrong-access-key",
 								awsSecretAccessKey,
 								sourceFolder,
-								destBucket,
-								destPath,
+								bucketName,
+								bucketPath,
 								endpointURL,
+								region,
 								backupCreatorCmd,
 								cleanupCmd,
 							)
@@ -604,20 +288,20 @@ var _ = Describe("S3 Backup", func() {
 				BeforeEach(func() {
 					By("Not specifing a endpoint url")
 					endpointURL = ""
-					destBucket = existingBucketInNonDefaultRegion
+					bucketName = existingBucketInDefaultRegion
 				})
 
 				Context("using cron scheduled backup", func() {
-
 					It("recursively uploads the contents of a directory successfully", func() {
 						By("Uploading the directory contents to the blobstore")
 						session, err := performBackup(
 							awsAccessKeyID,
 							awsSecretAccessKey,
 							sourceFolder,
-							destBucket,
-							destPath,
+							bucketName,
+							bucketPath,
 							endpointURL,
+							region,
 							backupCreatorCmd,
 							cleanupCmd,
 							cronSchedule,
@@ -632,8 +316,8 @@ var _ = Describe("S3 Backup", func() {
 
 						By("Downloading the uploaded files from the blobstore")
 						err = s3TestClient.DownloadRemoteDirectory(
-							destBucket,
-							pathWithDate(destPath),
+							bucketName,
+							pathWithDate(bucketPath),
 							downloadFolder,
 						)
 						Expect(err).ToNot(HaveOccurred())
@@ -668,12 +352,12 @@ var _ = Describe("S3 Backup", func() {
 					strippedUUID = uuid.NewV4().String()
 					strippedUUID = strippedUUID[:10]
 
-					destBucket = existingBucketInDefaultRegion + strippedUUID
-					destPath = strippedUUID
+					bucketName = integrationTestBucketNamePrefix + strippedUUID
+					bucketPath = strippedUUID
 				})
 
 				AfterEach(func() {
-					s3TestClient.DeleteBucket(destBucket)
+					s3TestClient.DeleteBucket(bucketName, region)
 				})
 
 				It("makes the bucket", func() {
@@ -682,9 +366,10 @@ var _ = Describe("S3 Backup", func() {
 						awsAccessKeyID,
 						awsSecretAccessKey,
 						sourceFolder,
-						destBucket,
-						destPath,
+						bucketName,
+						bucketPath,
 						endpointURL,
+						region,
 						backupCreatorCmd,
 						cleanupCmd,
 						cronSchedule,
@@ -695,9 +380,72 @@ var _ = Describe("S3 Backup", func() {
 					session.Terminate().Wait()
 					Eventually(session).Should(gexec.Exit())
 
-					keys, err := s3TestClient.ListRemotePath(destBucket, "")
+					keys, err := s3TestClient.ListRemotePath(bucketName, region)
 					Expect(err).ToNot(HaveOccurred())
 					Expect(keys).ToNot(BeEmpty())
+				})
+
+				Context("when the region requires a V4 signature", func() {
+					BeforeEach(func() {
+						endpointURL = "https://s3.eu-central-1.amazonaws.com"
+						region = "eu-central-1"
+					})
+
+					It("makes the bucket", func() {
+						By("Uploading the file to the blobstore")
+						session, err := performBackup(
+							awsAccessKeyID,
+							awsSecretAccessKey,
+							sourceFolder,
+							bucketName,
+							bucketPath,
+							endpointURL,
+							region,
+							backupCreatorCmd,
+							cleanupCmd,
+							cronSchedule,
+						)
+						Expect(err).ToNot(HaveOccurred())
+						Eventually(session.Out, awsTimeout).Should(gbytes.Say("Cleanup completed"))
+
+						session.Terminate().Wait()
+						Eventually(session).Should(gexec.Exit())
+
+						keys, err := s3TestClient.ListRemotePath(bucketName, region)
+						Expect(err).ToNot(HaveOccurred())
+						Expect(keys).ToNot(BeEmpty())
+					})
+
+					Context("and the endpoint URL isn't set", func() {
+						BeforeEach(func() {
+							endpointURL = ""
+						})
+
+						It("makes the bucket", func() {
+							By("Uploading the file to the blobstore")
+							session, err := performBackup(
+								awsAccessKeyID,
+								awsSecretAccessKey,
+								sourceFolder,
+								bucketName,
+								bucketPath,
+								endpointURL,
+								region,
+								backupCreatorCmd,
+								cleanupCmd,
+								cronSchedule,
+							)
+							Expect(err).ToNot(HaveOccurred())
+							Eventually(session.Out, awsTimeout).Should(gbytes.Say("Cleanup completed"))
+
+							session.Terminate().Wait()
+							Eventually(session).Should(gexec.Exit())
+
+							keys, err := s3TestClient.ListRemotePath(bucketName, region)
+							Expect(err).ToNot(HaveOccurred())
+							Expect(keys).ToNot(BeEmpty())
+						})
+					})
 				})
 			})
 
@@ -710,9 +458,10 @@ var _ = Describe("S3 Backup", func() {
 							awsAccessKeyID,
 							awsSecretAccessKey,
 							sourceFolder,
-							destBucket,
-							destPath,
+							bucketName,
+							bucketPath,
 							endpointURL,
+							region,
 							backupCreatorCmd,
 							failingCleanupCmd,
 							cronSchedule,
@@ -732,9 +481,10 @@ var _ = Describe("S3 Backup", func() {
 							awsAccessKeyID,
 							awsSecretAccessKey,
 							sourceFolder,
-							destBucket,
-							destPath,
+							bucketName,
+							bucketPath,
 							endpointURL,
+							region,
 							backupCreatorCmd,
 							cleanupCmd,
 							cronSchedule,
@@ -760,9 +510,10 @@ var _ = Describe("S3 Backup", func() {
 						awsAccessKeyID,
 						awsSecretAccessKey,
 						sourceFolder,
-						destBucket,
-						destPath,
+						bucketName,
+						bucketPath,
 						endpointURL,
+						region,
 						backupCreatorCmd,
 						emptyCleanupCmd,
 						cronSchedule,
@@ -781,9 +532,10 @@ var _ = Describe("S3 Backup", func() {
 						awsAccessKeyID,
 						awsSecretAccessKey,
 						sourceFolder,
-						destBucket,
-						destPath,
+						bucketName,
+						bucketPath,
 						endpointURL,
+						region,
 						backupCreatorCmd,
 						"ls",
 						cronSchedule,
@@ -804,9 +556,10 @@ var _ = Describe("S3 Backup", func() {
 							awsAccessKeyIDRestricted,
 							awsSecretAccessKeyRestricted,
 							sourceFolder,
-							destBucket,
-							destPath,
+							bucketName,
+							bucketPath,
 							endpointURL,
+							region,
 							backupCreatorCmd,
 							cleanupCmd,
 							cronSchedule,
@@ -819,8 +572,8 @@ var _ = Describe("S3 Backup", func() {
 
 						By("Downloading the uploaded files from the blobstore")
 						err = s3TestClient.DownloadRemoteDirectory(
-							destBucket,
-							pathWithDate(destPath),
+							bucketName,
+							pathWithDate(bucketPath),
 							downloadFolder,
 						)
 						Expect(err).ToNot(HaveOccurred())
@@ -846,7 +599,7 @@ var _ = Describe("S3 Backup", func() {
 
 				Context("when the bucket does not exist", func() {
 					BeforeEach(func() {
-						destBucket = "doesnotexist" + uuid.NewV4().String()
+						bucketName = "doesnotexist" + uuid.NewV4().String()
 
 						By("Not specifing a endpoint url")
 						endpointURL = ""
@@ -857,9 +610,10 @@ var _ = Describe("S3 Backup", func() {
 							awsAccessKeyIDRestricted,
 							awsSecretAccessKeyRestricted,
 							sourceFolder,
-							destBucket,
-							destPath,
+							bucketName,
+							bucketPath,
 							endpointURL,
+							region,
 							backupCreatorCmd,
 							cleanupCmd,
 							cronSchedule,
@@ -879,15 +633,16 @@ var _ = Describe("S3 Backup", func() {
 			)
 
 			It("fails to upload a directory", func() {
-				destPath = uuid.NewV4().String()
+				bucketPath = uuid.NewV4().String()
 				By("Trying to upload the file to the blobstore")
 				session, err := performBackup(
 					invalidAwsAccessKeyID,
 					invalidAwsSecretAccessKey,
 					sourceFolder,
-					destBucket,
-					destPath,
+					bucketName,
+					bucketPath,
 					endpointURL,
+					region,
 					backupCreatorCmd,
 					cleanupCmd,
 					cronSchedule,
@@ -902,8 +657,8 @@ var _ = Describe("S3 Backup", func() {
 				session.Terminate().Wait()
 				Eventually(session).Should(gexec.Exit())
 
-				By("Verifying that the destPath was never created")
-				Expect(s3TestClient.RemotePathExistsInBucket(destBucket, destPath)).To(BeFalse())
+				By("Verifying that the bucketPath was never created")
+				Expect(s3TestClient.RemotePathExistsInBucket(bucketName, bucketPath)).To(BeFalse())
 			})
 		})
 
@@ -915,9 +670,10 @@ var _ = Describe("S3 Backup", func() {
 					awsAccessKeyID,
 					awsSecretAccessKey,
 					sourceFolder,
-					destBucket,
-					destPath,
+					bucketName,
+					bucketPath,
 					invalidEndpointURL,
+					region,
 					backupCreatorCmd,
 					cleanupCmd,
 					cronSchedule,
@@ -939,9 +695,10 @@ var _ = Describe("S3 Backup", func() {
 					awsAccessKeyID,
 					awsSecretAccessKey,
 					sourceFolder,
-					destBucket,
-					destPath,
+					bucketName,
+					bucketPath,
 					endpointURL,
+					region,
 					failingBackupCreatorCmd,
 					cleanupCmd,
 					cronSchedule,
@@ -961,9 +718,10 @@ var _ = Describe("S3 Backup", func() {
 					awsAccessKeyID,
 					awsSecretAccessKey,
 					sourceFolder,
-					destBucket,
-					destPath,
+					bucketName,
+					bucketPath,
 					endpointURL,
+					region,
 					backupCreatorCmd,
 					cleanupCmd,
 					invalidCronSchedule,
@@ -1033,15 +791,14 @@ var _ = Describe("S3 Backup", func() {
 							awsAccessKeyID,
 							awsSecretAccessKey,
 							sourceFolder,
-							destBucket,
-							destPath,
+							bucketName,
+							bucketPath,
 							endpointURL,
+							region,
 							backupCreatorCmd,
 							cleanupCmd,
 							everySecond,
 							exitIfInProgress,
-							cfServer.URL(),
-							notificationServer.URL(),
 						)
 						Expect(err).ToNot(HaveOccurred())
 
@@ -1227,9 +984,10 @@ var _ = Describe("S3 Backup", func() {
 								awsAccessKeyID,
 								awsSecretAccessKey,
 								sourceFolder,
-								destBucket,
-								destPath,
+								bucketName,
+								bucketPath,
 								endpointURL,
+								region,
 								backupCreatorCmd,
 								cleanupCmd,
 								everySecond,
@@ -1267,9 +1025,10 @@ var _ = Describe("S3 Backup", func() {
 								awsAccessKeyID,
 								awsSecretAccessKey,
 								sourceFolder,
-								destBucket,
-								destPath,
+								bucketName,
+								bucketPath,
 								endpointURL,
+								region,
 								backupCreatorCmd,
 								cleanupCmd,
 								everySecond,
@@ -1310,15 +1069,14 @@ var _ = Describe("S3 Backup", func() {
 						awsAccessKeyID,
 						awsSecretAccessKey,
 						sourceFolder,
-						destBucket,
-						destPath,
+						bucketName,
+						bucketPath,
 						endpointURL,
+						region,
 						backupCreatorCmd,
 						cleanupCmd,
 						cronSchedule,
 						exitIfInProgress,
-						cfServer.URL(),
-						notificationServer.URL(),
 					)
 					Expect(err).ToNot(HaveOccurred())
 
@@ -1326,15 +1084,14 @@ var _ = Describe("S3 Backup", func() {
 						awsAccessKeyID,
 						awsSecretAccessKey,
 						sourceFolder,
-						destBucket,
-						destPath,
+						bucketName,
+						bucketPath,
 						endpointURL,
+						region,
 						backupCreatorCmd,
 						cleanupCmd,
 						cronSchedule,
 						exitIfInProgress,
-						cfServer.URL(),
-						notificationServer.URL(),
 					)
 
 					Expect(err).ToNot(HaveOccurred())
@@ -1392,3 +1149,336 @@ source_folder:`, cronSchedule)))
 		})
 	})
 })
+
+func performBackup(
+	awsAccessKeyID,
+	awsSecretAccessKey,
+	sourceFolder,
+	destBucket,
+	destPath,
+	endpointURL,
+	region,
+	backupCreatorCmd,
+	cleanupCmd,
+	cronSchedule string,
+) (*gexec.Session, error) {
+
+	configFile, err := ioutil.TempFile("", "config.yml")
+	Expect(err).NotTo(HaveOccurred())
+	configFile.Write([]byte(fmt.Sprintf(`---
+destinations:
+- type: s3
+  config:
+    endpoint_url: '%s'
+    region: '%s'
+    bucket_name: %s
+    bucket_path: %s
+    access_key_id: %s
+    secret_access_key: %s
+source_folder: %s
+source_executable: %s
+aws_cli_path: aws
+exit_if_in_progress: false
+cron_schedule: '%s'
+cleanup_executable: %s
+missing_properties_message: custom message`, endpointURL, region, destBucket, destPath,
+		awsAccessKeyID, awsSecretAccessKey, sourceFolder, backupCreatorCmd, cronSchedule, cleanupCmd,
+	)))
+	configFile.Close()
+
+	backupCmd := exec.Command(pathToServiceBackupBinary, configFile.Name())
+	return gexec.Start(backupCmd, GinkgoWriter, GinkgoWriter)
+}
+
+func performBackupWithName(
+	name,
+	awsAccessKeyID,
+	awsSecretAccessKey,
+	sourceFolder,
+	destBucket,
+	destPath,
+	endpointURL,
+	region,
+	backupCreatorCmd,
+	cleanupCmd,
+	cronSchedule string,
+) (*gexec.Session, error) {
+
+	configFile, err := ioutil.TempFile("", "config.yml")
+	Expect(err).NotTo(HaveOccurred())
+	configFile.Write([]byte(fmt.Sprintf(`---
+destinations:
+- type: s3
+  name: %s
+  config:
+    endpoint_url: '%s'
+    region: '%s'
+    bucket_name: %s
+    bucket_path: %s
+    access_key_id: %s
+    secret_access_key: %s
+source_folder: %s
+source_executable: %s
+aws_cli_path: aws
+exit_if_in_progress: false
+cron_schedule: '%s'
+cleanup_executable: %s
+missing_properties_message: custom message`, name, endpointURL, region, destBucket, destPath,
+		awsAccessKeyID, awsSecretAccessKey, sourceFolder, backupCreatorCmd, cronSchedule, cleanupCmd,
+	)))
+	configFile.Close()
+
+	backupCmd := exec.Command(pathToServiceBackupBinary, configFile.Name())
+	return gexec.Start(backupCmd, GinkgoWriter, GinkgoWriter)
+}
+
+func performBackupIfNotInProgress(
+	awsAccessKeyID,
+	awsSecretAccessKey,
+	sourceFolder,
+	destBucket,
+	destPath,
+	endpointURL,
+	region,
+	backupCreatorCmd,
+	cleanupCmd,
+	cronSchedule string,
+	exitIfBackupInProgress bool,
+) (*gexec.Session, error) {
+
+	configFile, err := ioutil.TempFile("", "config.yml")
+	Expect(err).NotTo(HaveOccurred())
+	configFile.Write([]byte(fmt.Sprintf(`---
+destinations:
+- type: s3
+  config:
+    endpoint_url: '%s'
+    region: '%s'
+    bucket_name: %s
+    bucket_path: %s
+    access_key_id: %s
+    secret_access_key: %s
+source_folder: %s
+source_executable: %s
+aws_cli_path: aws
+exit_if_in_progress: %v
+cron_schedule: '%s'
+cleanup_executable: %s
+missing_properties_message: custom message`, endpointURL, region, destBucket, destPath,
+		awsAccessKeyID, awsSecretAccessKey, sourceFolder, backupCreatorCmd, exitIfBackupInProgress, cronSchedule, cleanupCmd,
+	)))
+	configFile.Close()
+
+	backupCmd := exec.Command(pathToServiceBackupBinary, configFile.Name())
+	return gexec.Start(backupCmd, GinkgoWriter, GinkgoWriter)
+}
+
+func performBackupIfNotInProgressWithAlerts(
+	awsAccessKeyID,
+	awsSecretAccessKey,
+	sourceFolder,
+	destBucket,
+	destPath,
+	endpointURL,
+	region,
+	backupCreatorCmd,
+	cleanupCmd,
+	cronSchedule,
+	serviceIdentifierCmd string,
+	exitIfBackupInProgress bool,
+	cfApiURL string,
+	notificationServerURL string,
+) (*gexec.Session, error) {
+
+	configFile, err := ioutil.TempFile("", "config.yml")
+	Expect(err).NotTo(HaveOccurred())
+	configFile.Write([]byte(fmt.Sprintf(`---
+destinations:
+- type: s3
+  config:
+    endpoint_url: %s
+    region: '%s'
+    bucket_name: %s
+    bucket_path: %s
+    access_key_id: %s
+    secret_access_key: %s
+source_folder: %s
+source_executable: %s
+aws_cli_path: aws
+exit_if_in_progress: %v
+cron_schedule: '%s'
+cleanup_executable: %s
+missing_properties_message: custom message
+service_identifier_executable: %s
+alerts:
+  product_name: PointlessDB
+  config:
+    cloud_controller:
+      url: %s
+      user: admin
+      password: password
+    notifications:
+      service_url: %s
+      cf_org: cf_org
+      cf_space: cf_space
+      reply_to: me@example.com
+      client_id: client_id
+      client_secret: client_secret
+    timeout_seconds: 60
+    skip_ssl_validation: false
+    `, endpointURL, region, destBucket, destPath,
+		awsAccessKeyID, awsSecretAccessKey, sourceFolder, backupCreatorCmd, exitIfBackupInProgress, cronSchedule, cleanupCmd, serviceIdentifierCmd, cfApiURL, notificationServerURL,
+	)))
+	configFile.Close()
+
+	backupCmd := exec.Command(pathToServiceBackupBinary, configFile.Name())
+	return gexec.Start(backupCmd, GinkgoWriter, GinkgoWriter)
+}
+
+func performManualBackup(
+	awsAccessKeyID,
+	awsSecretAccessKey,
+	sourceFolder,
+	destBucket,
+	destPath,
+	endpointURL,
+	region,
+	backupCreatorCmd,
+	cleanupCmd string,
+) (*gexec.Session, error) {
+
+	configFile, err := ioutil.TempFile("", "config.yml")
+	Expect(err).NotTo(HaveOccurred())
+	configFile.Write([]byte(fmt.Sprintf(`---
+destinations:
+- type: s3
+  config:
+    endpoint_url: '%s'
+    region: '%s'
+    bucket_name: %s
+    bucket_path: %s
+    access_key_id: %s
+    secret_access_key: %s
+source_folder: %s
+source_executable: %s
+aws_cli_path: aws
+exit_if_in_progress: false
+cron_schedule: '%s'
+cleanup_executable: %s
+missing_properties_message: custom message`, endpointURL, region, destBucket, destPath,
+		awsAccessKeyID, awsSecretAccessKey, sourceFolder, backupCreatorCmd, cronSchedule, cleanupCmd,
+	)))
+	configFile.Close()
+
+	manualBackupCmd := exec.Command(pathToManualBackupBinary, configFile.Name())
+	return gexec.Start(manualBackupCmd, GinkgoWriter, GinkgoWriter)
+
+}
+
+func performBackupWithServiceIdentifier(
+	name,
+	awsAccessKeyID,
+	awsSecretAccessKey,
+	sourceFolder,
+	destBucket,
+	destPath,
+	endpointURL,
+	region,
+	backupCreatorCmd,
+	cleanupCmd,
+	cronSchedule,
+	serviceIdentifierCmd string,
+) (*gexec.Session, error) {
+
+	configFile, err := ioutil.TempFile("", "config.yml")
+	Expect(err).NotTo(HaveOccurred())
+	configFile.Write([]byte(fmt.Sprintf(`---
+destinations:
+- type: s3
+  name: %s
+  config:
+    endpoint_url: '%s'
+    region: '%s'
+    bucket_name: %s
+    bucket_path: %s
+    access_key_id: %s
+    secret_access_key: %s
+source_folder: %s
+source_executable: %s
+aws_cli_path: aws
+exit_if_in_progress: false
+cron_schedule: '%s'
+cleanup_executable: %s
+service_identifier_executable: %s
+missing_properties_message: custom message`, name, endpointURL, region, destBucket, destPath,
+		awsAccessKeyID, awsSecretAccessKey, sourceFolder, backupCreatorCmd, cronSchedule, cleanupCmd, serviceIdentifierCmd,
+	)))
+	configFile.Close()
+
+	backupCmd := exec.Command(pathToServiceBackupBinary, configFile.Name())
+	return gexec.Start(backupCmd, GinkgoWriter, GinkgoWriter)
+}
+
+func pathWithDate(path string) string {
+	today := time.Now()
+	datePath := fmt.Sprintf("%d/%02d/%02d", today.Year(), today.Month(), today.Day())
+	return path + "/" + datePath
+}
+
+func createFilesToUpload(sourceFolder string, smallFile bool) map[string]string {
+	createdFiles := map[string]string{}
+
+	var rootFile string
+	var contents string
+
+	if smallFile {
+		rootFile, contents = createFileIn(sourceFolder)
+	} else {
+		rootFile, contents = createLargeFileIn(sourceFolder)
+	}
+
+	createdFiles[rootFile] = contents
+
+	dir1 := filepath.Join(sourceFolder, "dir1")
+	err := os.Mkdir(dir1, 0777)
+	Expect(err).ToNot(HaveOccurred())
+
+	dir1File, contents := createFileIn(dir1)
+
+	createdFiles["dir1/"+dir1File] = contents
+
+	dir2 := filepath.Join(dir1, "dir2")
+	err = os.Mkdir(dir2, 0777)
+	Expect(err).ToNot(HaveOccurred())
+
+	dir2File, contents := createFileIn(dir2)
+	createdFiles["dir1/dir2/"+dir2File] = contents
+
+	return createdFiles
+}
+
+func createFileIn(sourceFolder string) (string, string) {
+	file, err := ioutil.TempFile(sourceFolder, "")
+	Expect(err).ToNot(HaveOccurred())
+
+	fileContentsUUID := uuid.NewV4()
+
+	fileContents := fileContentsUUID.String()
+	_, err = file.Write([]byte(fileContents))
+	Expect(err).ToNot(HaveOccurred())
+
+	fileName := filepath.Base(file.Name())
+	return fileName, fileContents
+}
+
+func createLargeFileIn(sourceFolder string) (string, string) {
+	file, err := ioutil.TempFile(sourceFolder, "")
+	Expect(err).ToNot(HaveOccurred())
+
+	fileContents := string(make([]byte, 100*1000*1024))
+	_, err = file.Write([]byte(fileContents))
+	Expect(err).ToNot(HaveOccurred())
+
+	fileName := filepath.Base(file.Name())
+	return fileName, fileContents
+}

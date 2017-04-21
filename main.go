@@ -7,12 +7,12 @@ import (
 
 	"code.cloudfoundry.org/lager"
 
+	alerts "github.com/pivotal-cf/service-alerts-client/client"
 	"github.com/pivotal-cf/service-backup/backup"
 	"github.com/pivotal-cf/service-backup/config"
 	"github.com/pivotal-cf/service-backup/executor"
 	"github.com/pivotal-cf/service-backup/scheduler"
 	"github.com/pivotal-cf/service-backup/systemtruststorelocator"
-	alerts "github.com/pivotal-cf/service-alerts-client/client"
 )
 
 func main() {

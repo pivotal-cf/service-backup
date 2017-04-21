@@ -20,12 +20,17 @@ func New(endpointURL, accessKeyID, secretAccessKey, basePath string) *S3TestClie
 	systemTrustStorePath, err := systemtruststorelocator.New(config.RealFileSystem{}).Path()
 	Expect(err).NotTo(HaveOccurred())
 
-	s3CLIClient := s3.New("s3_test_client", "aws", endpointURL, accessKeyID, secretAccessKey, basePath, systemTrustStorePath)
+	s3CLIClient := s3.New("s3_test_client", "aws", endpointURL, "", accessKeyID, secretAccessKey, basePath, systemTrustStorePath)
 	return &S3TestClient{S3CliClient: s3CLIClient}
 }
 
-func (c *S3TestClient) ListRemotePath(bucketName, remotePath string) ([]string, error) {
-	cmd := c.S3Cmd("ls", "--recursive", fmt.Sprintf("s3://%s/%s", bucketName, remotePath))
+func (c *S3TestClient) ListRemotePath(bucketName, region string) ([]string, error) {
+	cmdArgs := []string{}
+	if region != "" {
+		cmdArgs = append(cmdArgs, "--region", region)
+	}
+	cmdArgs = append(cmdArgs, "ls", "--recursive", fmt.Sprintf("s3://%s/", bucketName))
+	cmd := c.S3Cmd(cmdArgs...)
 	out, err := cmd.CombinedOutput()
 	if err != nil {
 		return []string{}, fmt.Errorf("command failed: %s\nwith error:%s", string(out), err)
@@ -65,23 +70,35 @@ func (c *S3TestClient) DownloadRemoteDirectory(bucketName, remotePath, localPath
 	return c.RunCommand(cmd, "download remote")
 }
 
-func (c *S3TestClient) DeleteRemotePath(bucketName, remotePath string) error {
+func (c *S3TestClient) DeleteRemotePath(bucketName, remotePath, region string) error {
 	cmd := c.S3Cmd()
+	if region != "" {
+		cmd.Args = append(cmd.Args, "--region", region)
+	}
 	cmd.Args = append(cmd.Args, "rm", "--recursive", fmt.Sprintf("s3://%s/%s", bucketName, remotePath))
 	return c.RunCommand(cmd, "delete remote path")
 }
 
-func (c *S3TestClient) DeleteBucket(bucketName string) {
-	err := c.DeleteRemotePath(bucketName, "")
+func (c *S3TestClient) DeleteBucket(bucketName, region string) {
+	err := c.DeleteRemotePath(bucketName, "", region)
+	if err != nil && strings.Contains(err.Error(), "NoSuchBucket") {
+		return
+	}
 	Expect(err).ToNot(HaveOccurred())
 
-	cmd := c.S3Cmd("rb", "--force", fmt.Sprintf("s3://%s", bucketName))
+	rbArgs := []string{}
+	if region != "" {
+		rbArgs = append(rbArgs, "--region", region)
+	}
+	rbArgs = append(rbArgs, "rb", "--force", fmt.Sprintf("s3://%s", bucketName))
+
+	cmd := c.S3Cmd(rbArgs...)
 
 	err = c.RunCommand(cmd, "delete bucket")
 	if err != nil {
 		// Try again, because s3 is flaky
 		time.Sleep(10 * time.Second)
-		cmd = c.S3Cmd("rb", "--force", fmt.Sprintf("s3://%s", bucketName))
+		cmd = c.S3Cmd(rbArgs...)
 		err = c.RunCommand(cmd, "retry delete bucket")
 		Expect(err).ToNot(HaveOccurred())
 	}

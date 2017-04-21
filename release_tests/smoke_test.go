@@ -102,7 +102,7 @@ var _ = Describe("smoke tests", func() {
 
 		AfterEach(func() {
 			boshSSH("rm", "/tmp/"+toBackup)
-			Expect(client.DeleteRemotePath(bucketName, testPath)).To(Succeed())
+			Expect(client.DeleteRemotePath(bucketName, testPath, "")).To(Succeed())
 		})
 
 		Context("automatic backup", func() {
