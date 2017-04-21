@@ -62,6 +62,7 @@ destinations:
 - type: s3
   config:
     endpoint_url: 'https://s3.amazonaws.com'
+    region: ''
     bucket_name: %s
     bucket_path: %s
     access_key_id: %s
@@ -243,6 +244,7 @@ destinations:
 - type: s3
   config:
     endpoint_url: 'https://s3.amazonaws.com'
+    region: ''
     bucket_name: %s
     bucket_path: %s
     access_key_id: %s
@@ -250,6 +252,7 @@ destinations:
 - type: s3
   config:
     endpoint_url: ''
+    region: ''
     bucket_name: %s
     bucket_path: %s
     access_key_id: %s
