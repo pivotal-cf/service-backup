@@ -20,14 +20,16 @@ type StorageClient struct {
 	gcpProjectID           string
 	bucketName             string
 	name                   string
+	remotePathGenerator    backup.RemotePathGenerator
 }
 
-func New(name, serviceAccountFilePath, gcpProjectID, bucketName string) *StorageClient {
+func New(name, serviceAccountFilePath, gcpProjectID, bucketName string, generator backup.RemotePathGenerator) *StorageClient {
 	return &StorageClient{
 		serviceAccountFilePath: serviceAccountFilePath,
 		gcpProjectID:           gcpProjectID,
 		bucketName:             bucketName,
 		name:                   name,
+		remotePathGenerator:    generator,
 	}
 }
 
@@ -77,8 +79,7 @@ func (s *StorageClient) uploadFile(baseDir, fileAbsPath string, timeNow time.Tim
 	if err != nil {
 		return err
 	}
-	pathGenerator := backup.RemotePathGenerator{}
-	nameInBucket := fmt.Sprintf("%s/%s", pathGenerator.RemotePathWithDate(""), relativePath)
+	nameInBucket := fmt.Sprintf("%s/%s", s.remotePathGenerator.RemotePathWithDate(), relativePath)
 	logger.Info(fmt.Sprintf("will upload %s to bucket %s", nameInBucket, s.bucketName), nil)
 	obj := bucket.Object(nameInBucket)
 

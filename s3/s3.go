@@ -17,11 +17,11 @@ type S3CliClient struct {
 	secretKey            string
 	endpointURL          string
 	region               string
-	basePath             string
 	systemTrustStorePath string
+	remotePathGenerator  backup.RemotePathGenerator
 }
 
-func New(name, awsCmdPath, endpointURL, region, accessKey, secretKey, basePath, systemTrustStorePath string) *S3CliClient {
+func New(name, awsCmdPath, endpointURL, region, accessKey, secretKey, systemTrustStorePath string, generator backup.RemotePathGenerator) *S3CliClient {
 	return &S3CliClient{
 		name:                 name,
 		awsCmdPath:           awsCmdPath,
@@ -29,8 +29,8 @@ func New(name, awsCmdPath, endpointURL, region, accessKey, secretKey, basePath, 
 		region:               region,
 		accessKey:            accessKey,
 		secretKey:            secretKey,
-		basePath:             basePath,
 		systemTrustStorePath: systemTrustStorePath,
+		remotePathGenerator:  generator,
 	}
 }
 
@@ -106,8 +106,7 @@ func (c *S3CliClient) createRemotePath(remotePath string) error {
 func (c *S3CliClient) Upload(localPath string, sessionLogger lager.Logger) error {
 	defer sessionLogger.Info("s3 completed")
 
-	remotePathGenerator := backup.RemotePathGenerator{}
-	remotePath := remotePathGenerator.RemotePathWithDate(c.basePath)
+	remotePath := c.remotePathGenerator.RemotePathWithDate()
 
 	sessionLogger.Info(fmt.Sprintf("about to upload %s to S3 remote path %s", localPath, remotePath))
 	cmd := c.S3Cmd("sync", localPath, fmt.Sprintf("s3://%s", remotePath))

@@ -6,6 +6,7 @@ import (
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	"github.com/pivotal-cf/service-backup/config"
 	"github.com/pivotal-cf/service-backup/s3"
 )
 
@@ -26,7 +27,10 @@ var _ = Describe("S3", func() {
 		})
 
 		JustBeforeEach(func() {
-			s3CLIClient := s3.New("destination-name", awsCmdPath, endpointURL, region, accessKey, secretKey, "base-path", systemTrustStorePath)
+			generator := config.RemotePathGenerator{
+				BasePath: "base-path",
+			}
+			s3CLIClient := s3.New("destination-name", awsCmdPath, endpointURL, region, accessKey, secretKey, systemTrustStorePath, generator)
 			lsCmd = s3CLIClient.S3Cmd("ls", "bucket-name")
 		})
 

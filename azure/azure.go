@@ -11,30 +11,29 @@ import (
 )
 
 type AzureClient struct {
-	name             string
-	accountName      string
-	accountKey       string
-	container        string
-	blobStoreBaseUrl string
-	azureCmd         string
-	basePath         string
+	name                string
+	accountName         string
+	accountKey          string
+	container           string
+	blobStoreBaseUrl    string
+	azureCmd            string
+	remotePathGenerator backup.RemotePathGenerator
 }
 
-func New(name, accountKey, accountName, container, blobStoreBaseUrl, azureCmd, basePath string) *AzureClient {
+func New(name, accountKey, accountName, container, blobStoreBaseUrl, azureCmd string, generator backup.RemotePathGenerator) *AzureClient {
 	return &AzureClient{
-		name:             name,
-		accountKey:       accountKey,
-		accountName:      accountName,
-		container:        container,
-		blobStoreBaseUrl: blobStoreBaseUrl,
-		basePath:         basePath,
-		azureCmd:         azureCmd,
+		name:                name,
+		accountKey:          accountKey,
+		accountName:         accountName,
+		container:           container,
+		blobStoreBaseUrl:    blobStoreBaseUrl,
+		remotePathGenerator: generator,
+		azureCmd:            azureCmd,
 	}
 }
 
 func (a *AzureClient) Upload(localPath string, sessionLogger lager.Logger) error {
-	remotePathGenerator := backup.RemotePathGenerator{}
-	remotePath := remotePathGenerator.RemotePathWithDate(a.basePath)
+	remotePath := a.remotePathGenerator.RemotePathWithDate()
 
 	sessionLogger.Info("Uploading azure blobs", lager.Data{"container": a.container, "localPath": localPath, "remotePath": remotePath})
 	sessionLogger.Info("The container and remote path will be created if they don't already exist", lager.Data{"container": a.container, "remotePath": remotePath})

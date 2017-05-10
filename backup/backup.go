@@ -23,3 +23,7 @@ type Backuper interface {
 	Upload(localPath string, sessionLogger lager.Logger) error
 	Name() string
 }
+
+type RemotePathGenerator interface {
+	RemotePathWithDate() string
+}

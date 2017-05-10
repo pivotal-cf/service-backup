@@ -39,8 +39,10 @@ func (b *BackuperCreator) S3(destination Destination, locator SystemTrustStoreLo
 		destination.Config.getString("region"),
 		destination.Config.getString("access_key_id"),
 		destination.Config.getString("secret_access_key"),
-		basePath,
 		systemTrustStorePath,
+		RemotePathGenerator{
+			BasePath: basePath,
+		},
 	), nil
 }
 
@@ -51,8 +53,10 @@ func (b *BackuperCreator) SCP(destination Destination) *scp.SCPClient {
 		destination.Config.getInt("port"),
 		destination.Config.getString("user"),
 		destination.Config.getString("key"),
-		destination.Config.getString("destination"),
 		destination.Config.getString("fingerprint"),
+		RemotePathGenerator{
+			BasePath: destination.Config.getString("destination"),
+		},
 	)
 }
 
@@ -64,7 +68,9 @@ func (b *BackuperCreator) Azure(destination Destination) *azure.AzureClient {
 		destination.Config.getString("container"),
 		destination.Config.getString("blob_store_base_url"),
 		b.backupConfig.AzureCliPath,
-		destination.Config.getString("path"),
+		RemotePathGenerator{
+			BasePath: destination.Config.getString("path"),
+		},
 	)
 }
 
@@ -74,5 +80,6 @@ func (b *BackuperCreator) GCP(destination Destination) *gcp.StorageClient {
 		os.Getenv("GCP_SERVICE_ACCOUNT_FILE"),
 		destination.Config.getString("project_id"),
 		destination.Config.getString("bucket_name"),
+		RemotePathGenerator{},
 	)
 }

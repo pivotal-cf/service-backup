@@ -1,4 +1,4 @@
-package backup_test
+package config_test
 
 import (
 	"fmt"
@@ -6,15 +6,17 @@ import (
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	"github.com/pivotal-cf/service-backup/backup"
+	"github.com/pivotal-cf/service-backup/config"
 )
 
 var _ = Describe("RemotePathGenerator", func() {
 	It("generates a remote path with a base path", func() {
-		basePath := "base/path"
-		generator := backup.RemotePathGenerator{}
+		basePath := "/base/path"
+		generator := config.RemotePathGenerator{
+			BasePath: basePath,
+		}
 
-		remotePath := generator.RemotePathWithDate(basePath)
+		remotePath := generator.RemotePathWithDate()
 
 		today := time.Now()
 		datePath := fmt.Sprintf("%d/%02d/%02d", today.Year(), today.Month(), today.Day())
@@ -22,9 +24,9 @@ var _ = Describe("RemotePathGenerator", func() {
 	})
 
 	It("generates a remote path without a base path", func() {
-		generator := backup.RemotePathGenerator{}
+		generator := config.RemotePathGenerator{}
 
-		remotePath := generator.RemotePathWithDate("")
+		remotePath := generator.RemotePathWithDate()
 
 		today := time.Now()
 		datePath := fmt.Sprintf("%d/%02d/%02d", today.Year(), today.Month(), today.Day())

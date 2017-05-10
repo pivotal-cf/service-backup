@@ -12,24 +12,24 @@ import (
 )
 
 type SCPClient struct {
-	name        string
-	host        string
-	port        int
-	username    string
-	privateKey  string
-	basePath    string
-	fingerPrint string
+	name                string
+	host                string
+	port                int
+	username            string
+	privateKey          string
+	fingerPrint         string
+	remotePathGenerator backup.RemotePathGenerator
 }
 
-func New(name, host string, port int, username, privateKeyPath, basePath, fingerPrint string) *SCPClient {
+func New(name, host string, port int, username, privateKeyPath, fingerPrint string, generator backup.RemotePathGenerator) *SCPClient {
 	return &SCPClient{
-		name:        name,
-		host:        host,
-		port:        port,
-		username:    username,
-		privateKey:  privateKeyPath,
-		basePath:    basePath,
-		fingerPrint: fingerPrint,
+		name:                name,
+		host:                host,
+		port:                port,
+		username:            username,
+		privateKey:          privateKeyPath,
+		fingerPrint:         fingerPrint,
+		remotePathGenerator: generator,
 	}
 }
 
@@ -82,8 +82,7 @@ func (client *SCPClient) Upload(localPath string, sessionLogger lager.Logger) er
 
 	defer os.Remove(privateKeyFileName)
 
-	remotePathGenerator := backup.RemotePathGenerator{}
-	remotePath := remotePathGenerator.RemotePathWithDate(client.basePath)
+	remotePath := client.remotePathGenerator.RemotePathWithDate()
 
 	if err = client.ensureRemoteDirectoryExists(remotePath, privateKeyFileName, knownHostsFileName, sessionLogger); err != nil {
 		return err

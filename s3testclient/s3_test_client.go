@@ -20,7 +20,10 @@ func New(endpointURL, accessKeyID, secretAccessKey, basePath string) *S3TestClie
 	systemTrustStorePath, err := systemtruststorelocator.New(config.RealFileSystem{}).Path()
 	Expect(err).NotTo(HaveOccurred())
 
-	s3CLIClient := s3.New("s3_test_client", "aws", endpointURL, "", accessKeyID, secretAccessKey, basePath, systemTrustStorePath)
+	generator := config.RemotePathGenerator{
+		BasePath: basePath,
+	}
+	s3CLIClient := s3.New("s3_test_client", "aws", endpointURL, "", accessKeyID, secretAccessKey, systemTrustStorePath, generator)
 	return &S3TestClient{S3CliClient: s3CLIClient}
 }
 
