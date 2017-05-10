@@ -6,15 +6,22 @@ import (
 )
 
 type RemotePathGenerator struct {
-	BasePath string
+	BasePath       string
+	DeploymentName string
 }
 
 func (r RemotePathGenerator) RemotePathWithDate() string {
 	today := time.Now()
 	datePath := fmt.Sprintf("%d/%02d/%02d", today.Year(), today.Month(), today.Day())
 
-	if r.BasePath == "" {
-		return datePath
+	var path string
+	if r.BasePath != "" {
+		path += r.BasePath + "/"
 	}
-	return r.BasePath + "/" + datePath
+
+	if r.DeploymentName != "" {
+		path += r.DeploymentName + "/"
+	}
+
+	return path + datePath
 }

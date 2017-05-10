@@ -25,6 +25,8 @@ const (
 	existingBucketInNonDefaultRegion = integrationTestBucketNamePrefix + "test"
 	existingBucketInDefaultRegion    = integrationTestBucketNamePrefix + "test2"
 
+	integrationTestDeploymentName = "test-deployment"
+
 	awsTimeout = "40s"
 
 	cronSchedule = "*/5 * * * * *" // every 5 seconds of every minute of every day etc

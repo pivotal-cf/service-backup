@@ -94,6 +94,7 @@ var _ = Describe("S3 Backup", func() {
 							backupCreatorCmd,
 							cleanupCmd,
 							cronSchedule,
+							"",
 						)
 						Expect(err).ToNot(HaveOccurred())
 						Eventually(session.Out, awsTimeout).Should(gbytes.Say("Cleanup completed"))
@@ -216,6 +217,56 @@ var _ = Describe("S3 Backup", func() {
 							})
 						})
 					})
+
+					Context("when add_deployment_name_to_backup_path is true", func() {
+						It("uploads files to a path with deployment name", func() {
+
+							By("Uploading the directory contents to the blobstore")
+							session, err := performBackup(
+								awsAccessKeyID,
+								awsSecretAccessKey,
+								sourceFolder,
+								bucketName,
+								bucketPath,
+								endpointURL,
+								region,
+								backupCreatorCmd,
+								cleanupCmd,
+								cronSchedule,
+								integrationTestDeploymentName,
+							)
+							Expect(err).ToNot(HaveOccurred())
+							Eventually(session.Out, awsTimeout).Should(gbytes.Say("Cleanup completed"))
+
+							session.Terminate().Wait()
+							Eventually(session).Should(gexec.Exit())
+
+							By("Downloading the uploaded files from the blobstore")
+							err = s3TestClient.DownloadRemoteDirectory(
+								bucketName,
+								pathWithDeploymentAndDate(bucketPath, integrationTestDeploymentName),
+								downloadFolder,
+							)
+							Expect(err).ToNot(HaveOccurred())
+
+							By("Validating the contents of the downloaded files")
+							for fileName, contents := range filesToContents {
+								downloadedFilePath := filepath.Join(downloadFolder, fileName)
+
+								downloadedFile, err := os.Open(downloadedFilePath)
+								Expect(err).ToNot(HaveOccurred())
+								defer downloadedFile.Close()
+
+								actualData := make([]byte, len(contents))
+								_, err = downloadedFile.Read(actualData)
+								Expect(err).ToNot(HaveOccurred())
+
+								actualString := string(actualData)
+
+								Expect(actualString).To(Equal(contents))
+							}
+						})
+					})
 				})
 
 				Context("using manually triggered backup", func() {
@@ -305,6 +356,7 @@ var _ = Describe("S3 Backup", func() {
 							backupCreatorCmd,
 							cleanupCmd,
 							cronSchedule,
+							"",
 						)
 						Expect(err).ToNot(HaveOccurred())
 
@@ -373,6 +425,7 @@ var _ = Describe("S3 Backup", func() {
 						backupCreatorCmd,
 						cleanupCmd,
 						cronSchedule,
+						"",
 					)
 					Expect(err).ToNot(HaveOccurred())
 					Eventually(session.Out, awsTimeout).Should(gbytes.Say("Cleanup completed"))
@@ -404,6 +457,7 @@ var _ = Describe("S3 Backup", func() {
 							backupCreatorCmd,
 							cleanupCmd,
 							cronSchedule,
+							"",
 						)
 						Expect(err).ToNot(HaveOccurred())
 						Eventually(session.Out, awsTimeout).Should(gbytes.Say("Cleanup completed"))
@@ -434,6 +488,7 @@ var _ = Describe("S3 Backup", func() {
 								backupCreatorCmd,
 								cleanupCmd,
 								cronSchedule,
+								"",
 							)
 							Expect(err).ToNot(HaveOccurred())
 							Eventually(session.Out, awsTimeout).Should(gbytes.Say("Cleanup completed"))
@@ -465,6 +520,7 @@ var _ = Describe("S3 Backup", func() {
 							backupCreatorCmd,
 							failingCleanupCmd,
 							cronSchedule,
+							"",
 						)
 
 						Expect(err).ToNot(HaveOccurred())
@@ -488,6 +544,7 @@ var _ = Describe("S3 Backup", func() {
 							backupCreatorCmd,
 							cleanupCmd,
 							cronSchedule,
+							"",
 						)
 						Expect(err).ToNot(HaveOccurred())
 						Eventually(session.Out, awsTimeout).Should(gbytes.Say("Cleanup completed successfully"))
@@ -517,6 +574,7 @@ var _ = Describe("S3 Backup", func() {
 						backupCreatorCmd,
 						emptyCleanupCmd,
 						cronSchedule,
+						"",
 					)
 					Expect(err).ToNot(HaveOccurred())
 					Eventually(session.Out, awsTimeout).Should(gbytes.Say("Cleanup command not provided"))
@@ -563,6 +621,7 @@ var _ = Describe("S3 Backup", func() {
 							backupCreatorCmd,
 							cleanupCmd,
 							cronSchedule,
+							"",
 						)
 						Expect(err).ToNot(HaveOccurred())
 						Eventually(session.Out, awsTimeout).Should(gbytes.Say("Cleanup completed"))
@@ -617,6 +676,7 @@ var _ = Describe("S3 Backup", func() {
 							backupCreatorCmd,
 							cleanupCmd,
 							cronSchedule,
+							"",
 						)
 						Expect(err).ToNot(HaveOccurred())
 						Eventually(session.Out, awsTimeout).Should(gbytes.Say("Checking for remote path - remote path does not exist - making it now"))
@@ -646,6 +706,7 @@ var _ = Describe("S3 Backup", func() {
 					backupCreatorCmd,
 					cleanupCmd,
 					cronSchedule,
+					"",
 				)
 				Expect(err).ToNot(HaveOccurred())
 				Eventually(session.Out).Should(gbytes.Say("Service-backup Started"))
@@ -677,6 +738,7 @@ var _ = Describe("S3 Backup", func() {
 					backupCreatorCmd,
 					cleanupCmd,
 					cronSchedule,
+					"",
 				)
 				Expect(err).ToNot(HaveOccurred())
 
@@ -702,6 +764,7 @@ var _ = Describe("S3 Backup", func() {
 					failingBackupCreatorCmd,
 					cleanupCmd,
 					cronSchedule,
+					"",
 				)
 				Expect(err).ToNot(HaveOccurred())
 				Eventually(session.Out, awsTimeout).Should(gbytes.Say("Perform backup completed with error"))
@@ -725,6 +788,7 @@ var _ = Describe("S3 Backup", func() {
 					backupCreatorCmd,
 					cleanupCmd,
 					invalidCronSchedule,
+					"",
 				)
 
 				Expect(err).ToNot(HaveOccurred())
@@ -1161,6 +1225,7 @@ func performBackup(
 	backupCreatorCmd,
 	cleanupCmd,
 	cronSchedule string,
+	deploymentName string,
 ) (*gexec.Session, error) {
 
 	configFile, err := ioutil.TempFile("", "config.yml")
@@ -1181,8 +1246,10 @@ aws_cli_path: aws
 exit_if_in_progress: false
 cron_schedule: '%s'
 cleanup_executable: %s
-missing_properties_message: custom message`, endpointURL, region, destBucket, destPath,
-		awsAccessKeyID, awsSecretAccessKey, sourceFolder, backupCreatorCmd, cronSchedule, cleanupCmd,
+missing_properties_message: custom message
+deployment_name: %s`, endpointURL, region, destBucket, destPath,
+		awsAccessKeyID, awsSecretAccessKey, sourceFolder, backupCreatorCmd, cronSchedule,
+		cleanupCmd, deploymentName,
 	)))
 	configFile.Close()
 
@@ -1423,6 +1490,13 @@ func pathWithDate(path string) string {
 	today := time.Now()
 	datePath := fmt.Sprintf("%d/%02d/%02d", today.Year(), today.Month(), today.Day())
 	return path + "/" + datePath
+}
+
+func pathWithDeploymentAndDate(path, deploymentName string) string {
+	today := time.Now()
+	return fmt.Sprintf(
+		"%s/%s/%d/%02d/%02d", path, deploymentName, today.Year(), today.Month(), today.Day(),
+	)
 }
 
 func createFilesToUpload(sourceFolder string, smallFile bool) map[string]string {

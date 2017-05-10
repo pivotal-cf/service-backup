@@ -2,12 +2,12 @@ package config
 
 import (
 	"fmt"
+	"os"
 
 	"github.com/pivotal-cf/service-backup/azure"
 	"github.com/pivotal-cf/service-backup/gcp"
 	"github.com/pivotal-cf/service-backup/s3"
 	"github.com/pivotal-cf/service-backup/scp"
-	"os"
 )
 
 type BackuperCreator struct {
@@ -41,7 +41,8 @@ func (b *BackuperCreator) S3(destination Destination, locator SystemTrustStoreLo
 		destination.Config.getString("secret_access_key"),
 		systemTrustStorePath,
 		RemotePathGenerator{
-			BasePath: basePath,
+			BasePath:       basePath,
+			DeploymentName: b.backupConfig.DeploymentName,
 		},
 	), nil
 }

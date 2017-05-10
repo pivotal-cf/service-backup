@@ -15,6 +15,7 @@ cleanup_executable: ls
 missing_properties_message: custom message
 exit_if_in_progress: true
 service_identifier_executable: whoami
+deployment_name: test-deployment
 aws_cli_path: path/to/aws_cli
 azure_cli_path: path/to/azure_cli
 alerts:

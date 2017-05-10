@@ -71,6 +71,7 @@ var _ = Describe("Parse", func() {
 				Expect(backupConfig.MissingPropertiesMessage).To(Equal("custom message"))
 				Expect(backupConfig.ExitIfInProgress).To(BeTrue())
 				Expect(backupConfig.ServiceIdentifierExecutable).To(Equal("whoami"))
+				Expect(backupConfig.DeploymentName).To(Equal("test-deployment"))
 				Expect(backupConfig.AwsCliPath).To(Equal("path/to/aws_cli"))
 				Expect(backupConfig.AzureCliPath).To(Equal("path/to/azure_cli"))
 				Expect(backupConfig.Alerts).To(Equal(&config.Alerts{

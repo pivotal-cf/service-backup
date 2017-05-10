@@ -64,6 +64,7 @@ type BackupConfig struct {
 	MissingPropertiesMessage    string        `yaml:"missing_properties_message"`
 	ExitIfInProgress            bool          `yaml:"exit_if_in_progress"`
 	ServiceIdentifierExecutable string        `yaml:"service_identifier_executable"`
+	DeploymentName              string        `yaml:"deployment_name"`
 	AwsCliPath                  string        `yaml:"aws_cli_path"`
 	AzureCliPath                string        `yaml:"azure_cli_path"`
 	Alerts                      *Alerts       `yaml:"alerts,omitempty"`
