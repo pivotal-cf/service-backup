@@ -10,6 +10,7 @@ import (
 
 	"cloud.google.com/go/storage"
 	"code.cloudfoundry.org/lager"
+	"github.com/pivotal-cf/service-backup/backup"
 	"google.golang.org/api/iterator"
 	"google.golang.org/api/option"
 )
@@ -76,8 +77,8 @@ func (s *StorageClient) uploadFile(baseDir, fileAbsPath string, timeNow time.Tim
 	if err != nil {
 		return err
 	}
-
-	nameInBucket := fmt.Sprintf("%d/%02d/%02d/%s", timeNow.Year(), timeNow.Month(), timeNow.Day(), relativePath)
+	pathGenerator := backup.RemotePathGenerator{}
+	nameInBucket := fmt.Sprintf("%s/%s", pathGenerator.RemotePathWithDate(""), relativePath)
 	logger.Info(fmt.Sprintf("will upload %s to bucket %s", nameInBucket, s.bucketName), nil)
 	obj := bucket.Object(nameInBucket)
 

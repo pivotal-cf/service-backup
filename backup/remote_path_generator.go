@@ -10,5 +10,9 @@ type RemotePathGenerator struct{}
 func (r *RemotePathGenerator) RemotePathWithDate(basePath string) string {
 	today := time.Now()
 	datePath := fmt.Sprintf("%d/%02d/%02d", today.Year(), today.Month(), today.Day())
+
+	if basePath == "" {
+		return datePath
+	}
 	return basePath + "/" + datePath
 }
