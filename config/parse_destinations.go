@@ -1,16 +1,15 @@
 package config
 
 import (
-	"fmt"
-	"os"
-
 	"code.cloudfoundry.org/lager"
+	"fmt"
 
 	"github.com/pivotal-cf/service-backup/azure"
 	"github.com/pivotal-cf/service-backup/backup"
 	"github.com/pivotal-cf/service-backup/gcp"
 	"github.com/pivotal-cf/service-backup/s3"
 	"github.com/pivotal-cf/service-backup/scp"
+	"github.com/pivotal-cf/service-backup/systemtruststorelocator"
 )
 
 //go:generate counterfeiter -o configfakes/fake_system_trust_store_locator.go . SystemTrustStoreLocator
@@ -18,58 +17,38 @@ type SystemTrustStoreLocator interface {
 	Path() (string, error)
 }
 
-func ParseDestinations(backupConfig BackupConfig, systemTrustStoreLocator SystemTrustStoreLocator, logger lager.Logger) ([]backup.Backuper, error) {
+//go:generate counterfeiter -o configfakes/fake_backuper_factory.go . BackuperFactory
+type BackuperFactory interface {
+	S3(destination Destination, locator SystemTrustStoreLocator) (*s3.S3CliClient, error)
+	SCP(destination Destination) *scp.SCPClient
+	Azure(destination Destination) *azure.AzureClient
+	GCP(destination Destination) *gcp.StorageClient
+}
+
+func ParseDestinations(
+	backupConfig BackupConfig,
+	backuperFactory BackuperFactory,
+	logger lager.Logger,
+) ([]backup.Backuper, error) {
+
 	var backupers []backup.Backuper
 
 	for _, destination := range backupConfig.Destinations {
-		destinationConfig := destination.Config
 		switch destination.Type {
 		case "s3":
-			basePath := fmt.Sprintf("%s/%s", destinationConfig["bucket_name"], destinationConfig["bucket_path"])
-			systemTrustStorePath, err := systemTrustStoreLocator.Path()
+			locator := systemtruststorelocator.New(RealFileSystem{})
+			backuper, err := backuperFactory.S3(destination, locator)
 			if err != nil {
-				logger.Error("error locating system trust store for S3", err)
+				logger.Error("error configuring S3 destination", err)
 				return nil, err
 			}
-			backupers = append(backupers, s3.New(
-				destination.Name,
-				backupConfig.AwsCliPath,
-				destinationConfig["endpoint_url"].(string),
-				destinationConfig["region"].(string),
-				destinationConfig["access_key_id"].(string),
-				destinationConfig["secret_access_key"].(string),
-				basePath,
-				systemTrustStorePath,
-			))
+			backupers = append(backupers, backuper)
 		case "scp":
-			basePath := destinationConfig["destination"].(string)
-			backupers = append(backupers, scp.New(
-				destination.Name,
-				destinationConfig["server"].(string),
-				destinationConfig["port"].(int),
-				destinationConfig["user"].(string),
-				destinationConfig["key"].(string),
-				basePath,
-				destinationConfig["fingerprint"].(string),
-			))
+			backupers = append(backupers, backuperFactory.SCP(destination))
 		case "azure":
-			basePath := destinationConfig["path"].(string)
-			backupers = append(backupers, azure.New(
-				destination.Name,
-				destinationConfig["storage_access_key"].(string),
-				destinationConfig["storage_account"].(string),
-				destinationConfig["container"].(string),
-				destinationConfig["blob_store_base_url"].(string),
-				backupConfig.AzureCliPath,
-				basePath,
-			))
+			backupers = append(backupers, backuperFactory.Azure(destination))
 		case "gcs":
-			backupers = append(backupers, gcp.New(
-				destination.Name,
-				os.Getenv("GCP_SERVICE_ACCOUNT_FILE"),
-				destinationConfig["project_id"].(string),
-				destinationConfig["bucket_name"].(string),
-			))
+			backupers = append(backupers, backuperFactory.GCP(destination))
 		default:
 			err := fmt.Errorf("unknown destination type: %s", destination.Type)
 			logger.Error("error parsing destinations", err)

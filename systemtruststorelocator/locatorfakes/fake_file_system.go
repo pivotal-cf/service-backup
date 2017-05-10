@@ -18,12 +18,17 @@ type FakeFileSystem struct {
 		result1 os.FileInfo
 		result2 error
 	}
+	statReturnsOnCall map[int]struct {
+		result1 os.FileInfo
+		result2 error
+	}
 	invocations      map[string][][]interface{}
 	invocationsMutex sync.RWMutex
 }
 
 func (fake *FakeFileSystem) Stat(name string) (os.FileInfo, error) {
 	fake.statMutex.Lock()
+	ret, specificReturn := fake.statReturnsOnCall[len(fake.statArgsForCall)]
 	fake.statArgsForCall = append(fake.statArgsForCall, struct {
 		name string
 	}{name})
@@ -31,9 +36,11 @@ func (fake *FakeFileSystem) Stat(name string) (os.FileInfo, error) {
 	fake.statMutex.Unlock()
 	if fake.StatStub != nil {
 		return fake.StatStub(name)
-	} else {
-		return fake.statReturns.result1, fake.statReturns.result2
 	}
+	if specificReturn {
+		return ret.result1, ret.result2
+	}
+	return fake.statReturns.result1, fake.statReturns.result2
 }
 
 func (fake *FakeFileSystem) StatCallCount() int {
@@ -51,6 +58,20 @@ func (fake *FakeFileSystem) StatArgsForCall(i int) string {
 func (fake *FakeFileSystem) StatReturns(result1 os.FileInfo, result2 error) {
 	fake.StatStub = nil
 	fake.statReturns = struct {
+		result1 os.FileInfo
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *FakeFileSystem) StatReturnsOnCall(i int, result1 os.FileInfo, result2 error) {
+	fake.StatStub = nil
+	if fake.statReturnsOnCall == nil {
+		fake.statReturnsOnCall = make(map[int]struct {
+			result1 os.FileInfo
+			result2 error
+		})
+	}
+	fake.statReturnsOnCall[i] = struct {
 		result1 os.FileInfo
 		result2 error
 	}{result1, result2}

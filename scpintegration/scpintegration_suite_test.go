@@ -36,25 +36,25 @@ var (
 
 func createSSHKey() (string, string) {
 	sshKeys, err := ioutil.TempDir("", "scp-unit-tests")
-	Expect(err).ToNot(HaveOccurred())
+	Expect(err).NotTo(HaveOccurred())
 	privateKeyPath = filepath.Join(sshKeys, "id_rsa")
 	Expect(exec.Command("ssh-keygen", "-t", "rsa", "-b", "4096", "-C", sshKeyUsername,
 		"-N", "", "-f", privateKeyPath).Run()).To(Succeed())
 	privateKeyContents, err = ioutil.ReadFile(privateKeyPath)
-	Expect(err).ToNot(HaveOccurred())
+	Expect(err).NotTo(HaveOccurred())
 	return filepath.Join(sshKeys, "id_rsa.pub"), privateKeyPath
 }
 
 func addToAuthorizedKeys(publicKeyPath string) {
 	Expect(os.MkdirAll(filepath.Join(unixUser.HomeDir, ".ssh"), 0700)).To(Succeed())
 	authKeys, err := os.OpenFile(filepath.Join(unixUser.HomeDir, ".ssh", "authorized_keys"), os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0600)
-	Expect(err).ToNot(HaveOccurred())
+	Expect(err).NotTo(HaveOccurred())
 	pubKey, err := os.Open(publicKeyPath)
-	Expect(err).ToNot(HaveOccurred())
+	Expect(err).NotTo(HaveOccurred())
 	defer authKeys.Close()
 	defer pubKey.Close()
 	_, err = io.Copy(authKeys, pubKey)
-	Expect(err).ToNot(HaveOccurred())
+	Expect(err).NotTo(HaveOccurred())
 }
 
 func removeKeyFromAuthorized() {
@@ -85,14 +85,14 @@ var _ = SynchronizedBeforeSuite(func() []byte {
 	addToAuthorizedKeys(publicKeyPath)
 
 	pathToServiceBackupBinary, err = gexec.Build("github.com/pivotal-cf/service-backup")
-	Expect(err).ToNot(HaveOccurred())
+	Expect(err).NotTo(HaveOccurred())
 
 	forOtherNodes, err := json.Marshal(TestData{
 		PathToServiceBackupBinary: pathToServiceBackupBinary,
 		PrivateKeyPath:            privateKeyPath,
 		UnixUser:                  unixUser,
 	})
-	Expect(err).ToNot(HaveOccurred())
+	Expect(err).NotTo(HaveOccurred())
 	return forOtherNodes
 }, func(data []byte) {
 	var t TestData

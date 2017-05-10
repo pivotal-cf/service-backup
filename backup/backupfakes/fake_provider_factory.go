@@ -18,12 +18,16 @@ type FakeProviderFactory struct {
 	execCommandReturns struct {
 		result1 *exec.Cmd
 	}
+	execCommandReturnsOnCall map[int]struct {
+		result1 *exec.Cmd
+	}
 	invocations      map[string][][]interface{}
 	invocationsMutex sync.RWMutex
 }
 
 func (fake *FakeProviderFactory) ExecCommand(arg1 string, arg2 ...string) *exec.Cmd {
 	fake.execCommandMutex.Lock()
+	ret, specificReturn := fake.execCommandReturnsOnCall[len(fake.execCommandArgsForCall)]
 	fake.execCommandArgsForCall = append(fake.execCommandArgsForCall, struct {
 		arg1 string
 		arg2 []string
@@ -32,9 +36,11 @@ func (fake *FakeProviderFactory) ExecCommand(arg1 string, arg2 ...string) *exec.
 	fake.execCommandMutex.Unlock()
 	if fake.ExecCommandStub != nil {
 		return fake.ExecCommandStub(arg1, arg2...)
-	} else {
-		return fake.execCommandReturns.result1
 	}
+	if specificReturn {
+		return ret.result1
+	}
+	return fake.execCommandReturns.result1
 }
 
 func (fake *FakeProviderFactory) ExecCommandCallCount() int {
@@ -52,6 +58,18 @@ func (fake *FakeProviderFactory) ExecCommandArgsForCall(i int) (string, []string
 func (fake *FakeProviderFactory) ExecCommandReturns(result1 *exec.Cmd) {
 	fake.ExecCommandStub = nil
 	fake.execCommandReturns = struct {
+		result1 *exec.Cmd
+	}{result1}
+}
+
+func (fake *FakeProviderFactory) ExecCommandReturnsOnCall(i int, result1 *exec.Cmd) {
+	fake.ExecCommandStub = nil
+	if fake.execCommandReturnsOnCall == nil {
+		fake.execCommandReturnsOnCall = make(map[int]struct {
+			result1 *exec.Cmd
+		})
+	}
+	fake.execCommandReturnsOnCall[i] = struct {
 		result1 *exec.Cmd
 	}{result1}
 }

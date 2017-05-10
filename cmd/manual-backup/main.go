@@ -8,11 +8,6 @@ import (
 	"github.com/pivotal-cf/service-backup/backup"
 	"github.com/pivotal-cf/service-backup/config"
 	"github.com/pivotal-cf/service-backup/executor"
-	"github.com/pivotal-cf/service-backup/systemtruststorelocator"
-)
-
-var (
-	logger lager.Logger
 )
 
 func main() {
@@ -24,8 +19,10 @@ func main() {
 	if err != nil {
 		os.Exit(2)
 	}
-	systemTrustStoreLocator := systemtruststorelocator.New(config.RealFileSystem{})
-	backupers, err := config.ParseDestinations(backupConfig, systemTrustStoreLocator, logger)
+
+	backuperFactory := config.NewBackuperCreator(&backupConfig)
+
+	backupers, err := config.ParseDestinations(backupConfig, backuperFactory, logger)
 	if err != nil {
 		os.Exit(2)
 	}

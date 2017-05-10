@@ -12,46 +12,47 @@ import (
 
 var _ = Describe("ParseDestinations", func() {
 	var (
-		systemTrustStoreLocator *configfakes.FakeSystemTrustStoreLocator
-		logger                  lager.Logger
+		destinationFactory *configfakes.FakeBackuperFactory
+		logger             lager.Logger
 	)
 
 	BeforeEach(func() {
-		systemTrustStoreLocator = new(configfakes.FakeSystemTrustStoreLocator)
+		destinationFactory = new(configfakes.FakeBackuperFactory)
 		logger = lager.NewLogger("parser")
 		logger.RegisterSink(lager.NewWriterSink(GinkgoWriter, lager.DEBUG))
 	})
 
 	Context("when S3 is configured", func() {
-		BeforeEach(func() {
-			systemTrustStoreLocator.PathReturns("/path/to/truststore", nil)
-		})
-
 		It("returns a list of 1 backuper", func() {
-			backupConfig := config.BackupConfig{
-				Destinations: []config.Destination{
-					{
-						Type: "s3",
-						Config: map[string]interface{}{
-							"bucket_name":       "some-bucket",
-							"bucket_path":       "some-bucket-path",
-							"endpoint_url":      "some-endpoint-url",
-							"region":            "a-region",
-							"access_key_id":     "some-access-key-id",
-							"secret_access_key": "some-secret-access-key",
-						},
-					},
+			expectedDestination := config.Destination{
+				Type: "s3",
+				Config: map[string]interface{}{
+					"bucket_name":       "some-bucket",
+					"bucket_path":       "some-bucket-path",
+					"endpoint_url":      "some-endpoint-url",
+					"region":            "a-region",
+					"access_key_id":     "some-access-key-id",
+					"secret_access_key": "some-secret-access-key",
 				},
 			}
-			backupers, err := config.ParseDestinations(backupConfig, systemTrustStoreLocator, logger)
+
+			backupConfig := config.BackupConfig{
+				Destinations: []config.Destination{expectedDestination},
+			}
+			backupers, err := config.ParseDestinations(
+				backupConfig, destinationFactory, logger,
+			)
 
 			Expect(err).NotTo(HaveOccurred())
 			Expect(len(backupers)).To(Equal(1))
+			destination, systemTrustStoreLocation := destinationFactory.S3ArgsForCall(0)
+			Expect(destination).To(Equal(expectedDestination))
+			Expect(systemTrustStoreLocation).NotTo(BeNil())
 		})
 
 		Context("when the system trust store cannot be located", func() {
 			BeforeEach(func() {
-				systemTrustStoreLocator.PathReturns("", errors.New("could not locate system trust store"))
+				destinationFactory.S3Returns(nil, errors.New("could not locate system trust store"))
 			})
 
 			It("returns an error", func() {
@@ -69,7 +70,7 @@ var _ = Describe("ParseDestinations", func() {
 						},
 					},
 				}
-				_, err := config.ParseDestinations(backupConfig, systemTrustStoreLocator, logger)
+				_, err := config.ParseDestinations(backupConfig, destinationFactory, logger)
 				Expect(err).To(MatchError("could not locate system trust store"))
 			})
 		})
@@ -82,7 +83,7 @@ var _ = Describe("ParseDestinations", func() {
 					{Type: "unknown-type"},
 				},
 			}
-			_, err := config.ParseDestinations(backupConfig, systemTrustStoreLocator, logger)
+			_, err := config.ParseDestinations(backupConfig, destinationFactory, logger)
 			Expect(err).To(MatchError("unknown destination type: unknown-type"))
 		})
 	})

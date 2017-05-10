@@ -3,11 +3,9 @@ package config
 import (
 	"io/ioutil"
 
-	alerts "github.com/pivotal-cf/service-alerts-client/client"
-
-	"gopkg.in/yaml.v2"
-
 	"code.cloudfoundry.org/lager"
+	alerts "github.com/pivotal-cf/service-alerts-client/client"
+	"gopkg.in/yaml.v2"
 )
 
 func Parse(backupConfigPath string, logger lager.Logger) (BackupConfig, error) {
@@ -27,9 +25,29 @@ func Parse(backupConfigPath string, logger lager.Logger) (BackupConfig, error) {
 }
 
 type Destination struct {
-	Type   string                 `yaml:"type"`
-	Name   string                 `yaml:"name"`
-	Config map[string]interface{} `yaml:"config"`
+	Type   string `yaml:"type"`
+	Name   string `yaml:"name"`
+	Config Config `yaml:"config"`
+}
+
+type Config map[string]interface{}
+
+func (c Config) getString(key string) string {
+	var value string
+	rawValue := c[key]
+	if v, ok := rawValue.(string); ok {
+		value = v
+	}
+	return value
+}
+
+func (c Config) getInt(key string) int {
+	var value int
+	rawValue := c[key]
+	if v, ok := rawValue.(int); ok {
+		value = v
+	}
+	return value
 }
 
 type Alerts struct {

@@ -15,20 +15,27 @@ type FakeSystemTrustStoreLocator struct {
 		result1 string
 		result2 error
 	}
+	pathReturnsOnCall map[int]struct {
+		result1 string
+		result2 error
+	}
 	invocations      map[string][][]interface{}
 	invocationsMutex sync.RWMutex
 }
 
 func (fake *FakeSystemTrustStoreLocator) Path() (string, error) {
 	fake.pathMutex.Lock()
+	ret, specificReturn := fake.pathReturnsOnCall[len(fake.pathArgsForCall)]
 	fake.pathArgsForCall = append(fake.pathArgsForCall, struct{}{})
 	fake.recordInvocation("Path", []interface{}{})
 	fake.pathMutex.Unlock()
 	if fake.PathStub != nil {
 		return fake.PathStub()
-	} else {
-		return fake.pathReturns.result1, fake.pathReturns.result2
 	}
+	if specificReturn {
+		return ret.result1, ret.result2
+	}
+	return fake.pathReturns.result1, fake.pathReturns.result2
 }
 
 func (fake *FakeSystemTrustStoreLocator) PathCallCount() int {
@@ -40,6 +47,20 @@ func (fake *FakeSystemTrustStoreLocator) PathCallCount() int {
 func (fake *FakeSystemTrustStoreLocator) PathReturns(result1 string, result2 error) {
 	fake.PathStub = nil
 	fake.pathReturns = struct {
+		result1 string
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *FakeSystemTrustStoreLocator) PathReturnsOnCall(i int, result1 string, result2 error) {
+	fake.PathStub = nil
+	if fake.pathReturnsOnCall == nil {
+		fake.pathReturnsOnCall = make(map[int]struct {
+			result1 string
+			result2 error
+		})
+	}
+	fake.pathReturnsOnCall[i] = struct {
 		result1 string
 		result2 error
 	}{result1, result2}

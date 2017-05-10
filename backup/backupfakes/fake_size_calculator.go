@@ -17,12 +17,17 @@ type FakeSizeCalculator struct {
 		result1 int64
 		result2 error
 	}
+	dirSizeReturnsOnCall map[int]struct {
+		result1 int64
+		result2 error
+	}
 	invocations      map[string][][]interface{}
 	invocationsMutex sync.RWMutex
 }
 
 func (fake *FakeSizeCalculator) DirSize(localPath string) (int64, error) {
 	fake.dirSizeMutex.Lock()
+	ret, specificReturn := fake.dirSizeReturnsOnCall[len(fake.dirSizeArgsForCall)]
 	fake.dirSizeArgsForCall = append(fake.dirSizeArgsForCall, struct {
 		localPath string
 	}{localPath})
@@ -30,9 +35,11 @@ func (fake *FakeSizeCalculator) DirSize(localPath string) (int64, error) {
 	fake.dirSizeMutex.Unlock()
 	if fake.DirSizeStub != nil {
 		return fake.DirSizeStub(localPath)
-	} else {
-		return fake.dirSizeReturns.result1, fake.dirSizeReturns.result2
 	}
+	if specificReturn {
+		return ret.result1, ret.result2
+	}
+	return fake.dirSizeReturns.result1, fake.dirSizeReturns.result2
 }
 
 func (fake *FakeSizeCalculator) DirSizeCallCount() int {
@@ -50,6 +57,20 @@ func (fake *FakeSizeCalculator) DirSizeArgsForCall(i int) string {
 func (fake *FakeSizeCalculator) DirSizeReturns(result1 int64, result2 error) {
 	fake.DirSizeStub = nil
 	fake.dirSizeReturns = struct {
+		result1 int64
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *FakeSizeCalculator) DirSizeReturnsOnCall(i int, result1 int64, result2 error) {
+	fake.DirSizeStub = nil
+	if fake.dirSizeReturnsOnCall == nil {
+		fake.dirSizeReturnsOnCall = make(map[int]struct {
+			result1 int64
+			result2 error
+		})
+	}
+	fake.dirSizeReturnsOnCall[i] = struct {
 		result1 int64
 		result2 error
 	}{result1, result2}
