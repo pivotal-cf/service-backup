@@ -9,13 +9,17 @@ import (
 	"time"
 
 	"code.cloudfoundry.org/lager"
-	"github.com/pivotal-cf/service-backup/backup"
+	"github.com/pivotal-cf/service-backup/upload"
 	"github.com/satori/go.uuid"
 )
 
-type Executor struct {
+type Executor interface {
+	Execute() error
+}
+
+type executor struct {
 	sync.Mutex
-	uploader               backup.MultiBackuper
+	uploader               upload.Uploader
 	sourceFolder           string
 	backupCreatorCmd       string
 	cleanupCmd             string
@@ -23,22 +27,25 @@ type Executor struct {
 	exitIfBackupInProgress bool
 	backupInProgress       bool
 	logger                 lager.Logger
-	execCommand            backup.ExecCommand
-	calculator             backup.SizeCalculator
+	execCommand            CmdFunc
+	dirSize                DirSizeFunc
 }
 
+type DirSizeFunc func(string) (int64, error)
+
+type CmdFunc func(string, ...string) *exec.Cmd
+
 func NewExecutor(
-	uploader backup.MultiBackuper,
+	uploader upload.Uploader,
 	sourceFolder,
 	backupCreatorCmd,
 	cleanupCmd,
 	serviceIdentifierCmd string,
 	exitIfInProgress bool,
 	logger lager.Logger,
-	execCommand backup.ExecCommand,
-	calculator backup.SizeCalculator,
-) backup.Executor {
-	return &Executor{
+	options ...Option,
+) *executor {
+	e := &executor{
 		uploader:               uploader,
 		sourceFolder:           sourceFolder,
 		backupCreatorCmd:       backupCreatorCmd,
@@ -47,9 +54,15 @@ func NewExecutor(
 		exitIfBackupInProgress: exitIfInProgress,
 		backupInProgress:       false,
 		logger:                 logger,
-		execCommand:            execCommand,
-		calculator:             calculator,
+		execCommand:            exec.Command,
+		dirSize:                calculateDirSize,
 	}
+
+	for _, opt := range options {
+		opt(e)
+	}
+
+	return e
 }
 
 type ServiceInstanceError struct {
@@ -57,9 +70,10 @@ type ServiceInstanceError struct {
 	ServiceInstanceID string
 }
 
-func (e *Executor) backupCanBeStarted() bool {
+func (e *executor) backupCanBeStarted() bool {
 	e.Lock()
 	defer e.Unlock()
+
 	if e.backupInProgress && e.exitIfBackupInProgress {
 		return false
 	}
@@ -67,13 +81,13 @@ func (e *Executor) backupCanBeStarted() bool {
 	return true
 }
 
-func (e *Executor) doneBackup() {
+func (e *executor) doneBackup() {
 	e.Lock()
 	defer e.Unlock()
 	e.backupInProgress = false
 }
 
-func (e *Executor) RunOnce() error {
+func (e *executor) Execute() error {
 	sessionLogger := e.logger.WithData(lager.Data{"backup_guid": uuid.NewV4().String()})
 
 	serviceInstanceID := e.identifyService(sessionLogger)
@@ -117,7 +131,7 @@ func (e *Executor) RunOnce() error {
 	return nil
 }
 
-func (e *Executor) identifyService(sessionLogger lager.Logger) string {
+func (e *executor) identifyService(sessionLogger lager.Logger) string {
 	if e.serviceIdentifierCmd == "" {
 		return ""
 	}
@@ -141,7 +155,7 @@ func (e *Executor) identifyService(sessionLogger lager.Logger) string {
 	return strings.TrimSpace(string(out))
 }
 
-func (e *Executor) performBackup(sessionLogger lager.Logger) error {
+func (e *executor) performBackup(sessionLogger lager.Logger) error {
 	if e.backupCreatorCmd == "" {
 		sessionLogger.Info("source_executable not provided, skipping performing of backup")
 		return nil
@@ -161,7 +175,7 @@ func (e *Executor) performBackup(sessionLogger lager.Logger) error {
 	return nil
 }
 
-func (e *Executor) performCleanup(sessionLogger lager.Logger) error {
+func (e *executor) performCleanup(sessionLogger lager.Logger) error {
 	if e.cleanupCmd == "" {
 		sessionLogger.Info("Cleanup command not provided")
 		return nil
@@ -182,7 +196,7 @@ func (e *Executor) performCleanup(sessionLogger lager.Logger) error {
 	return nil
 }
 
-func (e *Executor) uploadBackup(sessionLogger lager.Logger) error {
+func (e *executor) uploadBackup(sessionLogger lager.Logger) error {
 	sessionLogger.Info("Upload backup started")
 
 	startTime := time.Now()
@@ -194,7 +208,7 @@ func (e *Executor) uploadBackup(sessionLogger lager.Logger) error {
 		return err
 	}
 
-	size, _ := e.calculator.DirSize(e.sourceFolder)
+	size, _ := e.dirSize(e.sourceFolder)
 	sessionLogger.Info("Upload backup completed successfully", lager.Data{
 		"duration_in_seconds": duration.Seconds(),
 		"size_in_bytes":       size,

@@ -1,9 +1,6 @@
 package executor
 
-import (
-	"code.cloudfoundry.org/lager"
-	"github.com/pivotal-cf/service-backup/backup"
-)
+import "code.cloudfoundry.org/lager"
 
 type dummyExecutor struct {
 	logger lager.Logger
@@ -12,13 +9,13 @@ type dummyExecutor struct {
 //NewDummyExecutor ...
 func NewDummyExecutor(
 	logger lager.Logger,
-) backup.Executor {
+) *dummyExecutor {
 	return &dummyExecutor{
 		logger: logger,
 	}
 }
 
-func (d *dummyExecutor) RunOnce() error {
+func (d *dummyExecutor) Execute() error {
 	d.logger.Info("Backups Disabled")
 	return nil
 }

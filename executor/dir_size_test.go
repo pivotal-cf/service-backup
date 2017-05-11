@@ -1,4 +1,4 @@
-package backup_test
+package executor
 
 import (
 	"io/ioutil"
@@ -7,9 +7,84 @@ import (
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	. "github.com/pivotal-cf/service-backup/backup"
+
 	"github.com/satori/go.uuid"
 )
+
+var _ = Describe("SizeCalculator", func() {
+	var path = "fakepath"
+
+	BeforeEach(func() {
+		var err error
+		path, err = ioutil.TempDir("", "")
+		Expect(err).ToNot(HaveOccurred())
+	})
+
+	AfterEach(func() {
+		os.Remove(path)
+	})
+
+	Describe("DirSize", func() {
+		Context("when the directory is empty", func() {
+			It("returns 0", func() {
+				size, err := calculateDirSize(path)
+				Expect(size).To(Equal(int64(0)))
+				Expect(err).ToNot(HaveOccurred())
+			})
+		})
+
+		Context("when the directory is not empty", func() {
+			var fileSize int64
+
+			BeforeEach(func() {
+				fileSize = createFilesIn(path)
+			})
+
+			It("returns the sum of the files sizes", func() {
+				size, err := calculateDirSize(path)
+				Expect(size).To(Equal(fileSize))
+				Expect(err).ToNot(HaveOccurred())
+			})
+		})
+
+		Context("when the directory contains subdirectories", func() {
+			var subdirPath string
+
+			BeforeEach(func() {
+				subdirPath = createEmptySubdirectory(path)
+			})
+
+			Context("when there are no files", func() {
+				It("returns 0", func() {
+					size, err := calculateDirSize(path)
+					Expect(size).To(Equal(int64(0)))
+					Expect(err).ToNot(HaveOccurred())
+				})
+			})
+
+			Context("when there are files", func() {
+				var fileSize int64
+
+				BeforeEach(func() {
+					fileSize = createFilesIn(path) + createFilesIn(subdirPath)
+				})
+
+				It("returns the sum of the files sizes", func() {
+					size, err := calculateDirSize(path)
+					Expect(size).To(Equal(fileSize))
+					Expect(err).ToNot(HaveOccurred())
+				})
+			})
+		})
+
+		Context("when an invalid path is provided", func() {
+			It("returns an error", func() {
+				_, err := calculateDirSize("fake-path")
+				Expect(err).To(HaveOccurred())
+			})
+		})
+	})
+})
 
 func createFilesIn(path string) int64 {
 	size := int64(0)
@@ -38,69 +113,3 @@ func createEmptySubdirectory(path string) string {
 	Expect(err).ToNot(HaveOccurred())
 	return subdirPath
 }
-
-var _ = Describe("SizeCalculator", func() {
-	var calculator = &FileSystemSizeCalculator{}
-	var path = "fakepath"
-
-	BeforeEach(func() {
-		var err error
-		path, err = ioutil.TempDir("", "")
-		Expect(err).ToNot(HaveOccurred())
-	})
-
-	AfterEach(func() {
-		os.Remove(path)
-	})
-
-	Describe("DirSize", func() {
-		Context("when the directory is empty", func() {
-			It("returns 0", func() {
-				size, err := calculator.DirSize(path)
-				Expect(size).To(Equal(int64(0)))
-				Expect(err).ToNot(HaveOccurred())
-			})
-		})
-		Context("when the directory is not empty", func() {
-			var fileSize int64
-			BeforeEach(func() {
-				fileSize = createFilesIn(path)
-			})
-			It("returns the sum of the files sizes", func() {
-				size, err := calculator.DirSize(path)
-				Expect(size).To(Equal(fileSize))
-				Expect(err).ToNot(HaveOccurred())
-			})
-		})
-		Context("when the directory contains subdirectories", func() {
-			var subdirPath string
-			BeforeEach(func() {
-				subdirPath = createEmptySubdirectory(path)
-			})
-			Context("when there are no files", func() {
-				It("returns 0", func() {
-					size, err := calculator.DirSize(path)
-					Expect(size).To(Equal(int64(0)))
-					Expect(err).ToNot(HaveOccurred())
-				})
-			})
-			Context("when there are files", func() {
-				var fileSize int64
-				BeforeEach(func() {
-					fileSize = createFilesIn(path) + createFilesIn(subdirPath)
-				})
-				It("returns the sum of the files sizes", func() {
-					size, err := calculator.DirSize(path)
-					Expect(size).To(Equal(fileSize))
-					Expect(err).ToNot(HaveOccurred())
-				})
-			})
-		})
-		Context("when an invalid path is provided", func() {
-			It("returns an error", func() {
-				_, err := calculator.DirSize("fake-path")
-				Expect(err).To(HaveOccurred())
-			})
-		})
-	})
-})

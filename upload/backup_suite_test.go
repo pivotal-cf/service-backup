@@ -1,4 +1,4 @@
-package backup_test
+package upload_test
 
 import (
 	"path/filepath"

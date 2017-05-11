@@ -7,9 +7,8 @@ import (
 	"time"
 
 	. "github.com/onsi/gomega"
-	"github.com/pivotal-cf/service-backup/config"
 	"github.com/pivotal-cf/service-backup/s3"
-	"github.com/pivotal-cf/service-backup/systemtruststorelocator"
+	"github.com/pivotal-cf/service-backup/upload"
 )
 
 type S3TestClient struct {
@@ -17,13 +16,10 @@ type S3TestClient struct {
 }
 
 func New(endpointURL, accessKeyID, secretAccessKey, basePath string) *S3TestClient {
-	systemTrustStorePath, err := systemtruststorelocator.New(config.RealFileSystem{}).Path()
+	caCertPath, err := upload.CACertPath()
 	Expect(err).NotTo(HaveOccurred())
 
-	generator := config.RemotePathGenerator{
-		BasePath: basePath,
-	}
-	s3CLIClient := s3.New("s3_test_client", "aws", endpointURL, "", accessKeyID, secretAccessKey, systemTrustStorePath, generator)
+	s3CLIClient := s3.New("s3_test_client", "aws", endpointURL, "", accessKeyID, secretAccessKey, caCertPath, upload.RemotePathFunc(basePath, ""))
 	return &S3TestClient{S3CliClient: s3CLIClient}
 }
 

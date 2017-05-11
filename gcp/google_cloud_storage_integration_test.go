@@ -15,9 +15,9 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/pborman/uuid"
-	"github.com/pivotal-cf/service-backup/config"
 	"github.com/pivotal-cf/service-backup/gcp"
 	"github.com/pivotal-cf/service-backup/testhelpers"
+	"github.com/pivotal-cf/service-backup/upload"
 	"google.golang.org/api/option"
 )
 
@@ -60,7 +60,7 @@ var _ = Describe("backups to Google Cloud Storage", func() {
 			bucket = gcpClient.Bucket(bucketName)
 			name = "google_cloud_destination"
 
-			backuper = gcp.New(name, gcpServiceAccountFilePath, gcpProjectName, bucketName, config.RemotePathGenerator{})
+			backuper = gcp.New(name, gcpServiceAccountFilePath, gcpProjectName, bucketName, upload.RemotePathFunc("", ""))
 		})
 
 		JustBeforeEach(func() {
@@ -88,7 +88,7 @@ var _ = Describe("backups to Google Cloud Storage", func() {
 	Describe("failed backups", func() {
 		Context("when the service account credentials are invalid", func() {
 			It("returns an error", func() {
-				backuper := gcp.New("icanbeanything", "idontexist", "", "", config.RemotePathGenerator{})
+				backuper := gcp.New("icanbeanything", "idontexist", "", "", upload.RemotePathFunc("", ""))
 				logger := lager.NewLogger("[GCP tests] ")
 				logger.RegisterSink(lager.NewWriterSink(GinkgoWriter, lager.DEBUG))
 				Expect(backuper.Upload("", logger)).To(MatchError(ContainSubstring("error creating Google Cloud Storage client")))

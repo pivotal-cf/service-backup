@@ -3,15 +3,14 @@ package main
 import (
 	"log"
 	"os"
-	"os/exec"
 
 	"code.cloudfoundry.org/lager"
 
 	alerts "github.com/pivotal-cf/service-alerts-client/client"
-	"github.com/pivotal-cf/service-backup/backup"
 	"github.com/pivotal-cf/service-backup/config"
 	"github.com/pivotal-cf/service-backup/executor"
 	"github.com/pivotal-cf/service-backup/scheduler"
+	"github.com/pivotal-cf/service-backup/upload"
 )
 
 func main() {
@@ -19,18 +18,17 @@ func main() {
 	logger.RegisterSink(lager.NewWriterSink(os.Stdout, lager.INFO))
 
 	configPath := os.Args[1]
-	backupConfig, err := config.Parse(configPath, logger)
+	backupConfig, err := config.Parse(configPath, logger) //TODO pointer plz
 	if err != nil {
 		os.Exit(2)
 	}
 
-	backuperFactory := config.NewBackuperCreator(&backupConfig)
-	backupers, err := config.ParseDestinations(backupConfig, backuperFactory, logger)
+	uploader, err := upload.Initialize(&backupConfig, logger)
 	if err != nil {
 		os.Exit(2)
 	}
 
-	var backupExecutor backup.Executor
+	var backupExecutor executor.Executor
 	if backupConfig.NoDestinations() {
 		logger.Info("No destination provided - skipping backup")
 		// Default cronSchedule to monthly if not provided when destination is also not provided
@@ -41,15 +39,13 @@ func main() {
 		backupExecutor = executor.NewDummyExecutor(logger)
 	} else {
 		backupExecutor = executor.NewExecutor(
-			backup.NewMultiBackuper(backupers),
+			uploader,
 			backupConfig.SourceFolder,
 			backupConfig.SourceExecutable,
 			backupConfig.CleanupExecutable,
 			backupConfig.ServiceIdentifierExecutable,
 			backupConfig.ExitIfInProgress,
 			logger,
-			exec.Command,
-			&backup.FileSystemSizeCalculator{},
 		)
 	}
 

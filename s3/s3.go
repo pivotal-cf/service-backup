@@ -7,30 +7,29 @@ import (
 	"strings"
 
 	"code.cloudfoundry.org/lager"
-	"github.com/pivotal-cf/service-backup/backup"
 )
 
 type S3CliClient struct {
-	name                 string
-	awsCmdPath           string
-	accessKey            string
-	secretKey            string
-	endpointURL          string
-	region               string
-	systemTrustStorePath string
-	remotePathGenerator  backup.RemotePathGenerator
+	name         string
+	awsCmdPath   string
+	accessKey    string
+	secretKey    string
+	endpointURL  string
+	region       string
+	caCertPath   string
+	remotePathFn func() string
 }
 
-func New(name, awsCmdPath, endpointURL, region, accessKey, secretKey, systemTrustStorePath string, generator backup.RemotePathGenerator) *S3CliClient {
+func New(name, awsCmdPath, endpointURL, region, accessKey, secretKey, caCertPath string, remotePathFn func() string) *S3CliClient {
 	return &S3CliClient{
-		name:                 name,
-		awsCmdPath:           awsCmdPath,
-		endpointURL:          endpointURL,
-		region:               region,
-		accessKey:            accessKey,
-		secretKey:            secretKey,
-		systemTrustStorePath: systemTrustStorePath,
-		remotePathGenerator:  generator,
+		name:         name,
+		awsCmdPath:   awsCmdPath,
+		endpointURL:  endpointURL,
+		region:       region,
+		accessKey:    accessKey,
+		secretKey:    secretKey,
+		caCertPath:   caCertPath,
+		remotePathFn: remotePathFn,
 	}
 }
 
@@ -45,7 +44,7 @@ func (c *S3CliClient) S3Cmd(args ...string) *exec.Cmd {
 		cmdArgs = append(cmdArgs, "--region", c.region)
 	}
 
-	cmdArgs = append(cmdArgs, "--ca-bundle", c.systemTrustStorePath)
+	cmdArgs = append(cmdArgs, "--ca-bundle", c.caCertPath)
 	cmdArgs = append(cmdArgs, "s3")
 	cmdArgs = append(cmdArgs, args...)
 
@@ -106,7 +105,7 @@ func (c *S3CliClient) createRemotePath(remotePath string) error {
 func (c *S3CliClient) Upload(localPath string, sessionLogger lager.Logger) error {
 	defer sessionLogger.Info("s3 completed")
 
-	remotePath := c.remotePathGenerator.RemotePathWithDate()
+	remotePath := c.remotePathFn()
 
 	sessionLogger.Info(fmt.Sprintf("about to upload %s to S3 remote path %s", localPath, remotePath))
 	cmd := c.S3Cmd("sync", localPath, fmt.Sprintf("s3://%s", remotePath))

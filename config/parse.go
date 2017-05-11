@@ -25,29 +25,9 @@ func Parse(backupConfigPath string, logger lager.Logger) (BackupConfig, error) {
 }
 
 type Destination struct {
-	Type   string `yaml:"type"`
-	Name   string `yaml:"name"`
-	Config Config `yaml:"config"`
-}
-
-type Config map[string]interface{}
-
-func (c Config) getString(key string) string {
-	var value string
-	rawValue := c[key]
-	if v, ok := rawValue.(string); ok {
-		value = v
-	}
-	return value
-}
-
-func (c Config) getInt(key string) int {
-	var value int
-	rawValue := c[key]
-	if v, ok := rawValue.(int); ok {
-		value = v
-	}
-	return value
+	Type   string                 `yaml:"type"`
+	Name   string                 `yaml:"name"`
+	Config map[string]interface{} `yaml:"config"`
 }
 
 type Alerts struct {

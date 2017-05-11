@@ -6,7 +6,6 @@ import (
 
 	"code.cloudfoundry.org/lager"
 	alerts "github.com/pivotal-cf/service-alerts-client/client"
-	"github.com/pivotal-cf/service-backup/backup"
 	"github.com/pivotal-cf/service-backup/config"
 	"github.com/pivotal-cf/service-backup/executor"
 	"github.com/tedsuo/ifrit"
@@ -18,11 +17,11 @@ type Scheduler struct {
 	logger       lager.Logger
 }
 
-func NewScheduler(e backup.Executor, backupConfig config.BackupConfig, alertsClient *alerts.ServiceAlertsClient, logger lager.Logger) Scheduler {
+func NewScheduler(e executor.Executor, backupConfig config.BackupConfig, alertsClient *alerts.ServiceAlertsClient, logger lager.Logger) Scheduler {
 	scheduler := cron.New()
 
 	_, err := scheduler.AddFunc(backupConfig.CronSchedule, func() {
-		backupErr := e.RunOnce()
+		backupErr := e.Execute()
 		if backupErr != nil {
 			if alertsClient == nil {
 				logger.Info("Alerts not configured.", lager.Data{})

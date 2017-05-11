@@ -7,54 +7,51 @@ import (
 	"sync"
 
 	"code.cloudfoundry.org/lager"
-	"github.com/pivotal-cf/service-backup/backup"
-	"github.com/pivotal-cf/service-backup/backup/backupfakes"
-	"github.com/pivotal-cf/service-backup/executor"
+
+	"path/filepath"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gbytes"
+	"github.com/pivotal-cf/service-backup/executor"
 )
 
 var _ = Describe("Executor", func() {
 	var (
-		providerFactory *backupfakes.FakeProviderFactory
-		execCmd         *exec.Cmd
-		backupExecutor  backup.Executor
-		uploader        backup.MultiBackuper
-		backuper        *backupfakes.FakeBackuper
-		logger          lager.Logger
-		log             *gbytes.Buffer
-		calculator      *backupfakes.FakeSizeCalculator
+		execCmd        *exec.Cmd
+		backupExecutor executor.Executor
+		uploader       *fakeUploader
+		logger         lager.Logger
+		log            *gbytes.Buffer
+
+		fakeExecArgs [][]string
+		fakeExec     = func(name string, args ...string) *exec.Cmd {
+			fakeExecArgs = append(fakeExecArgs, append([]string{name}, args...))
+			return execCmd
+		}
 	)
 
 	BeforeEach(func() {
+		fakeExecArgs = [][]string{}
+
 		log = gbytes.NewBuffer()
 		logger = lager.NewLogger("executor")
 		logger.RegisterSink(lager.NewWriterSink(log, lager.DEBUG))
 
-		backuper = new(backupfakes.FakeBackuper)
-		uploader = backup.NewMultiBackuper([]backup.Backuper{backuper})
-		calculator = new(backupfakes.FakeSizeCalculator)
-		calculator.DirSizeReturns(200, nil)
+		uploader = new(fakeUploader)
 	})
 
-	Describe("RunOnce()", func() {
+	Describe("Execute()", func() {
 		var (
-			runOnceErr                error
+			executeErr                error
 			performIdentifyServiceCmd string
 			exitIfBackupInProgress    bool
 		)
 
 		BeforeEach(func() {
-			providerFactory = new(backupfakes.FakeProviderFactory)
 			performIdentifyServiceCmd = assetPath("fake-service-identifier")
 			exitIfBackupInProgress = false
 			execCmd = exec.Command("")
-		})
-
-		JustBeforeEach(func() {
-			providerFactory.ExecCommandReturns(execCmd)
 		})
 
 		Describe("failures backing up", func() {
@@ -69,22 +66,21 @@ var _ = Describe("Executor", func() {
 					serviceIdentifierCmd,
 					exitIfBackupInProgress,
 					logger,
-					providerFactory.ExecCommand,
-					calculator,
+					executor.WithCommandFunc(fakeExec),
 				)
 
-				runOnceErr = backupExecutor.RunOnce()
+				executeErr = backupExecutor.Execute()
 			})
 
 			BeforeEach(func() {
 				serviceIdentifierCmd = ""
-				backuper.UploadReturns(errors.New("oioi"))
+				uploader = &fakeUploader{uploadErr: errors.New("oioi")}
 			})
 
 			It("returns an error", func() {
-				Expect(runOnceErr).To(MatchError("oioi"))
-				Expect(runOnceErr).To(BeAssignableToTypeOf(executor.ServiceInstanceError{}))
-				Expect(runOnceErr.(executor.ServiceInstanceError).ServiceInstanceID).To(Equal(""))
+				Expect(executeErr).To(MatchError("oioi"))
+				Expect(executeErr).To(BeAssignableToTypeOf(executor.ServiceInstanceError{}))
+				Expect(executeErr.(executor.ServiceInstanceError).ServiceInstanceID).To(Equal(""))
 			})
 
 			Context("when the service identifier command is set", func() {
@@ -94,9 +90,9 @@ var _ = Describe("Executor", func() {
 				})
 
 				It("returns an error", func() {
-					Expect(runOnceErr).To(MatchError("oioi"))
-					Expect(runOnceErr).To(BeAssignableToTypeOf(executor.ServiceInstanceError{}))
-					Expect(runOnceErr.(executor.ServiceInstanceError).ServiceInstanceID).To(Equal("unit-identifier"))
+					Expect(executeErr).To(MatchError("oioi"))
+					Expect(executeErr).To(BeAssignableToTypeOf(executor.ServiceInstanceError{}))
+					Expect(executeErr.(executor.ServiceInstanceError).ServiceInstanceID).To(Equal("unit-identifier"))
 				})
 			})
 		})
@@ -111,11 +107,10 @@ var _ = Describe("Executor", func() {
 					"",
 					exitIfBackupInProgress,
 					logger,
-					providerFactory.ExecCommand,
-					calculator,
+					executor.WithCommandFunc(fakeExec),
 				)
 
-				runOnceErr = backupExecutor.RunOnce()
+				executeErr = backupExecutor.Execute()
 			})
 
 			It("should continue with upload", func() {
@@ -126,7 +121,7 @@ var _ = Describe("Executor", func() {
 			})
 
 			It("does not return an error", func() {
-				Expect(runOnceErr).ToNot(HaveOccurred())
+				Expect(executeErr).ToNot(HaveOccurred())
 			})
 		})
 
@@ -140,11 +135,10 @@ var _ = Describe("Executor", func() {
 					"",
 					exitIfBackupInProgress,
 					logger,
-					providerFactory.ExecCommand,
-					calculator,
+					executor.WithCommandFunc(fakeExec),
 				)
 
-				runOnceErr = backupExecutor.RunOnce()
+				executeErr = backupExecutor.Execute()
 			})
 
 			It("logs with a guid for the backup", func() {
@@ -162,50 +156,47 @@ var _ = Describe("Executor", func() {
 					performIdentifyServiceCmd,
 					exitIfBackupInProgress,
 					logger,
-					providerFactory.ExecCommand,
-					calculator,
+					executor.WithCommandFunc(fakeExec),
+					executor.WithDirSizeFunc(func(string) (int64, error) { return 200, nil }),
 				)
 
-				runOnceErr = backupExecutor.RunOnce()
+				executeErr = backupExecutor.Execute()
 			})
 
 			Context("when provided service identifier", func() {
-				Context("returns an identifier", func() {
-					BeforeEach(func() {
-						execCmd = exec.Command(assetPath("fake-service-identifier"))
-					})
-
-					It("does not return an error", func() {
-						Expect(runOnceErr).ToNot(HaveOccurred())
-					})
-
-					It("makes a system call to service identifier cmd", func() {
-						Expect(providerFactory.ExecCommandCallCount()).To(Equal(1))
-						serviceIdentifierCmd, _ := providerFactory.ExecCommandArgsForCall(0)
-						Expect(serviceIdentifierCmd).To(Equal(performIdentifyServiceCmd))
-					})
-
-					It("logs with the service identifier", func() {
-						Expect(log).To(gbytes.Say("Perform backup started"))
-						Expect(log).To(gbytes.Say(`"identifier":"unit-identifier"`))
-					})
-
-					It("logs with the identifier for each event", func() {
-						Expect(log).To(gbytes.Say("Perform backup started"))
-						Expect(log).To(gbytes.Say(`"backup_guid":`))
-						Expect(log).To(gbytes.Say(`"identifier":"unit-identifier"`))
-						Expect(log).To(gbytes.Say("Perform backup completed successfully"))
-						Expect(log).To(gbytes.Say(`"identifier":"unit-identifier"`))
-						Expect(log).To(gbytes.Say("Upload backup started"))
-						Expect(log).To(gbytes.Say(`"identifier":"unit-identifier"`))
-						Expect(log).To(gbytes.Say("Upload backup completed successfully"))
-						Expect(log).To(gbytes.Say(`"identifier":"unit-identifier"`))
-						Expect(log).To(gbytes.Say("Cleanup completed"))
-						Expect(log).To(gbytes.Say(`"identifier":"unit-identifier"`))
-					})
+				BeforeEach(func() {
+					execCmd = exec.Command(assetPath("fake-service-identifier"))
 				})
 
-				It("logs upload metadata information", func() {
+				It("does not return an error", func() {
+					Expect(executeErr).ToNot(HaveOccurred())
+				})
+
+				It("makes a system call to service identifier cmd", func() {
+					Expect(len(fakeExecArgs)).To(Equal(1))
+					Expect(fakeExecArgs[0]).To(Equal([]string{performIdentifyServiceCmd}))
+				})
+
+				It("logs with the service identifier", func() {
+					Expect(log).To(gbytes.Say("Perform backup started"))
+					Expect(log).To(gbytes.Say(`"identifier":"unit-identifier"`))
+				})
+
+				It("logs with the identifier for each event", func() {
+					Expect(log).To(gbytes.Say("Perform backup started"))
+					Expect(log).To(gbytes.Say(`"backup_guid":`))
+					Expect(log).To(gbytes.Say(`"identifier":"unit-identifier"`))
+					Expect(log).To(gbytes.Say("Perform backup completed successfully"))
+					Expect(log).To(gbytes.Say(`"identifier":"unit-identifier"`))
+					Expect(log).To(gbytes.Say("Upload backup started"))
+					Expect(log).To(gbytes.Say(`"identifier":"unit-identifier"`))
+					Expect(log).To(gbytes.Say("Upload backup completed successfully"))
+					Expect(log).To(gbytes.Say(`"identifier":"unit-identifier"`))
+					Expect(log).To(gbytes.Say("Cleanup completed"))
+					Expect(log).To(gbytes.Say(`"identifier":"unit-identifier"`))
+				})
+
+				It("logs the upload metadata information", func() {
 					Expect(log).To(gbytes.Say(`"duration_in_seconds":\d`))
 					Expect(log).To(gbytes.Say(`"size_in_bytes":200`))
 				})
@@ -216,7 +207,7 @@ var _ = Describe("Executor", func() {
 					})
 
 					It("does not return an error", func() {
-						Expect(runOnceErr).ToNot(HaveOccurred())
+						Expect(executeErr).ToNot(HaveOccurred())
 					})
 
 					It("logs that identifier command was unsuccessful", func() {
@@ -234,7 +225,7 @@ var _ = Describe("Executor", func() {
 					})
 
 					It("does not return an error", func() {
-						Expect(runOnceErr).ToNot(HaveOccurred())
+						Expect(executeErr).ToNot(HaveOccurred())
 					})
 
 					It("logs that identifier command did not exist", func() {
@@ -253,7 +244,7 @@ var _ = Describe("Executor", func() {
 				})
 
 				It("does not return an error", func() {
-					Expect(runOnceErr).ToNot(HaveOccurred())
+					Expect(executeErr).ToNot(HaveOccurred())
 				})
 
 				It("logs do not mention identifier at all", func() {
@@ -274,81 +265,90 @@ var _ = Describe("Executor", func() {
 						performIdentifyServiceCmd,
 						exitIfBackupAlreadyInProgress,
 						logger,
-						providerFactory.ExecCommand,
-						calculator,
+						executor.WithCommandFunc(fakeExec),
 					)
 				})
 
 				Context("when a backup is already in progress", func() {
 					JustBeforeEach(func() {
-						firstBackupErr := backupExecutor.RunOnce()
+						firstBackupErr := backupExecutor.Execute()
 						Expect(firstBackupErr).NotTo(HaveOccurred())
 					})
 
 					It("starts the upload", func() {
-						secondBackupErr := backupExecutor.RunOnce()
+						secondBackupErr := backupExecutor.Execute()
 						Expect(secondBackupErr).NotTo(HaveOccurred())
-						Expect(providerFactory.ExecCommandCallCount()).To(Equal(2))
+						Expect(len(fakeExecArgs)).To(Equal(2))
 						Expect(log).To(gbytes.Say("Upload backup started"))
 					})
 				})
 			})
 
-			Context("when exit_if_in_progress is set to true", func() {
-				JustBeforeEach(func() {
-					exitIfBackupInProgress = true
+			Context("when exit_if_in_progress is set to true and a backup is already in progress", func() {
+
+				It("rejects the upload", func() {
+					var (
+						blockfirstUpload      sync.WaitGroup
+						firstBackupInProgress sync.WaitGroup
+					)
+
+					blockfirstUpload.Add(1)
+					firstBackupInProgress.Add(1)
+
+					uploader = &fakeUploader{
+						uploadStub: func(localPath string, _ lager.Logger) error {
+							firstBackupInProgress.Done()
+							blockfirstUpload.Wait()
+							return nil
+						},
+					}
+
 					backupExecutor = executor.NewExecutor(
 						uploader,
 						"source-folder",
 						assetPath("fake-snapshotter"),
 						assetPath("fake-cleanup"),
 						performIdentifyServiceCmd,
-						exitIfBackupInProgress,
+						true,
 						logger,
-						providerFactory.ExecCommand,
-						calculator,
+						executor.WithCommandFunc(fakeExec),
 					)
-				})
 
-				Context("when a backup is already in progress", func() {
-					var blockfirstUpload sync.WaitGroup
-					var firstBackupInProgress sync.WaitGroup
-					var firstBackupCompleted sync.WaitGroup
+					go func() {
+						defer GinkgoRecover()
+						firstBackupErr := backupExecutor.Execute()
+						Expect(firstBackupErr).NotTo(HaveOccurred())
+					}()
 
-					BeforeEach(func() {
-						blockfirstUpload.Add(1)
-						firstBackupInProgress.Add(1)
-						firstBackupCompleted.Add(1)
-					})
+					firstBackupInProgress.Wait()
+					secondBackupErr := backupExecutor.Execute()
+					blockfirstUpload.Done()
 
-					JustBeforeEach(func() {
-						backuper.UploadStub = func(localPath string, _ lager.Logger) error {
-							firstBackupInProgress.Done()
-							blockfirstUpload.Wait()
-							return nil
-						}
-						go func() {
-							//start the first upload
-							defer GinkgoRecover()
-							firstBackupErr := backupExecutor.RunOnce()
-							Expect(firstBackupErr).NotTo(HaveOccurred())
-							firstBackupCompleted.Done()
-						}()
-					})
-
-					It("rejects the upload", func() {
-						firstBackupInProgress.Wait()
-						secondBackupErr := backupExecutor.RunOnce()
-						blockfirstUpload.Done()
-						firstBackupCompleted.Wait()
-
-						Expect(secondBackupErr).To(MatchError("Backup currently in progress, exiting. Another backup will not be able to start until this is completed."))
-						Expect(strings.Count(string(log.Contents()), "Perform backup started")).To(Equal(1))
-						Expect(log.Contents()).To(ContainSubstring("Backup currently in progress, exiting. Another backup will not be able to start until this is completed."))
-					})
+					Expect(secondBackupErr).To(MatchError("Backup currently in progress, exiting. Another backup will not be able to start until this is completed."))
+					Expect(strings.Count(string(log.Contents()), "Perform backup started")).To(Equal(1))
+					Expect(log.Contents()).To(ContainSubstring("Backup currently in progress, exiting. Another backup will not be able to start until this is completed."))
 				})
 			})
-
 		})
 	})
 })
+
+func assetPath(filename string) string {
+	path, err := filepath.Abs(filepath.Join("assets", filename))
+	Expect(err).ToNot(HaveOccurred())
+	return path
+}
+
+type fakeUploader struct {
+	uploadStub func(string, lager.Logger) error
+	uploadErr  error
+}
+
+func (f *fakeUploader) Upload(name string, logger lager.Logger) error {
+	if f.uploadStub != nil {
+		return f.uploadStub(name, logger)
+	}
+	return f.uploadErr
+}
+
+func (f *fakeUploader) Name() string { return "fake" }

@@ -8,28 +8,27 @@ import (
 	"strconv"
 
 	"code.cloudfoundry.org/lager"
-	"github.com/pivotal-cf/service-backup/backup"
 )
 
 type SCPClient struct {
-	name                string
-	host                string
-	port                int
-	username            string
-	privateKey          string
-	fingerPrint         string
-	remotePathGenerator backup.RemotePathGenerator
+	name         string
+	host         string
+	port         int
+	username     string
+	privateKey   string
+	fingerPrint  string
+	remotePathFn func() string
 }
 
-func New(name, host string, port int, username, privateKeyPath, fingerPrint string, generator backup.RemotePathGenerator) *SCPClient {
+func New(name, host string, port int, username, privateKeyPath, fingerPrint string, remotePathFn func() string) *SCPClient {
 	return &SCPClient{
-		name:                name,
-		host:                host,
-		port:                port,
-		username:            username,
-		privateKey:          privateKeyPath,
-		fingerPrint:         fingerPrint,
-		remotePathGenerator: generator,
+		name:         name,
+		host:         host,
+		port:         port,
+		username:     username,
+		privateKey:   privateKeyPath,
+		fingerPrint:  fingerPrint,
+		remotePathFn: remotePathFn,
 	}
 }
 
@@ -82,7 +81,7 @@ func (client *SCPClient) Upload(localPath string, sessionLogger lager.Logger) er
 
 	defer os.Remove(privateKeyFileName)
 
-	remotePath := client.remotePathGenerator.RemotePathWithDate()
+	remotePath := client.remotePathFn()
 
 	if err = client.ensureRemoteDirectoryExists(remotePath, privateKeyFileName, knownHostsFileName, sessionLogger); err != nil {
 		return err

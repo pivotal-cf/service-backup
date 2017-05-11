@@ -10,7 +10,6 @@ import (
 
 	"cloud.google.com/go/storage"
 	"code.cloudfoundry.org/lager"
-	"github.com/pivotal-cf/service-backup/backup"
 	"google.golang.org/api/iterator"
 	"google.golang.org/api/option"
 )
@@ -20,16 +19,16 @@ type StorageClient struct {
 	gcpProjectID           string
 	bucketName             string
 	name                   string
-	remotePathGenerator    backup.RemotePathGenerator
+	remotePathFn           func() string
 }
 
-func New(name, serviceAccountFilePath, gcpProjectID, bucketName string, generator backup.RemotePathGenerator) *StorageClient {
+func New(name, serviceAccountFilePath, gcpProjectID, bucketName string, remotePathFn func() string) *StorageClient {
 	return &StorageClient{
 		serviceAccountFilePath: serviceAccountFilePath,
 		gcpProjectID:           gcpProjectID,
 		bucketName:             bucketName,
 		name:                   name,
-		remotePathGenerator:    generator,
+		remotePathFn:           remotePathFn,
 	}
 }
 
@@ -79,7 +78,7 @@ func (s *StorageClient) uploadFile(baseDir, fileAbsPath string, timeNow time.Tim
 	if err != nil {
 		return err
 	}
-	nameInBucket := fmt.Sprintf("%s/%s", s.remotePathGenerator.RemotePathWithDate(), relativePath)
+	nameInBucket := fmt.Sprintf("%s/%s", s.remotePathFn(), relativePath)
 	logger.Info(fmt.Sprintf("will upload %s to bucket %s", nameInBucket, s.bucketName), nil)
 	obj := bucket.Object(nameInBucket)
 
