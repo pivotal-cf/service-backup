@@ -18,9 +18,94 @@ import (
 	"github.com/onsi/gomega/gexec"
 )
 
-var (
-	azureContainer string
-)
+var _ = Describe("AzureClient", func() {
+	Context("the client is correctly configured", func() {
+		var azureContainer string
+
+		BeforeEach(func() {
+			azureContainer = "ci-blobs-" + strconv.Itoa(int(time.Now().UnixNano()))
+		})
+
+		AfterEach(func() {
+			deleteAzureContainer(azureContainer)
+		})
+
+		Context("and the container already exists", func() {
+			BeforeEach(func() {
+				createAzureContainer(azureContainer)
+			})
+
+			It("uploads the backup", func() {
+				uploadsTheBackup(azureContainer)
+			})
+
+			It("uploads the large backup", func() {
+				sourceFolder, err := ioutil.TempDir("", "azure")
+				Expect(err).ToNot(HaveOccurred())
+
+				fileName := "bigfile.dat"
+				fileContent := make([]byte, 100*1000*1024)
+				_, err = rand.Read(fileContent)
+
+				Expect(ioutil.WriteFile(filepath.Join(sourceFolder, fileName), fileContent, os.ModePerm)).To(Succeed())
+
+				Expect(err).NotTo(HaveOccurred())
+
+				today := time.Now()
+				destinationPath := fmt.Sprintf("path/to/blobs/%d", today.Unix())
+
+				session := performBackup(sourceFolder, azureContainer, destinationPath)
+
+				Eventually(session.Out, azureTimeout).Should(gbytes.Say("Cleanup completed successfully"))
+				session.Terminate().Wait()
+				Eventually(session).Should(gexec.Exit())
+
+				azureBlobService := azureBlobService()
+
+				backupBlobPath := fmt.Sprintf("%s/%d/%02d/%02d/%s", destinationPath, today.Year(), int(today.Month()), today.Day(), fileName)
+
+				Expect(downloadBlob(azureBlobService, azureContainer, backupBlobPath)).To(Equal([]byte(fileContent)))
+			})
+		})
+
+		Context("and the container doesn't exist", func() {
+			It("uploads the backup", func() {
+				uploadsTheBackup(azureContainer)
+			})
+		})
+	})
+})
+
+func uploadsTheBackup(azureContainer string) {
+	sourceFolder, err := ioutil.TempDir("", "azure")
+	Expect(err).ToNot(HaveOccurred())
+
+	firstBackupFileName := "morning/events.log"
+	firstBackupFileContent := "coffee"
+	secondBackupFileName := "afternoon/events.log"
+	secondBackupFileContent := "ping-pong"
+
+	createFakeBackupFile(sourceFolder, firstBackupFileName, firstBackupFileContent)
+	createFakeBackupFile(sourceFolder, secondBackupFileName, secondBackupFileContent)
+
+	today := time.Now()
+
+	destinationPath := fmt.Sprintf("path/to/blobs/%d", today.Unix())
+
+	session := performBackup(sourceFolder, azureContainer, destinationPath)
+	Eventually(session.Out, azureTimeout).Should(gbytes.Say(`"destination_name":"foo"`))
+	Eventually(session.Out, azureTimeout).Should(gbytes.Say("Cleanup completed successfully"))
+	session.Terminate().Wait()
+	Eventually(session).Should(gexec.Exit())
+
+	azureBlobService := azureBlobService()
+
+	firstBackupBlobPath := fmt.Sprintf("%s/%d/%02d/%02d/%s", destinationPath, today.Year(), int(today.Month()), today.Day(), firstBackupFileName)
+	Expect(downloadBlob(azureBlobService, azureContainer, firstBackupBlobPath)).To(Equal([]byte(firstBackupFileContent)))
+
+	secondBackupBlobPath := fmt.Sprintf("%s/%d/%02d/%02d/%s", destinationPath, today.Year(), int(today.Month()), today.Day(), secondBackupFileName)
+	Expect(downloadBlob(azureBlobService, azureContainer, secondBackupBlobPath)).To(Equal([]byte(secondBackupFileContent)))
+}
 
 func azureBlobService() storage.BlobStorageClient {
 	azureClient, err := storage.NewBasicClient(azureAccountName, azureAccountKey)
@@ -46,8 +131,7 @@ func runBackup(params ...string) *gexec.Session {
 	return session
 }
 
-//CHANGE THE ARGUMENTS
-func performBackup(sourceFolder, destinationPath string) *gexec.Session {
+func performBackup(sourceFolder, azureContainer, destinationPath string) *gexec.Session {
 	file, err := ioutil.TempFile("", "config.yml")
 	Expect(err).NotTo(HaveOccurred())
 	file.Write([]byte(fmt.Sprintf(`---
@@ -80,95 +164,10 @@ func createFakeBackupFile(sourceFolder, fileName, content string) {
 	Expect(ioutil.WriteFile(filePath, []byte(content), 0777)).To(Succeed())
 }
 
-func downloadBlob(azureBlobService storage.BlobStorageClient, path string) []byte {
+func downloadBlob(azureBlobService storage.BlobStorageClient, azureContainer, path string) []byte {
 	blob, err := azureBlobService.GetBlob(azureContainer, path)
 	Expect(err).ToNot(HaveOccurred())
 	content, err := ioutil.ReadAll(blob)
 	Expect(err).ToNot(HaveOccurred())
 	return content
 }
-
-var _ = Describe("AzureClient", func() {
-	Context("the client is correctly configured", func() {
-		BeforeEach(func() {
-			azureContainer = "ci-blobs-" + strconv.Itoa(int(time.Now().UnixNano()))
-		})
-
-		AfterEach(func() {
-			deleteAzureContainer(azureContainer)
-		})
-
-		uploadsTheBackup := func() {
-			sourceFolder, err := ioutil.TempDir("", "azure")
-			Expect(err).ToNot(HaveOccurred())
-
-			firstBackupFileName := "morning/events.log"
-			firstBackupFileContent := "coffee"
-			secondBackupFileName := "afternoon/events.log"
-			secondBackupFileContent := "ping-pong"
-
-			createFakeBackupFile(sourceFolder, firstBackupFileName, firstBackupFileContent)
-			createFakeBackupFile(sourceFolder, secondBackupFileName, secondBackupFileContent)
-
-			today := time.Now()
-
-			destinationPath := fmt.Sprintf("path/to/blobs/%d", today.Unix())
-
-			session := performBackup(sourceFolder, destinationPath)
-			Eventually(session.Out, azureTimeout).Should(gbytes.Say(`"destination_name":"foo"`))
-			Eventually(session.Out, azureTimeout).Should(gbytes.Say("Cleanup completed successfully"))
-			session.Terminate().Wait()
-			Eventually(session).Should(gexec.Exit())
-
-			azureBlobService := azureBlobService()
-
-			firstBackupBlobPath := fmt.Sprintf("%s/%d/%02d/%02d/%s", destinationPath, today.Year(), int(today.Month()), today.Day(), firstBackupFileName)
-			Expect(downloadBlob(azureBlobService, firstBackupBlobPath)).To(Equal([]byte(firstBackupFileContent)))
-
-			secondBackupBlobPath := fmt.Sprintf("%s/%d/%02d/%02d/%s", destinationPath, today.Year(), int(today.Month()), today.Day(), secondBackupFileName)
-			Expect(downloadBlob(azureBlobService, secondBackupBlobPath)).To(Equal([]byte(secondBackupFileContent)))
-		}
-
-		uploadsTheLargeBackup := func() {
-			sourceFolder, err := ioutil.TempDir("", "azure")
-			Expect(err).ToNot(HaveOccurred())
-
-			fileName := "bigfile.dat"
-			fileContent := make([]byte, 100*1000*1024)
-			_, err = rand.Read(fileContent)
-
-			Expect(ioutil.WriteFile(filepath.Join(sourceFolder, fileName), fileContent, os.ModePerm)).To(Succeed())
-
-			Expect(err).NotTo(HaveOccurred())
-
-			today := time.Now()
-			destinationPath := fmt.Sprintf("path/to/blobs/%d", today.Unix())
-
-			session := performBackup(sourceFolder, destinationPath)
-
-			Eventually(session.Out, azureTimeout).Should(gbytes.Say("Cleanup completed successfully"))
-			session.Terminate().Wait()
-			Eventually(session).Should(gexec.Exit())
-
-			azureBlobService := azureBlobService()
-
-			backupBlobPath := fmt.Sprintf("%s/%d/%02d/%02d/%s", destinationPath, today.Year(), int(today.Month()), today.Day(), fileName)
-
-			Expect(downloadBlob(azureBlobService, backupBlobPath)).To(Equal([]byte(fileContent)))
-		}
-
-		Context("and the container already exists", func() {
-			BeforeEach(func() {
-				createAzureContainer(azureContainer)
-			})
-
-			It("uploads the backup", uploadsTheBackup)
-
-			It("uploads the large backup", uploadsTheLargeBackup)
-		})
-
-		Context("and the container doesn't exist", func() {
-			It("uploads the backup", uploadsTheBackup)
-		})
-	})
-})
