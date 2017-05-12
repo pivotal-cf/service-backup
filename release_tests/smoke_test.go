@@ -258,10 +258,10 @@ var _ = Describe("smoke tests", func() {
 			Expect(err).NotTo(HaveOccurred())
 
 			ctx = context.Background()
-			gcpClient, err := gcs.NewClient(ctx, option.WithServiceAccountFile(gcpServiceAccountFile.Name()))
+			gcsClient, err := gcs.NewClient(ctx, option.WithServiceAccountFile(gcpServiceAccountFile.Name()))
 			Expect(err).NotTo(HaveOccurred())
 			bucketName := manifest.InstanceGroups[0].Jobs[0].Properties.ServiceBackup.Destinations[0].Config.BucketName
-			bucket = gcpClient.Bucket(bucketName)
+			bucket = gcsClient.Bucket(bucketName)
 		})
 
 		AfterEach(func() {

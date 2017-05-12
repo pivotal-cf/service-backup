@@ -1,6 +1,6 @@
 ---
 destinations:
-- type: gcp
+- type: gcs
   name: google_cloud_destination
   config:
     project_id: my_google_project

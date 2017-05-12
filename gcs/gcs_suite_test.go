@@ -1,4 +1,4 @@
-package gcp_test
+package gcs_test
 
 import (
 	. "github.com/onsi/ginkgo"
@@ -7,7 +7,7 @@ import (
 	"testing"
 )
 
-func TestGcp(t *testing.T) {
+func TestGCS(t *testing.T) {
 	RegisterFailHandler(Fail)
 	RunSpecs(t, "Google Cloud Storage Suite")
 }

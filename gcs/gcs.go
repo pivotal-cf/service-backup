@@ -1,4 +1,4 @@
-package gcp
+package gcs
 
 import (
 	"context"
@@ -16,16 +16,16 @@ import (
 
 type StorageClient struct {
 	serviceAccountFilePath string
-	gcpProjectID           string
+	projectID              string
 	bucketName             string
 	name                   string
 	remotePathFn           func() string
 }
 
-func New(name, serviceAccountFilePath, gcpProjectID, bucketName string, remotePathFn func() string) *StorageClient {
+func New(name, serviceAccountFilePath, projectID, bucketName string, remotePathFn func() string) *StorageClient {
 	return &StorageClient{
 		serviceAccountFilePath: serviceAccountFilePath,
-		gcpProjectID:           gcpProjectID,
+		projectID:              projectID,
 		bucketName:             bucketName,
 		name:                   name,
 		remotePathFn:           remotePathFn,
@@ -42,13 +42,13 @@ func (s *StorageClient) Upload(dirToUpload string, logger lager.Logger) error {
 	logger.Info(fmt.Sprintf("will upload %s to Google Cloud Storage", dirToUpload), nil)
 
 	ctx := context.Background()
-	gcpClient, err := storage.NewClient(ctx, option.WithServiceAccountFile(s.serviceAccountFilePath))
+	client, err := storage.NewClient(ctx, option.WithServiceAccountFile(s.serviceAccountFilePath))
 	if err != nil {
 		return errs("creating Google Cloud Storage client", err)
 	}
-	defer gcpClient.Close()
+	defer client.Close()
 
-	bucket, err := s.ensureBucketExists(gcpClient, ctx)
+	bucket, err := s.ensureBucketExists(client, ctx)
 	if err != nil {
 		return errs("creating bucket", err)
 	}
@@ -98,9 +98,9 @@ func (s *StorageClient) uploadFile(baseDir, fileAbsPath string, timeNow time.Tim
 	return nil
 }
 
-func (s *StorageClient) ensureBucketExists(gcpClient *storage.Client, ctx context.Context) (*storage.BucketHandle, error) {
-	bucketIterator := gcpClient.Buckets(ctx, s.gcpProjectID)
-	bucket := gcpClient.Bucket(s.bucketName)
+func (s *StorageClient) ensureBucketExists(client *storage.Client, ctx context.Context) (*storage.BucketHandle, error) {
+	bucketIterator := client.Buckets(ctx, s.projectID)
+	bucket := client.Bucket(s.bucketName)
 	for {
 		attr, err := bucketIterator.Next()
 		if err == iterator.Done {
@@ -115,7 +115,7 @@ func (s *StorageClient) ensureBucketExists(gcpClient *storage.Client, ctx contex
 		}
 	}
 
-	if err := bucket.Create(ctx, s.gcpProjectID, nil); err != nil {
+	if err := bucket.Create(ctx, s.projectID, nil); err != nil {
 		return nil, err
 	}
 	return bucket, nil

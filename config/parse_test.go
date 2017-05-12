@@ -16,15 +16,15 @@ var _ = Describe("Parse", func() {
 		logger.RegisterSink(lager.NewWriterSink(GinkgoWriter, lager.DEBUG))
 	})
 
-	Context("when the destination is gcp", func() {
+	Context("when the destination is GCS", func() {
 		Context("with required fields", func() {
 			It("returns a backup config, without alerts", func() {
-				backupConfig, err := config.Parse("fixtures/valid_gcp_config_with_required_fields.yml", logger)
+				backupConfig, err := config.Parse("fixtures/valid_gcs_config_with_required_fields.yml", logger)
 				Expect(err).NotTo(HaveOccurred())
 
 				Expect(backupConfig.Destinations).To(Equal([]config.Destination{
 					{
-						Type: "gcp",
+						Type: "gcs",
 						Name: "google_cloud_destination",
 						Config: map[string]interface{}{
 							"project_id":           "my_google_project",

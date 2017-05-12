@@ -6,7 +6,7 @@ import (
 
 	"github.com/pivotal-cf/service-backup/azure"
 	"github.com/pivotal-cf/service-backup/config"
-	"github.com/pivotal-cf/service-backup/gcp"
+	"github.com/pivotal-cf/service-backup/gcs"
 	"github.com/pivotal-cf/service-backup/s3"
 	"github.com/pivotal-cf/service-backup/scp"
 	"github.com/pivotal-cf/service-backup/upload"
@@ -47,16 +47,16 @@ type FakeUploaderFactory struct {
 	azureReturnsOnCall map[int]struct {
 		result1 *azure.AzureClient
 	}
-	GCPStub        func(destination config.Destination) *gcp.StorageClient
-	gCPMutex       sync.RWMutex
-	gCPArgsForCall []struct {
+	GCSStub        func(destination config.Destination) *gcs.StorageClient
+	gCSMutex       sync.RWMutex
+	gCSArgsForCall []struct {
 		destination config.Destination
 	}
-	gCPReturns struct {
-		result1 *gcp.StorageClient
+	gCSReturns struct {
+		result1 *gcs.StorageClient
 	}
-	gCPReturnsOnCall map[int]struct {
-		result1 *gcp.StorageClient
+	gCSReturnsOnCall map[int]struct {
+		result1 *gcs.StorageClient
 	}
 	invocations      map[string][][]interface{}
 	invocationsMutex sync.RWMutex
@@ -207,51 +207,51 @@ func (fake *FakeUploaderFactory) AzureReturnsOnCall(i int, result1 *azure.AzureC
 	}{result1}
 }
 
-func (fake *FakeUploaderFactory) GCP(destination config.Destination) *gcp.StorageClient {
-	fake.gCPMutex.Lock()
-	ret, specificReturn := fake.gCPReturnsOnCall[len(fake.gCPArgsForCall)]
-	fake.gCPArgsForCall = append(fake.gCPArgsForCall, struct {
+func (fake *FakeUploaderFactory) GCS(destination config.Destination) *gcs.StorageClient {
+	fake.gCSMutex.Lock()
+	ret, specificReturn := fake.gCSReturnsOnCall[len(fake.gCSArgsForCall)]
+	fake.gCSArgsForCall = append(fake.gCSArgsForCall, struct {
 		destination config.Destination
 	}{destination})
-	fake.recordInvocation("GCP", []interface{}{destination})
-	fake.gCPMutex.Unlock()
-	if fake.GCPStub != nil {
-		return fake.GCPStub(destination)
+	fake.recordInvocation("GCS", []interface{}{destination})
+	fake.gCSMutex.Unlock()
+	if fake.GCSStub != nil {
+		return fake.GCSStub(destination)
 	}
 	if specificReturn {
 		return ret.result1
 	}
-	return fake.gCPReturns.result1
+	return fake.gCSReturns.result1
 }
 
-func (fake *FakeUploaderFactory) GCPCallCount() int {
-	fake.gCPMutex.RLock()
-	defer fake.gCPMutex.RUnlock()
-	return len(fake.gCPArgsForCall)
+func (fake *FakeUploaderFactory) GCSCallCount() int {
+	fake.gCSMutex.RLock()
+	defer fake.gCSMutex.RUnlock()
+	return len(fake.gCSArgsForCall)
 }
 
-func (fake *FakeUploaderFactory) GCPArgsForCall(i int) config.Destination {
-	fake.gCPMutex.RLock()
-	defer fake.gCPMutex.RUnlock()
-	return fake.gCPArgsForCall[i].destination
+func (fake *FakeUploaderFactory) GCSArgsForCall(i int) config.Destination {
+	fake.gCSMutex.RLock()
+	defer fake.gCSMutex.RUnlock()
+	return fake.gCSArgsForCall[i].destination
 }
 
-func (fake *FakeUploaderFactory) GCPReturns(result1 *gcp.StorageClient) {
-	fake.GCPStub = nil
-	fake.gCPReturns = struct {
-		result1 *gcp.StorageClient
+func (fake *FakeUploaderFactory) GCSReturns(result1 *gcs.StorageClient) {
+	fake.GCSStub = nil
+	fake.gCSReturns = struct {
+		result1 *gcs.StorageClient
 	}{result1}
 }
 
-func (fake *FakeUploaderFactory) GCPReturnsOnCall(i int, result1 *gcp.StorageClient) {
-	fake.GCPStub = nil
-	if fake.gCPReturnsOnCall == nil {
-		fake.gCPReturnsOnCall = make(map[int]struct {
-			result1 *gcp.StorageClient
+func (fake *FakeUploaderFactory) GCSReturnsOnCall(i int, result1 *gcs.StorageClient) {
+	fake.GCSStub = nil
+	if fake.gCSReturnsOnCall == nil {
+		fake.gCSReturnsOnCall = make(map[int]struct {
+			result1 *gcs.StorageClient
 		})
 	}
-	fake.gCPReturnsOnCall[i] = struct {
-		result1 *gcp.StorageClient
+	fake.gCSReturnsOnCall[i] = struct {
+		result1 *gcs.StorageClient
 	}{result1}
 }
 
@@ -264,8 +264,8 @@ func (fake *FakeUploaderFactory) Invocations() map[string][][]interface{} {
 	defer fake.sCPMutex.RUnlock()
 	fake.azureMutex.RLock()
 	defer fake.azureMutex.RUnlock()
-	fake.gCPMutex.RLock()
-	defer fake.gCPMutex.RUnlock()
+	fake.gCSMutex.RLock()
+	defer fake.gCSMutex.RUnlock()
 	return fake.invocations
 }
 

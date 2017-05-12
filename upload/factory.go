@@ -6,7 +6,7 @@ import (
 
 	"github.com/pivotal-cf/service-backup/azure"
 	"github.com/pivotal-cf/service-backup/config"
-	"github.com/pivotal-cf/service-backup/gcp"
+	"github.com/pivotal-cf/service-backup/gcs"
 	"github.com/pivotal-cf/service-backup/s3"
 	"github.com/pivotal-cf/service-backup/scp"
 )
@@ -58,8 +58,8 @@ func (b *uploaderFactory) Azure(destination config.Destination) *azure.AzureClie
 	)
 }
 
-func (b *uploaderFactory) GCP(destination config.Destination) *gcp.StorageClient {
-	return gcp.New(
+func (b *uploaderFactory) GCS(destination config.Destination) *gcs.StorageClient {
+	return gcs.New(
 		destination.Name,
 		os.Getenv("GCP_SERVICE_ACCOUNT_FILE"),
 		toString(destination.Config["project_id"]),

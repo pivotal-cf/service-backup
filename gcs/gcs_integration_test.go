@@ -1,4 +1,4 @@
-package gcp_test
+package gcs_test
 
 import (
 	"bytes"
@@ -15,7 +15,7 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/pborman/uuid"
-	"github.com/pivotal-cf/service-backup/gcp"
+	"github.com/pivotal-cf/service-backup/gcs"
 	"github.com/pivotal-cf/service-backup/testhelpers"
 	"github.com/pivotal-cf/service-backup/upload"
 	"google.golang.org/api/option"
@@ -24,14 +24,14 @@ import (
 var _ = Describe("backups to Google Cloud Storage", func() {
 	Describe("successful backups", func() {
 		var (
-			bucketName     string
-			bucket         *storage.BucketHandle
-			dirToBackup    string
-			ctx            context.Context
-			gcpProjectName string
-			name           string
+			bucketName  string
+			bucket      *storage.BucketHandle
+			dirToBackup string
+			ctx         context.Context
+			projectName string
+			name        string
 
-			backuper *gcp.StorageClient
+			backuper *gcs.StorageClient
 		)
 
 		itBacksUpFiles := func() {
@@ -44,27 +44,27 @@ var _ = Describe("backups to Google Cloud Storage", func() {
 
 		BeforeEach(func() {
 			gcpServiceAccountFilePath := envMustHave("SERVICE_BACKUP_TESTS_GCP_SERVICE_ACCOUNT_FILE")
-			gcpProjectName = envMustHave("SERVICE_BACKUP_TESTS_GCP_PROJECT_NAME")
+			projectName = envMustHave("SERVICE_BACKUP_TESTS_GCP_PROJECT_NAME")
 
 			var err error
-			dirToBackup, err = ioutil.TempDir("", "gcp-backup-tests")
+			dirToBackup, err = ioutil.TempDir("", "gcs-backup-tests")
 			Expect(err).NotTo(HaveOccurred())
 			Expect(createFile("content for a.txt", dirToBackup, "a.txt"))
 			Expect(createFile("content for b.txt", dirToBackup, "d1", "b.txt"))
 			Expect(createFile("content for c.txt", dirToBackup, "d1", "d2", "c.txt"))
 
 			ctx = context.Background()
-			gcpClient, err := storage.NewClient(ctx, option.WithServiceAccountFile(gcpServiceAccountFilePath))
+			client, err := storage.NewClient(ctx, option.WithServiceAccountFile(gcpServiceAccountFilePath))
 			Expect(err).NotTo(HaveOccurred())
 			bucketName = fmt.Sprintf("service-backup-test-%s", uuid.New())
-			bucket = gcpClient.Bucket(bucketName)
+			bucket = client.Bucket(bucketName)
 			name = "google_cloud_destination"
 
-			backuper = gcp.New(name, gcpServiceAccountFilePath, gcpProjectName, bucketName, upload.RemotePathFunc("", ""))
+			backuper = gcs.New(name, gcpServiceAccountFilePath, projectName, bucketName, upload.RemotePathFunc("", ""))
 		})
 
 		JustBeforeEach(func() {
-			logger := lager.NewLogger("[GCP tests] ")
+			logger := lager.NewLogger("[GCS tests] ")
 			logger.RegisterSink(lager.NewWriterSink(GinkgoWriter, lager.DEBUG))
 			Expect(backuper.Upload(dirToBackup, logger)).To(Succeed())
 		})
@@ -78,7 +78,7 @@ var _ = Describe("backups to Google Cloud Storage", func() {
 
 		Context("when the bucket already exists", func() {
 			BeforeEach(func() {
-				Expect(bucket.Create(ctx, gcpProjectName, nil)).To(Succeed())
+				Expect(bucket.Create(ctx, projectName, nil)).To(Succeed())
 			})
 
 			itBacksUpFiles()
@@ -88,8 +88,8 @@ var _ = Describe("backups to Google Cloud Storage", func() {
 	Describe("failed backups", func() {
 		Context("when the service account credentials are invalid", func() {
 			It("returns an error", func() {
-				backuper := gcp.New("icanbeanything", "idontexist", "", "", upload.RemotePathFunc("", ""))
-				logger := lager.NewLogger("[GCP tests] ")
+				backuper := gcs.New("icanbeanything", "idontexist", "", "", upload.RemotePathFunc("", ""))
+				logger := lager.NewLogger("[GCS tests] ")
 				logger.RegisterSink(lager.NewWriterSink(GinkgoWriter, lager.DEBUG))
 				Expect(backuper.Upload("", logger)).To(MatchError(ContainSubstring("error creating Google Cloud Storage client")))
 			})

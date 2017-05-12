@@ -7,7 +7,7 @@ import (
 
 	"github.com/pivotal-cf/service-backup/azure"
 	"github.com/pivotal-cf/service-backup/config"
-	"github.com/pivotal-cf/service-backup/gcp"
+	"github.com/pivotal-cf/service-backup/gcs"
 	"github.com/pivotal-cf/service-backup/s3"
 	"github.com/pivotal-cf/service-backup/scp"
 )
@@ -22,7 +22,7 @@ type UploaderFactory interface {
 	S3(destination config.Destination, caCertPath string) *s3.S3CliClient
 	SCP(destination config.Destination) *scp.SCPClient
 	Azure(destination config.Destination) *azure.AzureClient
-	GCP(destination config.Destination) *gcp.StorageClient
+	GCS(destination config.Destination) *gcs.StorageClient
 }
 
 func Initialize(conf *config.BackupConfig, logger lager.Logger, options ...Option) (*multiUploader, error) {
@@ -53,7 +53,7 @@ func Initialize(conf *config.BackupConfig, logger lager.Logger, options ...Optio
 			uploaders[i] = opts.factory.Azure(dest)
 		case "gcs":
 			// TODO: add test for this branch
-			uploaders[i] = opts.factory.GCP(dest)
+			uploaders[i] = opts.factory.GCS(dest)
 		default:
 			err := fmt.Errorf("unknown destination type: %s", dest.Type)
 			logger.Error("error parsing destinations", err)

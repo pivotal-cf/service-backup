@@ -10,7 +10,7 @@ export AWS_SECRET_ACCESS_KEY_RESTRICTED=
 export AZURE_STORAGE_ACCOUNT=
 export AZURE_STORAGE_ACCESS_KEY=
 
-# GCP integration tests
+# GCS integration tests
 export SERVICE_BACKUP_TESTS_GCP_SERVICE_ACCOUNT_FILE=$(pwd)/gcp_service_account.json
 export SERVICE_BACKUP_TESTS_GCP_PROJECT_NAME=
 

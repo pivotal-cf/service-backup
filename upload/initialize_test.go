@@ -8,7 +8,7 @@ import (
 	. "github.com/onsi/gomega"
 	"github.com/pivotal-cf/service-backup/azure"
 	"github.com/pivotal-cf/service-backup/config"
-	"github.com/pivotal-cf/service-backup/gcp"
+	"github.com/pivotal-cf/service-backup/gcs"
 	"github.com/pivotal-cf/service-backup/s3"
 	"github.com/pivotal-cf/service-backup/scp"
 	"github.com/pivotal-cf/service-backup/upload"
@@ -92,18 +92,18 @@ var _ = Describe("Initialize", func() {
 		})
 	})
 
-	Context("when generating an GCP uploader", func() {
+	Context("when generating an GCS uploader", func() {
 		It("returns a list of 1 backuper", func() {
 			backupConfig := backupConfig("gcs")
-			factory.GCPReturns(gcp.New("gcs", "", "", "", nil))
+			factory.GCSReturns(gcs.New("gcs", "", "", "", nil))
 
 			uploader, err := upload.Initialize(backupConfig, logger, upload.WithUploaderFactory(factory), upload.WithCACertLocator(noopCACertLocator))
 
 			Expect(err).NotTo(HaveOccurred())
 			Expect(uploader).NotTo(BeNil())
 			Expect(uploader.Name()).To(Equal("multi-uploader: gcs"))
-			Expect(factory.GCPCallCount()).To(Equal(1))
-			Expect(factory.GCPArgsForCall(0)).To(Equal(backupConfig.Destinations[0]))
+			Expect(factory.GCSCallCount()).To(Equal(1))
+			Expect(factory.GCSArgsForCall(0)).To(Equal(backupConfig.Destinations[0]))
 		})
 	})
 
