@@ -20,7 +20,7 @@ import (
 
 func TestMultiintegration(t *testing.T) {
 	RegisterFailHandler(Fail)
-	RunSpecs(t, "Multiintegration Suite")
+	RunSpecs(t, "Multiple Destinations Integration Suite")
 }
 
 const (

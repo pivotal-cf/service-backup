@@ -33,20 +33,13 @@ var _ = Describe("Multiple destinations backup", func() {
 		)
 
 		BeforeEach(func() {
-			var err error
-			baseDir, err = ioutil.TempDir("", "multiple-destinations-integration-tests")
-			Expect(err).NotTo(HaveOccurred())
-			dirToBackup := filepath.Join(baseDir, "source")
+			baseDir = createBaseDir()
+			sourceDir := createSourceDir(baseDir)
+
 			destPathSCP = filepath.Join(baseDir, "target")
-			Expect(os.Mkdir(dirToBackup, 0755)).To(Succeed())
 			Expect(os.Mkdir(destPathSCP, 0755)).To(Succeed())
 
-			Expect(ioutil.WriteFile(filepath.Join(dirToBackup, "1.txt"), []byte("1"), 0644)).To(Succeed())
-			Expect(os.Mkdir(filepath.Join(dirToBackup, "subdir"), 0755)).To(Succeed())
-			Expect(ioutil.WriteFile(filepath.Join(dirToBackup, "subdir", "2.txt"), []byte("2"), 0644)).To(Succeed())
-
-			destS3UUID := uuid.NewV4()
-			destPathS3 = destS3UUID.String()
+			destPathS3 = uuid.NewV4().String()
 
 			runningBin = runBackup(createConfigFile(`---
 destinations:
@@ -74,8 +67,7 @@ exit_if_in_progress: true
 cron_schedule: '*/5 * * * * *'
 cleanup_executable: true
 missing_properties_message: custom message`, unixUser.Username, destPathSCP, padWithSpaces(string(privateKeyContents), 6),
-				existingBucketInDefaultRegion, destPathS3, awsAccessKeyID, awsSecretAccessKey,
-				dirToBackup))
+				existingBucketInDefaultRegion, destPathS3, awsAccessKeyID, awsSecretAccessKey, sourceDir))
 		})
 
 		AfterEach(func() {
@@ -133,19 +125,13 @@ missing_properties_message: custom message`, unixUser.Username, destPathSCP, pad
 		)
 
 		BeforeEach(func() {
-			var err error
-			baseDir, err = ioutil.TempDir("", "multiple-destinations-integration-tests")
-			Expect(err).NotTo(HaveOccurred())
-			dirToBackup := filepath.Join(baseDir, "source")
-			destPathSCP1 = filepath.Join(baseDir, "target1")
-			destPathSCP2 = filepath.Join(baseDir, "target2")
-			Expect(os.Mkdir(dirToBackup, 0755)).To(Succeed())
-			Expect(os.Mkdir(destPathSCP1, 0755)).To(Succeed())
-			Expect(os.Mkdir(destPathSCP2, 0755)).To(Succeed())
+			baseDir = createBaseDir()
+			sourceDir := createSourceDir(baseDir)
 
-			Expect(ioutil.WriteFile(filepath.Join(dirToBackup, "1.txt"), []byte("1"), 0644)).To(Succeed())
-			Expect(os.Mkdir(filepath.Join(dirToBackup, "subdir"), 0755)).To(Succeed())
-			Expect(ioutil.WriteFile(filepath.Join(dirToBackup, "subdir", "2.txt"), []byte("2"), 0644)).To(Succeed())
+			destPathSCP1 = filepath.Join(baseDir, "target1")
+			Expect(os.Mkdir(destPathSCP1, 0755)).To(Succeed())
+			destPathSCP2 = filepath.Join(baseDir, "target2")
+			Expect(os.Mkdir(destPathSCP2, 0755)).To(Succeed())
 
 			var publicKey2Path string
 			var privateKey2Contents []byte
@@ -178,8 +164,7 @@ exit_if_in_progress: true
 cron_schedule: '*/5 * * * * *'
 cleanup_executable: true
 missing_properties_message: custom message`, unixUser.Username, destPathSCP1, padWithSpaces(string(privateKeyContents), 6),
-				unixUser.Username, destPathSCP2, padWithSpaces(string(privateKey2Contents), 6),
-				dirToBackup))
+				unixUser.Username, destPathSCP2, padWithSpaces(string(privateKey2Contents), 6), sourceDir))
 		})
 
 		AfterEach(func() {
@@ -226,15 +211,8 @@ missing_properties_message: custom message`, unixUser.Username, destPathSCP1, pa
 		)
 
 		BeforeEach(func() {
-			var err error
-			baseDir, err = ioutil.TempDir("", "multiple-destinations-integration-tests")
-			Expect(err).NotTo(HaveOccurred())
-			dirToBackup := filepath.Join(baseDir, "source")
-			Expect(os.Mkdir(dirToBackup, 0755)).To(Succeed())
-
-			Expect(ioutil.WriteFile(filepath.Join(dirToBackup, "1.txt"), []byte("1"), 0644)).To(Succeed())
-			Expect(os.Mkdir(filepath.Join(dirToBackup, "subdir"), 0755)).To(Succeed())
-			Expect(ioutil.WriteFile(filepath.Join(dirToBackup, "subdir", "2.txt"), []byte("2"), 0644)).To(Succeed())
+			baseDir = createBaseDir()
+			sourceDir := createSourceDir(baseDir)
 
 			dest1PathS3 = uuid.NewV4().String()
 			dest2PathS3 = uuid.NewV4().String()
@@ -264,8 +242,7 @@ exit_if_in_progress: true
 cron_schedule: '*/5 * * * * *'
 cleanup_executable: true
 missing_properties_message: custom message`, existingBucketInDefaultRegion, dest1PathS3, awsAccessKeyID, awsSecretAccessKey,
-				existingBucketInNonDefaultRegion, dest2PathS3, awsAccessKeyID, awsSecretAccessKey,
-				dirToBackup))
+				existingBucketInNonDefaultRegion, dest2PathS3, awsAccessKeyID, awsSecretAccessKey, sourceDir))
 		})
 
 		AfterEach(func() {
@@ -365,4 +342,19 @@ func pathWithDateForSCP(destPathSCP string, endParts ...string) string {
 	args = append(args, dateComponents...)
 	args = append(args, endParts...)
 	return filepath.Join(args...)
+}
+
+func createBaseDir() string {
+	baseDir, err := ioutil.TempDir("", "multiple-destinations-integration-tests")
+	Expect(err).NotTo(HaveOccurred())
+	return baseDir
+}
+
+func createSourceDir(baseDir string) string {
+	backupDir := filepath.Join(baseDir, "source")
+	Expect(os.Mkdir(backupDir, 0755)).To(Succeed())
+	Expect(ioutil.WriteFile(filepath.Join(backupDir, "1.txt"), []byte("1"), 0644)).To(Succeed())
+	Expect(os.Mkdir(filepath.Join(backupDir, "subdir"), 0755)).To(Succeed())
+	Expect(ioutil.WriteFile(filepath.Join(backupDir, "subdir", "2.txt"), []byte("2"), 0644)).To(Succeed())
+	return backupDir
 }
