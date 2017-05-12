@@ -24,7 +24,7 @@ import (
 	"google.golang.org/api/option"
 )
 
-var _ = Describe("smoke tests", func() {
+var _ = Describe("release tests", func() {
 	const (
 		bucketName = "service-backup-test"
 		testPath   = "release-tests"
