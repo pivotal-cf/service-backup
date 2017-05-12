@@ -64,7 +64,7 @@ func (b *uploaderFactory) GCS(destination config.Destination) *gcs.StorageClient
 		os.Getenv("GCP_SERVICE_ACCOUNT_FILE"),
 		toString(destination.Config["project_id"]),
 		toString(destination.Config["bucket_name"]),
-		RemotePathFunc("", ""),
+		RemotePathFunc("", b.backupConfig.DeploymentName),
 	)
 }
 
