@@ -36,7 +36,7 @@ var _ = Describe("AzureClient", func() {
 			})
 
 			It("uploads the backup", func() {
-				uploadsTheBackup(azureContainer)
+				uploadsTheBackup(azureContainer, false)
 			})
 
 			It("uploads the large backup", func() {
@@ -46,37 +46,41 @@ var _ = Describe("AzureClient", func() {
 				fileName := "bigfile.dat"
 				fileContent := make([]byte, 100*1000*1024)
 				_, err = rand.Read(fileContent)
+				Expect(err).NotTo(HaveOccurred())
 
 				Expect(ioutil.WriteFile(filepath.Join(sourceFolder, fileName), fileContent, os.ModePerm)).To(Succeed())
 
-				Expect(err).NotTo(HaveOccurred())
-
 				today := time.Now()
+				deploymentName := ""
 				destinationPath := fmt.Sprintf("path/to/blobs/%d", today.Unix())
 
-				session := performBackup(sourceFolder, azureContainer, destinationPath)
+				session := performBackup(sourceFolder, azureContainer, destinationPath, deploymentName)
 
 				Eventually(session.Out, azureTimeout).Should(gbytes.Say("Cleanup completed successfully"))
 				session.Terminate().Wait()
 				Eventually(session).Should(gexec.Exit())
 
 				azureBlobService := azureBlobService()
-
-				backupBlobPath := fmt.Sprintf("%s/%d/%02d/%02d/%s", destinationPath, today.Year(), int(today.Month()), today.Day(), fileName)
-
+				backupBlobPath := remotePath(destinationPath, deploymentName, today, fileName)
 				Expect(downloadBlob(azureBlobService, azureContainer, backupBlobPath)).To(Equal([]byte(fileContent)))
 			})
 		})
 
 		Context("and the container doesn't exist", func() {
 			It("uploads the backup", func() {
-				uploadsTheBackup(azureContainer)
+				uploadsTheBackup(azureContainer, false)
+			})
+		})
+
+		Context("when add_deployment_name_to_backup_path is true", func() {
+			It("uploads the backup with the deployment_name in the path", func() {
+				uploadsTheBackup(azureContainer, true)
 			})
 		})
 	})
 })
 
-func uploadsTheBackup(azureContainer string) {
+func uploadsTheBackup(azureContainer string, addDeploymentName bool) {
 	sourceFolder, err := ioutil.TempDir("", "azure")
 	Expect(err).ToNot(HaveOccurred())
 
@@ -91,8 +95,12 @@ func uploadsTheBackup(azureContainer string) {
 	today := time.Now()
 
 	destinationPath := fmt.Sprintf("path/to/blobs/%d", today.Unix())
+	deploymentName := ""
+	if addDeploymentName {
+		deploymentName = "deployment-name"
+	}
 
-	session := performBackup(sourceFolder, azureContainer, destinationPath)
+	session := performBackup(sourceFolder, azureContainer, destinationPath, deploymentName)
 	Eventually(session.Out, azureTimeout).Should(gbytes.Say(`"destination_name":"foo"`))
 	Eventually(session.Out, azureTimeout).Should(gbytes.Say("Cleanup completed successfully"))
 	session.Terminate().Wait()
@@ -100,11 +108,18 @@ func uploadsTheBackup(azureContainer string) {
 
 	azureBlobService := azureBlobService()
 
-	firstBackupBlobPath := fmt.Sprintf("%s/%d/%02d/%02d/%s", destinationPath, today.Year(), int(today.Month()), today.Day(), firstBackupFileName)
+	firstBackupBlobPath := remotePath(destinationPath, deploymentName, today, firstBackupFileName)
 	Expect(downloadBlob(azureBlobService, azureContainer, firstBackupBlobPath)).To(Equal([]byte(firstBackupFileContent)))
 
-	secondBackupBlobPath := fmt.Sprintf("%s/%d/%02d/%02d/%s", destinationPath, today.Year(), int(today.Month()), today.Day(), secondBackupFileName)
+	secondBackupBlobPath := remotePath(destinationPath, deploymentName, today, secondBackupFileName)
 	Expect(downloadBlob(azureBlobService, azureContainer, secondBackupBlobPath)).To(Equal([]byte(secondBackupFileContent)))
+}
+
+func remotePath(destinationPath, deploymentName string, today time.Time, firstBackupFileName string) string {
+	if deploymentName != "" {
+		return fmt.Sprintf("%s/%s/%d/%02d/%02d/%s", destinationPath, deploymentName, today.Year(), int(today.Month()), today.Day(), firstBackupFileName)
+	}
+	return fmt.Sprintf("%s/%d/%02d/%02d/%s", destinationPath, today.Year(), int(today.Month()), today.Day(), firstBackupFileName)
 }
 
 func azureBlobService() storage.BlobStorageClient {
@@ -131,7 +146,7 @@ func runBackup(params ...string) *gexec.Session {
 	return session
 }
 
-func performBackup(sourceFolder, azureContainer, destinationPath string) *gexec.Session {
+func performBackup(sourceFolder, azureContainer, destinationPath, deploymentName string) *gexec.Session {
 	file, err := ioutil.TempFile("", "config.yml")
 	Expect(err).NotTo(HaveOccurred())
 	file.Write([]byte(fmt.Sprintf(`---
@@ -150,8 +165,9 @@ azure_cli_path: blobxfer
 exit_if_in_progress: true
 cron_schedule: '*/5 * * * * *'
 cleanup_executable: true
-missing_properties_message: custom message`, azureAccountName, azureAccountKey, azureContainer,
-		destinationPath, sourceFolder,
+missing_properties_message: custom message
+deployment_name: %s`, azureAccountName, azureAccountKey, azureContainer,
+		destinationPath, sourceFolder, deploymentName,
 	)))
 	file.Close()
 
