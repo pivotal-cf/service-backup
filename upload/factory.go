@@ -42,7 +42,7 @@ func (b *uploaderFactory) SCP(destination config.Destination) *scp.SCPClient {
 		toString(destination.Config["user"]),
 		toString(destination.Config["key"]),
 		toString(destination.Config["fingerprint"]),
-		RemotePathFunc(toString(destination.Config["destination"]), ""),
+		RemotePathFunc(toString(destination.Config["destination"]), b.backupConfig.DeploymentName),
 	)
 }
 

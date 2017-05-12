@@ -28,12 +28,16 @@ var _ = Describe("SCP Backup", func() {
 			baseDir         string
 			destPath        string
 			hostFingerprint string
+			deploymentName  string
 		)
 
-		pathWithDate := func(endParts ...string) string {
+		pathWithDate := func(deployment string, endParts ...string) string {
 			today := time.Now()
 			dateComponents := []string{fmt.Sprintf("%d", today.Year()), fmt.Sprintf("%02d", today.Month()), fmt.Sprintf("%02d", today.Day())}
 			args := []string{destPath}
+			if deployment != "" {
+				args = append(args, deployment)
+			}
 			args = append(args, dateComponents...)
 			args = append(args, endParts...)
 			return filepath.Join(args...)
@@ -52,7 +56,7 @@ var _ = Describe("SCP Backup", func() {
 			Expect(os.Mkdir(filepath.Join(dirToBackup, "subdir"), 0755)).To(Succeed())
 			Expect(ioutil.WriteFile(filepath.Join(dirToBackup, "subdir", "2.txt"), []byte("2"), 0644)).To(Succeed())
 
-			runningBin = performBackup("localhost", unixUser.Username, destPath, string(privateKeyContents), hostFingerprint, 22, dirToBackup)
+			runningBin = performBackup("localhost", unixUser.Username, destPath, string(privateKeyContents), hostFingerprint, 22, dirToBackup, deploymentName)
 		})
 
 		AfterEach(func() {
@@ -63,16 +67,17 @@ var _ = Describe("SCP Backup", func() {
 		Context("host finger print not provided", func() {
 			BeforeEach(func() {
 				hostFingerprint = ""
+				deploymentName = ""
 			})
 			It("copies files over SCP", func() {
 				Eventually(runningBin.Out, scpTimeout).Should(gbytes.Say("Fingerprint not found, performing key-scan"))
 				Eventually(runningBin.Out, scpTimeout).Should(gbytes.Say("scp completed"))
 				Eventually(runningBin.Out, scpTimeout).Should(gbytes.Say(`"destination_name":"foo"`))
 				runningBin.Terminate().Wait()
-				content1, err := ioutil.ReadFile(pathWithDate("1.txt"))
+				content1, err := ioutil.ReadFile(pathWithDate(deploymentName, "1.txt"))
 				Expect(err).NotTo(HaveOccurred())
 				Expect(content1).To(Equal([]byte("1")))
-				content2, err := ioutil.ReadFile(pathWithDate("subdir", "2.txt"))
+				content2, err := ioutil.ReadFile(pathWithDate(deploymentName, "subdir", "2.txt"))
 				Expect(err).NotTo(HaveOccurred())
 				Expect(content2).To(Equal([]byte("2")))
 			})
@@ -80,6 +85,7 @@ var _ = Describe("SCP Backup", func() {
 
 		Context("valid host finger print provided", func() {
 			BeforeEach(func() {
+				deploymentName = ""
 				cmd := exec.Command("ssh-keyscan", "-p", strconv.Itoa(22), "localhost")
 				output, err := cmd.Output()
 				Expect(err).NotTo(HaveOccurred())
@@ -91,10 +97,10 @@ var _ = Describe("SCP Backup", func() {
 				Eventually(runningBin.Out, scpTimeout).Should(gbytes.Say("scp completed"))
 				Eventually(runningBin.Out, scpTimeout).Should(gbytes.Say(`"destination_name":"foo"`))
 				runningBin.Terminate().Wait()
-				content1, err := ioutil.ReadFile(pathWithDate("1.txt"))
+				content1, err := ioutil.ReadFile(pathWithDate(deploymentName, "1.txt"))
 				Expect(err).NotTo(HaveOccurred())
 				Expect(content1).To(Equal([]byte("1")))
-				content2, err := ioutil.ReadFile(pathWithDate("subdir", "2.txt"))
+				content2, err := ioutil.ReadFile(pathWithDate(deploymentName, "subdir", "2.txt"))
 				Expect(err).NotTo(HaveOccurred())
 				Expect(content2).To(Equal([]byte("2")))
 			})
@@ -102,6 +108,7 @@ var _ = Describe("SCP Backup", func() {
 
 		Context("invalid host finger print provided", func() {
 			BeforeEach(func() {
+				deploymentName = ""
 				hostFingerprint = "localhost ssh-rsa totally-invalid"
 			})
 			It("fails to copy files over SCP", func() {
@@ -109,6 +116,26 @@ var _ = Describe("SCP Backup", func() {
 				Consistently(runningBin.Out, consistencyThreshold).ShouldNot(gbytes.Say("scp completed"))
 				Eventually(runningBin.Out, scpTimeout).Should(gbytes.Say("Host key verification failed"))
 				Expect(runningBin.Terminate().Wait().ExitCode()).ToNot(Equal(BeZero()))
+			})
+		})
+
+		Context("when add_deployment_name_to_backup_path is true", func() {
+			BeforeEach(func() {
+				hostFingerprint = ""
+				deploymentName = "deployment-name"
+			})
+
+			It("copies files over SCP with the deployment name in the path", func() {
+				Eventually(runningBin.Out, scpTimeout).Should(gbytes.Say("Fingerprint not found, performing key-scan"))
+				Eventually(runningBin.Out, scpTimeout).Should(gbytes.Say("scp completed"))
+				Eventually(runningBin.Out, scpTimeout).Should(gbytes.Say(`"destination_name":"foo"`))
+				runningBin.Terminate().Wait()
+				content1, err := ioutil.ReadFile(pathWithDate(deploymentName, "1.txt"))
+				Expect(err).NotTo(HaveOccurred())
+				Expect(content1).To(Equal([]byte("1")))
+				content2, err := ioutil.ReadFile(pathWithDate(deploymentName, "subdir", "2.txt"))
+				Expect(err).NotTo(HaveOccurred())
+				Expect(content2).To(Equal([]byte("2")))
 			})
 		})
 	})
@@ -121,7 +148,7 @@ func runBackup(params ...string) *gexec.Session {
 	return session
 }
 
-func performBackup(scpServer, scpUser, scpDestination, scpKey, hostFingerprint string, scpPort int, sourceFolder string) *gexec.Session {
+func performBackup(scpServer, scpUser, scpDestination, scpKey, hostFingerprint string, scpPort int, sourceFolder, deploymentName string) *gexec.Session {
 	file, err := ioutil.TempFile("", "config.yml")
 	Expect(err).NotTo(HaveOccurred())
 
@@ -145,7 +172,8 @@ source_executable: true
 exit_if_in_progress: true
 cron_schedule: '*/5 * * * * *'
 cleanup_executable: true
-missing_properties_message: custom message`, scpServer, scpUser, scpDestination, hostFingerprint, scpKey, scpPort, sourceFolder,
+missing_properties_message: custom message
+deployment_name: %s`, scpServer, scpUser, scpDestination, hostFingerprint, scpKey, scpPort, sourceFolder, deploymentName,
 	)))
 	file.Close()
 

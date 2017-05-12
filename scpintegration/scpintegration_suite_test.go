@@ -2,7 +2,6 @@ package scpintegration_test
 
 import (
 	"bytes"
-	"encoding/json"
 	"io"
 	"io/ioutil"
 	"os"
@@ -20,12 +19,6 @@ import (
 const (
 	sshKeyUsername = "service-backup-tmp-key"
 )
-
-type TestData struct {
-	PathToServiceBackupBinary string
-	PrivateKeyPath            string
-	UnixUser                  *user.User
-}
 
 var (
 	pathToServiceBackupBinary string
@@ -74,7 +67,7 @@ func removeKeyFromAuthorized() {
 	Expect(err).NotTo(HaveOccurred())
 }
 
-var _ = SynchronizedBeforeSuite(func() []byte {
+var _ = BeforeSuite(func() {
 	var publicKeyPath string
 	publicKeyPath, privateKeyPath = createSSHKey()
 
@@ -86,32 +79,16 @@ var _ = SynchronizedBeforeSuite(func() []byte {
 
 	pathToServiceBackupBinary, err = gexec.Build("github.com/pivotal-cf/service-backup")
 	Expect(err).NotTo(HaveOccurred())
-
-	forOtherNodes, err := json.Marshal(TestData{
-		PathToServiceBackupBinary: pathToServiceBackupBinary,
-		PrivateKeyPath:            privateKeyPath,
-		UnixUser:                  unixUser,
-	})
-	Expect(err).NotTo(HaveOccurred())
-	return forOtherNodes
-}, func(data []byte) {
-	var t TestData
-	Expect(json.Unmarshal(data, &t)).To(Succeed())
-
-	pathToServiceBackupBinary = t.PathToServiceBackupBinary
-	privateKeyPath = t.PrivateKeyPath
-	unixUser = t.UnixUser
 })
 
-var _ = SynchronizedAfterSuite(func() {
-}, func() {
+var _ = AfterSuite(func() {
 	removeKeyFromAuthorized()
 	Expect(os.RemoveAll(filepath.Dir(privateKeyPath))).To(Succeed())
 
 	gexec.CleanupBuildArtifacts()
 })
 
-func TestScpintegration(t *testing.T) {
+func TestSCPIntegration(t *testing.T) {
 	RegisterFailHandler(Fail)
 	RunSpecs(t, "SCP Suite")
 }
