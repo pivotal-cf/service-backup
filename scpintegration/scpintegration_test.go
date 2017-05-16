@@ -155,6 +155,8 @@ func performBackup(scpServer, scpUser, scpDestination, scpKey, hostFingerprint s
 	parts := strings.Split(scpKey, "\n")
 	scpKey = strings.Join(parts, "\n      ")
 
+	addDeploymentNameToPath := deploymentName != ""
+
 	file.Write([]byte(fmt.Sprintf(`---
 destinations:
 - type: scp
@@ -173,7 +175,8 @@ exit_if_in_progress: true
 cron_schedule: '*/5 * * * * *'
 cleanup_executable: true
 missing_properties_message: custom message
-deployment_name: %s`, scpServer, scpUser, scpDestination, hostFingerprint, scpKey, scpPort, sourceFolder, deploymentName,
+deployment_name: %s
+add_deployment_name_to_backup_path: %t`, scpServer, scpUser, scpDestination, hostFingerprint, scpKey, scpPort, sourceFolder, deploymentName, addDeploymentNameToPath,
 	)))
 	file.Close()
 

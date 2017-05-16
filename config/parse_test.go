@@ -71,7 +71,6 @@ var _ = Describe("Parse", func() {
 				Expect(backupConfig.MissingPropertiesMessage).To(Equal("custom message"))
 				Expect(backupConfig.ExitIfInProgress).To(BeTrue())
 				Expect(backupConfig.ServiceIdentifierExecutable).To(Equal("whoami"))
-				Expect(backupConfig.DeploymentName).To(Equal("test-deployment"))
 				Expect(backupConfig.AwsCliPath).To(Equal("path/to/aws_cli"))
 				Expect(backupConfig.AzureCliPath).To(Equal("path/to/azure_cli"))
 				Expect(backupConfig.Alerts).To(Equal(&config.Alerts{
@@ -94,6 +93,7 @@ var _ = Describe("Parse", func() {
 						SkipSSLValidation:    boolPointer(true),
 					},
 				}))
+				Expect(backupConfig.DeploymentName).To(Equal("deployment-name"))
 			})
 		})
 
@@ -139,6 +139,26 @@ var _ = Describe("Parse", func() {
 			It("returns an error", func() {
 				_, err := config.Parse("fixtures/invalid_config.yml", logger)
 				Expect(err).To(HaveOccurred())
+			})
+		})
+	})
+
+	Context("when add_deployment_name_to_path is configured", func() {
+		Context("to false", func() {
+			It("unsets the deployment name", func() {
+				backupConfig, err := config.Parse("fixtures/valid_with_add_deployment_name_to_path_false.yml", logger)
+				Expect(err).NotTo(HaveOccurred())
+
+				Expect(backupConfig.DeploymentName).To(Equal(""))
+			})
+		})
+
+		Context("to true", func() {
+			It("deployment name is still present", func() {
+				backupConfig, err := config.Parse("fixtures/valid_config_with_optional_fields.yml", logger)
+				Expect(err).NotTo(HaveOccurred())
+
+				Expect(backupConfig.DeploymentName).To(Equal("deployment-name"))
 			})
 		})
 	})

@@ -131,6 +131,42 @@ var _ = Describe("release tests", func() {
 		})
 	})
 
+	Context("backing up to S3 with deployment name in path", func() {
+		var (
+			client *s3testclient.S3TestClient
+		)
+
+		BeforeEach(func() {
+			boshManifest = envMustHave("S3_WITH_EXTENDED_PATH_BOSH_MANIFEST")
+
+			awsAccessKeyID := envMustHave("AWS_ACCESS_KEY_ID")
+			awsSecretKey := envMustHave("AWS_SECRET_ACCESS_KEY")
+			client = s3testclient.New("https://s3-eu-west-1.amazonaws.com", awsAccessKeyID, awsSecretKey, testPath)
+		})
+
+		AfterEach(func() {
+			boshSSH("rm", "/tmp/"+toBackup)
+			Expect(client.DeleteRemotePath(bucketName, testPath, "")).To(Succeed())
+		})
+
+		Context("manual backup", func() {
+			BeforeEach(func() {
+				boshSSH("sudo", "/var/vcap/bosh/bin/monit", "stop", "service-backup")
+			})
+
+			AfterEach(func() {
+				boshSSH("sudo", "/var/vcap/bosh/bin/monit", "start", "service-backup")
+			})
+
+			It("uploads files in the backup directory", func() {
+				boshSSH("sudo", "/var/vcap/jobs/service-backup/bin/manual-backup")
+				Eventually(func() bool {
+					return client.RemotePathExistsInBucket(bucketName, fmt.Sprintf("%s/%s", pathWithDate(testPath+"/service-backup-ci-s3-extended-path"), toBackup))
+				}, time.Minute).Should(BeTrue())
+			})
+		})
+	})
+
 	Context("backing up to Azure", func() {
 		var (
 			azureBlobService storage.BlobStorageClient

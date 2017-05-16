@@ -1230,6 +1230,9 @@ func performBackup(
 
 	configFile, err := ioutil.TempFile("", "config.yml")
 	Expect(err).NotTo(HaveOccurred())
+
+	addDeploymentNameToPath := deploymentName != ""
+
 	configFile.Write([]byte(fmt.Sprintf(`---
 destinations:
 - type: s3
@@ -1247,9 +1250,10 @@ exit_if_in_progress: false
 cron_schedule: '%s'
 cleanup_executable: %s
 missing_properties_message: custom message
-deployment_name: %s`, endpointURL, region, destBucket, destPath,
+deployment_name: %s
+add_deployment_name_to_backup_path: %t`, endpointURL, region, destBucket, destPath,
 		awsAccessKeyID, awsSecretAccessKey, sourceFolder, backupCreatorCmd, cronSchedule,
-		cleanupCmd, deploymentName,
+		cleanupCmd, deploymentName, addDeploymentNameToPath,
 	)))
 	configFile.Close()
 

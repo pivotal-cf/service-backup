@@ -149,6 +149,9 @@ func runBackup(params ...string) *gexec.Session {
 func performBackup(sourceFolder, azureContainer, destinationPath, deploymentName string) *gexec.Session {
 	file, err := ioutil.TempFile("", "config.yml")
 	Expect(err).NotTo(HaveOccurred())
+
+	addDeploymentNameToPath := deploymentName != ""
+
 	file.Write([]byte(fmt.Sprintf(`---
 destinations:
 - type: azure
@@ -166,8 +169,9 @@ exit_if_in_progress: true
 cron_schedule: '*/5 * * * * *'
 cleanup_executable: true
 missing_properties_message: custom message
-deployment_name: %s`, azureAccountName, azureAccountKey, azureContainer,
-		destinationPath, sourceFolder, deploymentName,
+deployment_name: %s
+add_deployment_name_to_backup_path: %t`, azureAccountName, azureAccountKey, azureContainer,
+		destinationPath, sourceFolder, deploymentName, addDeploymentNameToPath,
 	)))
 	file.Close()
 

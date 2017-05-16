@@ -32,6 +32,7 @@ var _ = Describe("gcs", func() {
 			baseDir := createBaseDir()
 			sourceDir := createSourceDir(baseDir)
 			deploymentName := "deployment-name"
+			addDeploymentNameToPath := deploymentName != ""
 
 			runningBin := runBackup(serviceBackupBinaryPath, createConfigFile(`---
 destinations:
@@ -45,7 +46,8 @@ exit_if_in_progress: true
 cron_schedule: '*/5 * * * * *'
 cleanup_executable: true
 missing_properties_message: custom message
-deployment_name: %s`, bucketName, projectID, sourceDir, deploymentName))
+deployment_name: %s
+add_deployment_name_to_backup_path: %t`, bucketName, projectID, sourceDir, deploymentName, addDeploymentNameToPath))
 
 			Eventually(runningBin.Out, uploadTimeout).Should(gbytes.Say("Cleanup completed successfully"))
 			runningBin.Terminate().Wait()
