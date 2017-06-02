@@ -1,0 +1,26 @@
+source_env ../../../..
+
+# S3 integration tests
+export AWS_ACCESS_KEY_ID=
+export AWS_SECRET_ACCESS_KEY=
+export AWS_ACCESS_KEY_ID_RESTRICTED=
+export AWS_SECRET_ACCESS_KEY_RESTRICTED=
+
+# Azure integration tests
+export AZURE_STORAGE_ACCOUNT=
+export AZURE_STORAGE_ACCESS_KEY=
+
+# GCS integration tests
+export SERVICE_BACKUP_TESTS_GCP_SERVICE_ACCOUNT_FILE=$(pwd)/gcp_service_account.json
+export SERVICE_BACKUP_TESTS_GCP_PROJECT_NAME=
+
+# Release tests
+export BOSH_HOST=
+export BOSH_USERNAME=
+export BOSH_PASSWORD=
+export BOSH_PRIVATE_KEY_FILE=
+
+export S3_BOSH_MANIFEST=
+export AZURE_BOSH_MANIFEST=
+export SCP_BOSH_MANIFEST=
+export GCS_BOSH_MANIFEST=
