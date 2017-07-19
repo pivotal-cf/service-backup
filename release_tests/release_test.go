@@ -38,19 +38,18 @@ var _ = Describe("release tests", func() {
 
 	var (
 		boshHost           string
-		boshUsername       string
-		boshPassword       string
 		boshPrivateKeyFile string
 		toBackup           string
-
-		boshManifest string
+		boshSSHUser        string
+		boshManifest       string
 	)
 
 	BeforeEach(func() {
 		boshHost = envMustHave("BOSH_HOST")
-		boshUsername = envMustHave("BOSH_USERNAME")
-		boshPassword = envMustHave("BOSH_PASSWORD")
 		boshPrivateKeyFile = envMustHave("BOSH_PRIVATE_KEY_FILE")
+		boshSSHUser = envMustHave("BOSH_SSH_USER")
+		envMustHave("BOSH_CLIENT")
+		envMustHave("BOSH_CLIENT_SECRET") // these must be set in the environment for the bosh command below to be able to authenticate
 		toBackup = "to_backup.txt"
 	})
 
@@ -59,11 +58,9 @@ var _ = Describe("release tests", func() {
 			"-n",
 			"-d", boshManifest,
 			"-t", fmt.Sprintf("https://%s:25555", boshHost),
-			"-u", boshUsername,
-			"-p", boshPassword,
 			command,
 			"--gateway_host", boshHost,
-			"--gateway_user", "vcap", // Need to make this injectable if want to use different environments, e.g. vcap on init-deployed directors
+			"--gateway_user", boshSSHUser,
 			"--gateway_identity_file", boshPrivateKeyFile,
 		}
 		allArgs := append(commonArgs, args...)
