@@ -42,25 +42,18 @@ var _ = Describe("release tests", func() {
 		toBackup           string
 		boshSSHUser        string
 		boshManifest       string
-		boshCACert         string
 	)
 
 	BeforeEach(func() {
 		boshHost = envMustHave("BOSH_HOST")
 		boshPrivateKeyFile = envMustHave("BOSH_PRIVATE_KEY_FILE")
 		boshSSHUser = envMustHave("BOSH_SSH_USER")
-		boshCACert = envMustHave("BOSH_ROOT_CA_CERT")
-		envMustHave("BOSH_CLIENT")
-		envMustHave("BOSH_CLIENT_SECRET") // these must be set in the environment for the bosh command below to be able to authenticate
 		toBackup = "to_backup.txt"
 	})
 
 	boshCmdWithGateway := func(stdout io.Writer, command string, args ...string) {
 		commonArgs := []string{
-			"-n",
-			"--ca-cert", boshCACert,
 			"-d", boshManifest,
-			"-t", fmt.Sprintf("https://%s:25555", boshHost),
 			command,
 			"--gateway_host", boshHost,
 			"--gateway_user", boshSSHUser,
