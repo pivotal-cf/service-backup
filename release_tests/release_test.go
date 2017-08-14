@@ -32,8 +32,9 @@ import (
 
 var _ = Describe("release tests", func() {
 	const (
-		bucketName = "service-backup-test"
-		testPath   = "release-tests"
+		bucketName       = "service-backup-test"
+		testPath         = "release-tests"
+		testSourceFolder = "/tmp/to_upload/"
 	)
 
 	var (
@@ -83,7 +84,7 @@ var _ = Describe("release tests", func() {
 		cwd, err := os.Getwd()
 		Expect(err).NotTo(HaveOccurred())
 		pathToFile := filepath.Join(cwd, "test_assets", toBackup)
-		boshSCP(pathToFile, "/tmp")
+		boshSCP(pathToFile, testSourceFolder)
 	})
 
 	Context("backing up to S3", func() {
@@ -100,7 +101,7 @@ var _ = Describe("release tests", func() {
 		})
 
 		AfterEach(func() {
-			boshSSH("rm", "/tmp/"+toBackup)
+			boshSSH("rm", testSourceFolder+toBackup)
 			Expect(client.DeleteRemotePath(bucketName, testPath, "")).To(Succeed())
 		})
 
@@ -144,7 +145,7 @@ var _ = Describe("release tests", func() {
 		})
 
 		AfterEach(func() {
-			boshSSH("rm", "/tmp/"+toBackup)
+			boshSSH("rm", testSourceFolder+toBackup)
 			Expect(client.DeleteRemotePath(bucketName, testPath, "")).To(Succeed())
 		})
 
@@ -181,7 +182,7 @@ var _ = Describe("release tests", func() {
 		})
 
 		AfterEach(func() {
-			boshSSH("rm", "/tmp/"+toBackup)
+			boshSSH("rm", testSourceFolder+toBackup)
 
 			_, err := azureBlobService.DeleteBlobIfExists(bucketName, fmt.Sprintf("%s/%s", pathWithDate(testPath), toBackup))
 			Expect(err).NotTo(HaveOccurred())
@@ -226,7 +227,7 @@ var _ = Describe("release tests", func() {
 		})
 
 		AfterEach(func() {
-			boshSSH("rm", "/tmp/"+toBackup)
+			boshSSH("rm", testSourceFolder+toBackup)
 		})
 
 		Context("automatic backup", func() {
@@ -300,7 +301,7 @@ var _ = Describe("release tests", func() {
 		})
 
 		AfterEach(func() {
-			boshSSH("rm", "/tmp/"+toBackup)
+			boshSSH("rm", testSourceFolder+toBackup)
 			testhelpers.DeleteGCSBucket(ctx, bucket)
 			Expect(os.Remove(gcpServiceAccountFilePath)).To(Succeed())
 		})
