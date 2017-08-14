@@ -84,6 +84,7 @@ var _ = Describe("release tests", func() {
 		cwd, err := os.Getwd()
 		Expect(err).NotTo(HaveOccurred())
 		pathToFile := filepath.Join(cwd, "test_assets", toBackup)
+		boshSSH("sudo", "chmod", "775", testSourceFolder)
 		boshSCP(pathToFile, testSourceFolder)
 	})
 
