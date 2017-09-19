@@ -20,6 +20,7 @@ func (pt *ProcessTerminator) Start(cmd *exec.Cmd) error {
 	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true, Pgid: pt.currentPgid}
 	err := cmd.Start()
 	if err != nil {
+		pt.lock.Unlock()
 		return err
 	}
 	if pt.currentPgid == 0 {

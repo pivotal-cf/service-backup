@@ -40,10 +40,13 @@ var _ = Describe("process terminator", func() {
 
 	It("produces error if executable doesn't exist", func() {
 		pt := processterminator.New()
-		cmd := exec.Command("idonotexist123")
+		cmd1 := exec.Command("idonotexist123")
+		cmd2 := exec.Command("idonotexist124")
 
-		err := pt.Start(cmd)
+		err := pt.Start(cmd1)
+		Expect(err).To(HaveOccurred())
 
+		err = pt.Start(cmd2)
 		Expect(err).To(HaveOccurred())
 	})
 
