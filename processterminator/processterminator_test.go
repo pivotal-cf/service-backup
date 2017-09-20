@@ -38,6 +38,23 @@ var _ = Describe("process terminator", func() {
 		Eventually(alive(cmd3)).Should(BeFalse())
 	})
 
+	It("works with a lot of commands", func() {
+		pt := processterminator.New()
+		var commands []*exec.Cmd
+		for i := 0; i < 25; i++ {
+			cmd := exec.Command("sleep", "42")
+			commands = append(commands, cmd)
+			go func() { pt.Start(cmd) }()
+			Eventually(alive(cmd)).Should(BeTrue())
+		}
+
+		pt.Terminate()
+
+		for _, c := range commands {
+			Eventually(alive(c)).Should(BeFalse())
+		}
+	})
+
 	It("produces error if executable doesn't exist", func() {
 		pt := processterminator.New()
 		cmd1 := exec.Command("idonotexist123")
