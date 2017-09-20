@@ -55,6 +55,55 @@ var _ = Describe("process terminator", func() {
 		}
 	})
 
+	It("can perform two consecutive non-overlapping starts", func() {
+		pt := processterminator.New()
+		cmd1 := exec.Command("true")
+		cmd2 := exec.Command("true")
+
+		pt.Start(cmd1)
+		err := pt.Start(cmd2)
+		Expect(err).NotTo(HaveOccurred())
+
+		pt.Terminate()
+
+		Eventually(alive(cmd1)).Should(BeFalse())
+		Eventually(alive(cmd2)).Should(BeFalse())
+	})
+
+	It("can perform two consecutive overlapping starts", func() {
+		pt := processterminator.New()
+		cmd1 := exec.Command("sleep", "0.1")
+		cmd2 := exec.Command("sleep", "0.3")
+		cmd3 := exec.Command("sleep", "0.1")
+
+		cmd1Started := make(chan bool, 1)
+		cmd1Done := make(chan bool, 1)
+		cmd3Finished := make(chan bool, 1)
+
+		go func() {
+			cmd1Started <- true
+			pt.Start(cmd1)
+			cmd1Done <- true
+		}()
+		go func() {
+			<-cmd1Started
+			pt.Start(cmd2)
+		}()
+		go func() {
+			<-cmd1Done
+			err := pt.Start(cmd3)
+			Expect(err).NotTo(HaveOccurred())
+			cmd3Finished <- true
+		}()
+
+		<-cmd3Finished
+		pt.Terminate()
+
+		Eventually(alive(cmd1)).Should(BeFalse())
+		Eventually(alive(cmd2)).Should(BeFalse())
+		Eventually(alive(cmd3)).Should(BeFalse())
+	})
+
 	It("produces error if executable doesn't exist", func() {
 		pt := processterminator.New()
 		cmd1 := exec.Command("idonotexist123")
@@ -64,6 +113,14 @@ var _ = Describe("process terminator", func() {
 		Expect(err).To(HaveOccurred())
 
 		err = pt.Start(cmd2)
+		Expect(err).To(HaveOccurred())
+	})
+
+	It("produces error if executable has nonzero exit", func() {
+		pt := processterminator.New()
+		cmd := exec.Command("false")
+
+		err := pt.Start(cmd)
 		Expect(err).To(HaveOccurred())
 	})
 

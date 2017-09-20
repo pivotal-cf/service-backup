@@ -1,14 +1,13 @@
 package processterminator
 
 import (
+	"os"
 	"os/exec"
-	"sync"
+	"os/signal"
 	"syscall"
 )
 
 type ProcessTerminator struct {
-	currentPgid int
-	lock        sync.Mutex
 }
 
 func New() *ProcessTerminator {
@@ -16,27 +15,31 @@ func New() *ProcessTerminator {
 }
 
 func (pt *ProcessTerminator) Start(cmd *exec.Cmd) error {
-	pt.lock.Lock()
-	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true, Pgid: pt.currentPgid}
+	sigTermChan := make(chan os.Signal, 1)
+	processExitChan := make(chan error, 1)
+	signal.Notify(sigTermChan, syscall.SIGUSR1)
+
 	err := cmd.Start()
 	if err != nil {
-		pt.lock.Unlock()
+		signal.Stop(sigTermChan)
 		return err
 	}
-	if pt.currentPgid == 0 {
-		pt.currentPgid = cmd.Process.Pid
+
+	go func() {
+		processExitChan <- cmd.Wait()
+	}()
+
+	select {
+	case <-sigTermChan:
+		cmd.Process.Signal(syscall.SIGTERM)
+		return nil
+	case retVal := <-processExitChan:
+		signal.Stop(sigTermChan)
+		return retVal
 	}
-	pt.lock.Unlock()
-	err = cmd.Wait()
-	if err != nil {
-		return err
-	}
-	return nil
 }
 
 func (pt *ProcessTerminator) Terminate() {
-	if pt.currentPgid == 0 {
-		return
-	}
-	syscall.Kill(-pt.currentPgid, syscall.SIGTERM)
+	p, _ := os.FindProcess(os.Getpid())
+	p.Signal(syscall.SIGUSR1)
 }
