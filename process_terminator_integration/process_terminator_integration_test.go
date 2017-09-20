@@ -22,7 +22,7 @@ var _ = Describe("process terminator", func() {
 		os.Remove(evidencePath)
 
 		sleepyTime := 20
-		// timeout := time.Duration(10)
+
 		session, cmd, err := performBackup(pathToServiceBackupBinary, evidencePath, sleepyTime)
 
 		Expect(err).NotTo(HaveOccurred())
