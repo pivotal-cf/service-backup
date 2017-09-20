@@ -9,10 +9,14 @@ import (
 	"github.com/pivotal-cf/service-backup/processterminator"
 )
 
-func alive(c *exec.Cmd) func() bool {
+func alive(c *exec.Cmd) bool {
+	return c.Process != nil &&
+		c.Process.Signal(syscall.Signal(0)) == nil
+}
+
+func aliveProbe(c *exec.Cmd) func() bool {
 	return func() bool {
-		return c.Process != nil &&
-			c.Process.Signal(syscall.Signal(0)) == nil
+		return alive(c)
 	}
 }
 
@@ -27,15 +31,15 @@ var _ = Describe("process terminator", func() {
 		go func() { pt.Start(cmd2) }()
 		go func() { pt.Start(cmd3) }()
 
-		Eventually(alive(cmd1)).Should(BeTrue())
-		Eventually(alive(cmd2)).Should(BeTrue())
-		Eventually(alive(cmd3)).Should(BeTrue())
+		Eventually(aliveProbe(cmd1)).Should(BeTrue())
+		Eventually(aliveProbe(cmd2)).Should(BeTrue())
+		Eventually(aliveProbe(cmd3)).Should(BeTrue())
 
 		pt.Terminate()
 
-		Eventually(alive(cmd1)).Should(BeFalse())
-		Eventually(alive(cmd2)).Should(BeFalse())
-		Eventually(alive(cmd3)).Should(BeFalse())
+		Expect(alive(cmd1)).To(BeFalse())
+		Expect(alive(cmd2)).To(BeFalse())
+		Expect(alive(cmd3)).To(BeFalse())
 	})
 
 	It("works with a lot of commands", func() {
@@ -45,7 +49,7 @@ var _ = Describe("process terminator", func() {
 			cmd := exec.Command("sleep", "42")
 			commands = append(commands, cmd)
 			go func() { pt.Start(cmd) }()
-			Eventually(alive(cmd)).Should(BeTrue())
+			Eventually(aliveProbe(cmd)).Should(BeTrue())
 		}
 
 		pt.Terminate()
@@ -66,8 +70,8 @@ var _ = Describe("process terminator", func() {
 
 		pt.Terminate()
 
-		Eventually(alive(cmd1)).Should(BeFalse())
-		Eventually(alive(cmd2)).Should(BeFalse())
+		Expect(alive(cmd1)).To(BeFalse())
+		Expect(alive(cmd2)).To(BeFalse())
 	})
 
 	It("can perform two consecutive overlapping starts", func() {
@@ -99,9 +103,9 @@ var _ = Describe("process terminator", func() {
 		<-cmd3Finished
 		pt.Terminate()
 
-		Eventually(alive(cmd1)).Should(BeFalse())
-		Eventually(alive(cmd2)).Should(BeFalse())
-		Eventually(alive(cmd3)).Should(BeFalse())
+		Expect(alive(cmd1)).To(BeFalse())
+		Expect(alive(cmd2)).To(BeFalse())
+		Expect(alive(cmd3)).To(BeFalse())
 	})
 
 	It("produces error if executable doesn't exist", func() {

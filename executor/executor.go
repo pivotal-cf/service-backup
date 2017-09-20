@@ -33,6 +33,7 @@ type executor struct {
 	exitIfBackupInProgress bool
 	backupInProgress       bool
 	logger                 lager.Logger
+	processStarter         ProcessStarter
 	execCommand            CmdFunc
 	dirSize                DirSizeFunc
 }
@@ -49,6 +50,7 @@ func NewExecutor(
 	serviceIdentifierCmd string,
 	exitIfInProgress bool,
 	logger lager.Logger,
+	processStarter ProcessStarter,
 	options ...Option,
 ) *executor {
 	e := &executor{
@@ -60,6 +62,7 @@ func NewExecutor(
 		exitIfBackupInProgress: exitIfInProgress,
 		backupInProgress:       false,
 		logger:                 logger,
+		processStarter:         processStarter,
 		execCommand:            exec.Command,
 		dirSize:                calculateDirSize,
 	}
@@ -170,8 +173,7 @@ func (e *executor) performBackup(sessionLogger lager.Logger) error {
 	args := strings.Split(e.backupCreatorCmd, " ")
 	cmd := exec.Command(args[0], args[1:]...)
 
-	_, err := cmd.CombinedOutput()
-
+	err := e.processStarter.Start(cmd)
 	if err != nil {
 		sessionLogger.Error("Perform backup completed with error", err)
 		return err

@@ -20,6 +20,7 @@ import (
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gbytes"
 	"github.com/pivotal-cf/service-backup/executor"
+	"github.com/pivotal-cf/service-backup/executor/fakes"
 )
 
 var _ = Describe("Executor", func() {
@@ -29,6 +30,7 @@ var _ = Describe("Executor", func() {
 		uploader       *fakeUploader
 		logger         lager.Logger
 		log            *gbytes.Buffer
+		processStarter *fakes.FakeProcessStarter
 
 		fakeExecArgs [][]string
 		fakeExec     = func(name string, args ...string) *exec.Cmd {
@@ -39,6 +41,7 @@ var _ = Describe("Executor", func() {
 
 	BeforeEach(func() {
 		fakeExecArgs = [][]string{}
+		processStarter = &fakes.FakeProcessStarter{}
 
 		log = gbytes.NewBuffer()
 		logger = lager.NewLogger("executor")
@@ -60,6 +63,46 @@ var _ = Describe("Executor", func() {
 			execCmd = exec.Command("")
 		})
 
+		It("starts the backup process", func() {
+			backupExecutor = executor.NewExecutor(
+				uploader,
+				"source-folder",
+				assetPath("fake-snapshotter"),
+				assetPath("fake-cleanup"),
+				"",
+				exitIfBackupInProgress,
+				logger,
+				processStarter,
+				executor.WithCommandFunc(fakeExec),
+			)
+
+			err := backupExecutor.Execute()
+
+			Expect(err).NotTo(HaveOccurred())
+			Expect(processStarter.StartCallCount()).To(Equal(1))
+		})
+
+		It("propagates errors from the starter", func() {
+			backupExecutor = executor.NewExecutor(
+				uploader,
+				"source-folder",
+				"/never/executed/we/use/a/fake",
+				assetPath("fake-cleanup"),
+				"",
+				exitIfBackupInProgress,
+				logger,
+				processStarter,
+				executor.WithCommandFunc(fakeExec),
+			)
+
+			stubbedError := errors.New("any error")
+			processStarter.StartReturns(stubbedError)
+
+			err := backupExecutor.Execute()
+
+			Expect(err).To(MatchError("any error"))
+		})
+
 		Describe("failures backing up", func() {
 			var serviceIdentifierCmd string
 
@@ -72,6 +115,7 @@ var _ = Describe("Executor", func() {
 					serviceIdentifierCmd,
 					exitIfBackupInProgress,
 					logger,
+					processStarter,
 					executor.WithCommandFunc(fakeExec),
 				)
 
@@ -113,6 +157,7 @@ var _ = Describe("Executor", func() {
 					"",
 					exitIfBackupInProgress,
 					logger,
+					processStarter,
 					executor.WithCommandFunc(fakeExec),
 				)
 
@@ -141,6 +186,7 @@ var _ = Describe("Executor", func() {
 					"",
 					exitIfBackupInProgress,
 					logger,
+					processStarter,
 					executor.WithCommandFunc(fakeExec),
 				)
 
@@ -162,6 +208,7 @@ var _ = Describe("Executor", func() {
 					performIdentifyServiceCmd,
 					exitIfBackupInProgress,
 					logger,
+					processStarter,
 					executor.WithCommandFunc(fakeExec),
 					executor.WithDirSizeFunc(func(string) (int64, error) { return 200, nil }),
 				)
@@ -271,6 +318,7 @@ var _ = Describe("Executor", func() {
 						performIdentifyServiceCmd,
 						exitIfBackupAlreadyInProgress,
 						logger,
+						processStarter,
 						executor.WithCommandFunc(fakeExec),
 					)
 				})
@@ -317,6 +365,7 @@ var _ = Describe("Executor", func() {
 						performIdentifyServiceCmd,
 						true,
 						logger,
+						processStarter,
 						executor.WithCommandFunc(fakeExec),
 					)
 
