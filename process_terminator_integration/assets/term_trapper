@@ -7,7 +7,5 @@ trap 'touch $evidence_file' SIGTERM
 
 rm -f "$evidence_file"
 
-echo $$
-
 sleep $sleepyTime &
 wait

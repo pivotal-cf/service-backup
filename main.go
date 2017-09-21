@@ -40,11 +40,6 @@ func main() {
 	}
 
 	terminator := processterminator.New()
-	go func() {
-		<-sigterms
-		terminator.Terminate()
-		os.Exit(1)
-	}()
 
 	var backupExecutor executor.Executor
 	if backupConfig.NoDestinations() {
@@ -77,5 +72,11 @@ func main() {
 	}
 
 	scheduler := scheduler.NewScheduler(backupExecutor, backupConfig, alertsClient, logger)
+	go func() {
+		<-sigterms
+		scheduler.Stop()
+		terminator.Terminate()
+		os.Exit(1)
+	}()
 	scheduler.Run()
 }

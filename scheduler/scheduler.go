@@ -69,3 +69,7 @@ func (s Scheduler) Run() {
 		os.Exit(2)
 	}
 }
+
+func (s Scheduler) Stop() {
+	s.cronSchedule.Stop()
+}

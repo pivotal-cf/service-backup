@@ -1,0 +1,6 @@
+#!/usr/bin/env bash
+trap "echo i ignore sigterm, lol" SIGTERM
+
+echo "i love logging" >> $1
+sleep $2 &
+wait
