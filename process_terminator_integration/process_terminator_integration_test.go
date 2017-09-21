@@ -12,6 +12,7 @@ import (
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	"github.com/onsi/gomega/gbytes"
 	"github.com/onsi/gomega/gexec"
 )
 
@@ -34,6 +35,8 @@ var _ = Describe("process termination", func() {
 		Eventually(session, 2).Should(gexec.Exit())
 
 		Expect(evidencePath).To(BeAnExistingFile())
+
+		Eventually(session.Out).Should(gbytes.Say("All backup processes terminated"))
 	})
 
 	It("stops cron before terminating backup commands", func() {
@@ -54,9 +57,7 @@ var _ = Describe("process termination", func() {
 		strippedContent := strings.TrimSpace(string(logFileContent))
 		logFileLines := strings.Split(strippedContent, "\n")
 		Expect(logFileLines).To(HaveLen(1))
-	})
-
-	XIt("waits for all child backup processes to finish before exiting", func() {
+		Eventually(session.Out).Should(gbytes.Say("All backup processes terminated"))
 	})
 })
 

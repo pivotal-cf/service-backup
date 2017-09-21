@@ -55,8 +55,9 @@ func (s Scheduler) Run() {
 		s.cronSchedule.Start()
 		close(ready)
 
+		// ifrit does not call Notify on this channel
+		// it will wait indefinitely here
 		<-signals
-		s.cronSchedule.Stop()
 		return nil
 	})
 

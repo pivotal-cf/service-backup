@@ -76,6 +76,7 @@ func main() {
 		<-sigterms
 		scheduler.Stop()
 		terminator.Terminate()
+		logger.Info("All backup processes terminated. Exiting")
 		os.Exit(1)
 	}()
 	scheduler.Run()

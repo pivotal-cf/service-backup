@@ -40,6 +40,7 @@ func main() {
 	go func() {
 		<-sigterms
 		terminator.Terminate()
+		logger.Info("All backup processes terminated. Exiting")
 		os.Exit(1)
 	}()
 
