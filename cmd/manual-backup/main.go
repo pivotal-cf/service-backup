@@ -8,14 +8,20 @@ package main
 
 import (
 	"os"
+	"os/signal"
+	"syscall"
 
 	"code.cloudfoundry.org/lager"
 	"github.com/pivotal-cf/service-backup/config"
 	"github.com/pivotal-cf/service-backup/executor"
+	"github.com/pivotal-cf/service-backup/processterminator"
 	"github.com/pivotal-cf/service-backup/upload"
 )
 
 func main() {
+	sigterms := make(chan os.Signal, 1)
+	signal.Notify(sigterms, syscall.SIGTERM, syscall.SIGINT)
+
 	logger := lager.NewLogger("ServiceBackup")
 	logger.RegisterSink(lager.NewWriterSink(os.Stdout, lager.INFO))
 
@@ -29,6 +35,13 @@ func main() {
 	if err != nil {
 		os.Exit(2)
 	}
+
+	terminator := processterminator.New()
+	go func() {
+		<-sigterms
+		terminator.Terminate()
+		os.Exit(1)
+	}()
 
 	var backupExecutor executor.Executor
 	if backupConfig.NoDestinations() {
@@ -48,6 +61,7 @@ func main() {
 			backupConfig.ServiceIdentifierExecutable,
 			backupConfig.ExitIfInProgress,
 			logger,
+			terminator,
 		)
 	}
 
