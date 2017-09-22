@@ -9,10 +9,11 @@ import (
 )
 
 type FakeProcessStarter struct {
-	StartStub        func(*exec.Cmd) error
+	StartStub        func(*exec.Cmd, chan struct{}) error
 	startMutex       sync.RWMutex
 	startArgsForCall []struct {
 		arg1 *exec.Cmd
+		arg2 chan struct{}
 	}
 	startReturns struct {
 		result1 error
@@ -24,16 +25,17 @@ type FakeProcessStarter struct {
 	invocationsMutex sync.RWMutex
 }
 
-func (fake *FakeProcessStarter) Start(arg1 *exec.Cmd) error {
+func (fake *FakeProcessStarter) Start(arg1 *exec.Cmd, arg2 chan struct{}) error {
 	fake.startMutex.Lock()
 	ret, specificReturn := fake.startReturnsOnCall[len(fake.startArgsForCall)]
 	fake.startArgsForCall = append(fake.startArgsForCall, struct {
 		arg1 *exec.Cmd
-	}{arg1})
-	fake.recordInvocation("Start", []interface{}{arg1})
+		arg2 chan struct{}
+	}{arg1, arg2})
+	fake.recordInvocation("Start", []interface{}{arg1, arg2})
 	fake.startMutex.Unlock()
 	if fake.StartStub != nil {
-		return fake.StartStub(arg1)
+		return fake.StartStub(arg1, arg2)
 	}
 	if specificReturn {
 		return ret.result1
@@ -47,10 +49,10 @@ func (fake *FakeProcessStarter) StartCallCount() int {
 	return len(fake.startArgsForCall)
 }
 
-func (fake *FakeProcessStarter) StartArgsForCall(i int) *exec.Cmd {
+func (fake *FakeProcessStarter) StartArgsForCall(i int) (*exec.Cmd, chan struct{}) {
 	fake.startMutex.RLock()
 	defer fake.startMutex.RUnlock()
-	return fake.startArgsForCall[i].arg1
+	return fake.startArgsForCall[i].arg1, fake.startArgsForCall[i].arg2
 }
 
 func (fake *FakeProcessStarter) StartReturns(result1 error) {

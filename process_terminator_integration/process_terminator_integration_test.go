@@ -31,11 +31,8 @@ var _ = Describe("process termination", func() {
 		time.Sleep(time.Second)
 
 		cmd.Process.Signal(syscall.SIGTERM)
-		cmd.Wait()
 		Eventually(session, 2).Should(gexec.Exit())
-
 		Expect(evidencePath).To(BeAnExistingFile())
-
 		Eventually(session.Out).Should(gbytes.Say("All backup processes terminated"))
 	})
 

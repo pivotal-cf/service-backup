@@ -16,7 +16,7 @@ func New() *ProcessTerminator {
 	return &ProcessTerminator{}
 }
 
-func (pt *ProcessTerminator) Start(cmd *exec.Cmd) error {
+func (pt *ProcessTerminator) Start(cmd *exec.Cmd, started chan struct{}) error {
 	sigUsr1Chan := make(chan os.Signal, 1)
 	processExitChan := make(chan error, 1)
 	signal.Notify(sigUsr1Chan, syscall.SIGUSR1)
@@ -27,6 +27,7 @@ func (pt *ProcessTerminator) Start(cmd *exec.Cmd) error {
 		return err
 	}
 	pt.wg.Add(1)
+	close(started)
 
 	go func() {
 		processExitChan <- cmd.Wait()

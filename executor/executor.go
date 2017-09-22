@@ -173,7 +173,7 @@ func (e *executor) performBackup(sessionLogger lager.Logger) error {
 	args := strings.Split(e.backupCreatorCmd, " ")
 	cmd := exec.Command(args[0], args[1:]...)
 
-	err := e.processStarter.Start(cmd)
+	err := e.processStarter.Start(cmd, make(chan struct{}))
 	if err != nil {
 		sessionLogger.Error("Perform backup completed with error", err)
 		return err

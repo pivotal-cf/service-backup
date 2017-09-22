@@ -14,42 +14,16 @@ func alive(c *exec.Cmd) bool {
 		c.Process.Signal(syscall.Signal(0)) == nil
 }
 
-func aliveProbe(c *exec.Cmd) func() bool {
-	return func() bool {
-		return alive(c)
-	}
-}
-
 var _ = Describe("process terminator", func() {
 	It("starts and terminates processes", func() {
-		pt := processterminator.New()
-		cmd1 := exec.Command("sleep", "42")
-		cmd2 := exec.Command("sleep", "42")
-		cmd3 := exec.Command("sleep", "42")
-
-		go func() { pt.Start(cmd1) }()
-		go func() { pt.Start(cmd2) }()
-		go func() { pt.Start(cmd3) }()
-
-		Eventually(aliveProbe(cmd1)).Should(BeTrue())
-		Eventually(aliveProbe(cmd2)).Should(BeTrue())
-		Eventually(aliveProbe(cmd3)).Should(BeTrue())
-
-		pt.Terminate()
-
-		Expect(alive(cmd1)).To(BeFalse())
-		Expect(alive(cmd2)).To(BeFalse())
-		Expect(alive(cmd3)).To(BeFalse())
-	})
-
-	It("works with a lot of commands", func() {
 		pt := processterminator.New()
 		var commands []*exec.Cmd
 		for i := 0; i < 25; i++ {
 			cmd := exec.Command("sleep", "42")
+			started := make(chan struct{})
 			commands = append(commands, cmd)
-			go func() { pt.Start(cmd) }()
-			Eventually(aliveProbe(cmd)).Should(BeTrue())
+			go func() { pt.Start(cmd, started) }()
+			Eventually(started).Should(BeClosed())
 		}
 
 		pt.Terminate()
@@ -64,8 +38,8 @@ var _ = Describe("process terminator", func() {
 		cmd1 := exec.Command("true")
 		cmd2 := exec.Command("true")
 
-		pt.Start(cmd1)
-		err := pt.Start(cmd2)
+		pt.Start(cmd1, make(chan struct{}))
+		err := pt.Start(cmd2, make(chan struct{}))
 		Expect(err).NotTo(HaveOccurred())
 
 		pt.Terminate()
@@ -86,16 +60,16 @@ var _ = Describe("process terminator", func() {
 
 		go func() {
 			cmd1Started <- true
-			pt.Start(cmd1)
+			pt.Start(cmd1, make(chan struct{}))
 			cmd1Done <- true
 		}()
 		go func() {
 			<-cmd1Started
-			pt.Start(cmd2)
+			pt.Start(cmd2, make(chan struct{}))
 		}()
 		go func() {
 			<-cmd1Done
-			err := pt.Start(cmd3)
+			err := pt.Start(cmd3, make(chan struct{}))
 			Expect(err).NotTo(HaveOccurred())
 			cmd3Finished <- true
 		}()
@@ -113,10 +87,10 @@ var _ = Describe("process terminator", func() {
 		cmd1 := exec.Command("idonotexist123")
 		cmd2 := exec.Command("idonotexist124")
 
-		err := pt.Start(cmd1)
+		err := pt.Start(cmd1, make(chan struct{}))
 		Expect(err).To(HaveOccurred())
 
-		err = pt.Start(cmd2)
+		err = pt.Start(cmd2, make(chan struct{}))
 		Expect(err).To(HaveOccurred())
 	})
 
@@ -124,7 +98,7 @@ var _ = Describe("process terminator", func() {
 		pt := processterminator.New()
 		cmd := exec.Command("false")
 
-		err := pt.Start(cmd)
+		err := pt.Start(cmd, make(chan struct{}))
 		Expect(err).To(HaveOccurred())
 	})
 
