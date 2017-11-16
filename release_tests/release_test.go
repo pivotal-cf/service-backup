@@ -46,7 +46,7 @@ var _ = Describe("release tests", func() {
 	)
 
 	type deployment struct {
-		name string
+		Name string
 	}
 
 	BeforeEach(func() {
@@ -64,7 +64,7 @@ var _ = Describe("release tests", func() {
 		Expect(yaml.Unmarshal(manifestBytes, &dep)).To(Succeed())
 
 		commonArgs := []string{
-			"-d", dep.name,
+			"-d", dep.Name,
 			command,
 			"--gateway_host", boshHost,
 			"--gateway_user", boshSSHUser,
