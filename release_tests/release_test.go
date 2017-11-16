@@ -38,6 +38,7 @@ var _ = Describe("release tests", func() {
 	)
 
 	var (
+		boshEnv            string
 		boshHost           string
 		boshPrivateKeyFile string
 		toBackup           string
@@ -50,6 +51,7 @@ var _ = Describe("release tests", func() {
 	}
 
 	BeforeEach(func() {
+		boshEnv = envMustHave("BOSH_ENV")
 		boshHost = envMustHave("BOSH_HOST")
 		boshPrivateKeyFile = envMustHave("BOSH_PRIVATE_KEY_FILE")
 		boshSSHUser = envMustHave("BOSH_SSH_USER")
@@ -64,6 +66,7 @@ var _ = Describe("release tests", func() {
 		Expect(yaml.Unmarshal(manifestBytes, &dep)).To(Succeed())
 
 		commonArgs := []string{
+			"-e", boshEnv,
 			"-d", dep.Name,
 			command,
 			"--gw-host", boshHost,
