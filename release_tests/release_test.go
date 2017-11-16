@@ -66,9 +66,9 @@ var _ = Describe("release tests", func() {
 		commonArgs := []string{
 			"-d", dep.Name,
 			command,
-			"--gateway_host", boshHost,
-			"--gateway_user", boshSSHUser,
-			"--gateway_identity_file", boshPrivateKeyFile,
+			"--gw-host", boshHost,
+			"--gw-user", boshSSHUser,
+			"--gw-private-key", boshPrivateKeyFile,
 		}
 		allArgs := append(commonArgs, args...)
 		GinkgoWriter.Write([]byte(fmt.Sprintf("running BOSH SSH command %s\n", allArgs)))
