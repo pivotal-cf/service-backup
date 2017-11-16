@@ -45,6 +45,10 @@ var _ = Describe("release tests", func() {
 		boshManifest       string
 	)
 
+	type deployment struct {
+		name string
+	}
+
 	BeforeEach(func() {
 		boshHost = envMustHave("BOSH_HOST")
 		boshPrivateKeyFile = envMustHave("BOSH_PRIVATE_KEY_FILE")
@@ -53,8 +57,14 @@ var _ = Describe("release tests", func() {
 	})
 
 	boshCmdWithGateway := func(stdout io.Writer, command string, args ...string) {
+		dep := deployment{}
+
+		manifestBytes, err := ioutil.ReadFile(boshManifest)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(yaml.Unmarshal(manifestBytes, &dep)).To(Succeed())
+
 		commonArgs := []string{
-			"-d", boshManifest,
+			"-d", dep.name,
 			command,
 			"--gateway_host", boshHost,
 			"--gateway_user", boshSSHUser,
@@ -62,7 +72,7 @@ var _ = Describe("release tests", func() {
 		}
 		allArgs := append(commonArgs, args...)
 		GinkgoWriter.Write([]byte(fmt.Sprintf("running BOSH SSH command %s\n", allArgs)))
-		cmd := exec.Command("bosh", allArgs...)
+		cmd := exec.Command("bosh2", allArgs...)
 		cmd.Stdout = stdout
 		cmd.Stderr = GinkgoWriter
 		Expect(cmd.Run()).To(Succeed())
