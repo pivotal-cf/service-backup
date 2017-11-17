@@ -84,8 +84,7 @@ var _ = Describe("release tests", func() {
 	boshSSH := func(command string) string {
 		buf := new(bytes.Buffer)
 		writer := io.MultiWriter(GinkgoWriter, buf)
-
-		boshCmdWithGateway(writer, "ssh", "service-backup/0", fmt.Sprintf("-c '%s'", command))
+		boshCmdWithGateway(writer, "ssh", append([]string{"service-backup/0", "-c"}, command)...)
 		return buf.String()
 	}
 
