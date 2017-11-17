@@ -90,7 +90,7 @@ var _ = Describe("release tests", func() {
 	}
 
 	boshSCP := func(source, destination string) {
-		boshCmdWithGateway(GinkgoWriter, "scp", "service-backup/0", source, destination)
+		boshCmdWithGateway(GinkgoWriter, "scp", source, fmt.Sprintf("%s:%s", "service-backup/0", destination))
 	}
 
 	JustBeforeEach(func() {
