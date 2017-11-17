@@ -81,11 +81,11 @@ var _ = Describe("release tests", func() {
 		Expect(cmd.Run()).To(Succeed())
 	}
 
-	boshSSH := func(args ...string) string {
+	boshSSH := func(command string) string {
 		buf := new(bytes.Buffer)
 		writer := io.MultiWriter(GinkgoWriter, buf)
 
-		boshCmdWithGateway(writer, "ssh", append([]string{"service-backup/0"}, args...)...)
+		boshCmdWithGateway(writer, "ssh", "service-backup/0", fmt.Sprintf("-c '%s'", command))
 		return buf.String()
 	}
 
@@ -97,7 +97,7 @@ var _ = Describe("release tests", func() {
 		cwd, err := os.Getwd()
 		Expect(err).NotTo(HaveOccurred())
 		pathToFile := filepath.Join(cwd, "test_assets", toBackup)
-		boshSSH("sudo", "chmod", "775", testSourceFolder)
+		boshSSH(fmt.Sprintf("sudo chmod 775 %s", testSourceFolder))
 		boshSCP(pathToFile, testSourceFolder)
 	})
 
@@ -115,7 +115,7 @@ var _ = Describe("release tests", func() {
 		})
 
 		AfterEach(func() {
-			boshSSH("rm", testSourceFolder+toBackup)
+			boshSSH(fmt.Sprintf("rm -f %s%s", testSourceFolder, toBackup))
 			Expect(client.DeleteRemotePath(bucketName, testPath, "")).To(Succeed())
 		})
 
@@ -129,15 +129,15 @@ var _ = Describe("release tests", func() {
 
 		Context("manual backup", func() {
 			BeforeEach(func() {
-				boshSSH("sudo", "/var/vcap/bosh/bin/monit", "stop", "service-backup")
+				boshSSH("sudo /var/vcap/bosh/bin/monit stop service-backup")
 			})
 
 			AfterEach(func() {
-				boshSSH("sudo", "/var/vcap/bosh/bin/monit", "start", "service-backup")
+				boshSSH("sudo /var/vcap/bosh/bin/monit start service-backup")
 			})
 
 			It("uploads files in the backup directory", func() {
-				boshSSH("sudo", "/var/vcap/jobs/service-backup/bin/manual-backup")
+				boshSSH("sudo /var/vcap/jobs/service-backup/bin/manual-backup")
 				Eventually(func() bool {
 					return client.RemotePathExistsInBucket(bucketName, fmt.Sprintf("%s/%s", pathWithDate(testPath), toBackup))
 				}, time.Minute).Should(BeTrue())
@@ -159,21 +159,21 @@ var _ = Describe("release tests", func() {
 		})
 
 		AfterEach(func() {
-			boshSSH("rm", testSourceFolder+toBackup)
+			boshSSH(fmt.Sprintf("rm -f %s%s", testSourceFolder, toBackup))
 			Expect(client.DeleteRemotePath(bucketName, testPath, "")).To(Succeed())
 		})
 
 		Context("manual backup", func() {
 			BeforeEach(func() {
-				boshSSH("sudo", "/var/vcap/bosh/bin/monit", "stop", "service-backup")
+				boshSSH("sudo /var/vcap/bosh/bin/monit stop service-backup")
 			})
 
 			AfterEach(func() {
-				boshSSH("sudo", "/var/vcap/bosh/bin/monit", "start", "service-backup")
+				boshSSH("sudo /var/vcap/bosh/bin/monit start service-backup")
 			})
 
 			It("uploads files in the backup directory", func() {
-				boshSSH("sudo", "/var/vcap/jobs/service-backup/bin/manual-backup")
+				boshSSH("sudo /var/vcap/jobs/service-backup/bin/manual-backup")
 				Eventually(func() bool {
 					return client.RemotePathExistsInBucket(bucketName, fmt.Sprintf("%s/%s", pathWithDate(testPath+"/service-backup-ci-s3-extended-path"), toBackup))
 				}, time.Minute).Should(BeTrue())
@@ -196,7 +196,7 @@ var _ = Describe("release tests", func() {
 		})
 
 		AfterEach(func() {
-			boshSSH("rm", testSourceFolder+toBackup)
+			boshSSH(fmt.Sprintf("rm -f %s%s", testSourceFolder, toBackup))
 
 			_, err := azureBlobService.DeleteBlobIfExists(bucketName, fmt.Sprintf("%s/%s", pathWithDate(testPath), toBackup))
 			Expect(err).NotTo(HaveOccurred())
@@ -214,15 +214,15 @@ var _ = Describe("release tests", func() {
 
 		Context("manual backup", func() {
 			BeforeEach(func() {
-				boshSSH("sudo", "/var/vcap/bosh/bin/monit", "stop", "service-backup")
+				boshSSH("sudo /var/vcap/bosh/bin/monit stop service-backup")
 			})
 
 			AfterEach(func() {
-				boshSSH("sudo", "/var/vcap/bosh/bin/monit", "start", "service-backup")
+				boshSSH("sudo /var/vcap/bosh/bin/monit start service-backup")
 			})
 
 			It("uploads files in the backup directory", func() {
-				boshSSH("sudo", "/var/vcap/jobs/service-backup/bin/manual-backup")
+				boshSSH("sudo /var/vcap/jobs/service-backup/bin/manual-backup")
 				Eventually(func() bool {
 					exists, err := azureBlobService.BlobExists(bucketName, fmt.Sprintf("%s/%s", pathWithDate(testPath), toBackup))
 					Expect(err).NotTo(HaveOccurred())
@@ -241,30 +241,30 @@ var _ = Describe("release tests", func() {
 		})
 
 		AfterEach(func() {
-			boshSSH("rm", testSourceFolder+toBackup)
+			boshSSH(fmt.Sprintf("rm -f %s%s", testSourceFolder, toBackup))
 		})
 
 		Context("automatic backup", func() {
 			It("Uploads files in the backup directory", func() {
 				Eventually(func() bool {
-					return strings.Contains(boshSSH("sudo", "find", "/home/vcap/backups", "'-type'", "f"), toBackup)
+					return strings.Contains(boshSSH("sudo find /home/vcap/backups -type f"), toBackup)
 				}, time.Minute).Should(BeTrue())
 			})
 		})
 
 		Context("manual backup", func() {
 			BeforeEach(func() {
-				boshSSH("sudo", "/var/vcap/bosh/bin/monit", "stop", "service-backup")
+				boshSSH("sudo /var/vcap/bosh/bin/monit stop service-backup")
 			})
 
 			AfterEach(func() {
-				boshSSH("sudo", "/var/vcap/bosh/bin/monit", "start", "service-backup")
+				boshSSH("sudo /var/vcap/bosh/bin/monit start service-backup")
 			})
 
 			It("Uploads files in the backup directory", func() {
-				boshSSH("sudo", "/var/vcap/jobs/service-backup/bin/manual-backup")
+				boshSSH("sudo /var/vcap/jobs/service-backup/bin/manual-backup")
 				Eventually(func() bool {
-					return strings.Contains(boshSSH("sudo", "find", "/home/vcap/backups", "'-type'", "f"), toBackup)
+					return strings.Contains(boshSSH("sudo find /home/vcap/backups -type f"), toBackup)
 				}, time.Minute).Should(BeTrue())
 			})
 		})
@@ -315,7 +315,7 @@ var _ = Describe("release tests", func() {
 		})
 
 		AfterEach(func() {
-			boshSSH("rm", testSourceFolder+toBackup)
+			boshSSH(fmt.Sprintf("rm -f %s%s", testSourceFolder, toBackup))
 			testhelpers.DeleteGCSBucket(ctx, bucket)
 			Expect(os.Remove(gcpServiceAccountFilePath)).To(Succeed())
 		})
@@ -346,15 +346,15 @@ var _ = Describe("release tests", func() {
 
 		Context("manual backup", func() {
 			BeforeEach(func() {
-				boshSSH("sudo", "/var/vcap/bosh/bin/monit", "stop", "service-backup")
+				boshSSH("sudo /var/vcap/bosh/bin/monit stop service-backup")
 			})
 
 			AfterEach(func() {
-				boshSSH("sudo", "/var/vcap/bosh/bin/monit", "start", "service-backup")
+				boshSSH("sudo /var/vcap/bosh/bin/monit start service-backup")
 			})
 
 			It("uploads files in the backup directory", func() {
-				boshSSH("sudo", "/var/vcap/jobs/service-backup/bin/manual-backup")
+				boshSSH("sudo /var/vcap/jobs/service-backup/bin/manual-backup")
 				Eventually(errorUploadingToGCS, time.Second*20).ShouldNot(HaveOccurred())
 			})
 		})
