@@ -75,7 +75,7 @@ var _ = Describe("release tests", func() {
 		}
 		allArgs := append(commonArgs, args...)
 		GinkgoWriter.Write([]byte(fmt.Sprintf("running BOSH SSH command %s\n", allArgs)))
-		cmd := exec.Command("bosh2", allArgs...)
+		cmd := exec.Command("bosh", allArgs...)
 		cmd.Stdout = stdout
 		cmd.Stderr = GinkgoWriter
 		Expect(cmd.Run()).To(Succeed())
