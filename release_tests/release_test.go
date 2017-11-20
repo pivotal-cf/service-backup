@@ -110,7 +110,7 @@ var _ = Describe("release tests", func() {
 
 			awsAccessKeyID := envMustHave("AWS_ACCESS_KEY_ID")
 			awsSecretKey := envMustHave("AWS_SECRET_ACCESS_KEY")
-			client = s3testclient.New("https://s3-eu-west-1.amazonaws.com", awsAccessKeyID, awsSecretKey, testPath)
+			client = s3testclient.New("https://s3.amazonaws.com", awsAccessKeyID, awsSecretKey, testPath)
 		})
 
 		AfterEach(func() {
@@ -154,7 +154,7 @@ var _ = Describe("release tests", func() {
 
 			awsAccessKeyID := envMustHave("AWS_ACCESS_KEY_ID")
 			awsSecretKey := envMustHave("AWS_SECRET_ACCESS_KEY")
-			client = s3testclient.New("https://s3-eu-west-1.amazonaws.com", awsAccessKeyID, awsSecretKey, testPath)
+			client = s3testclient.New("https://s3.amazonaws.com", awsAccessKeyID, awsSecretKey, testPath)
 		})
 
 		AfterEach(func() {
