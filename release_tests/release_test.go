@@ -58,7 +58,7 @@ var _ = Describe("release tests", func() {
 		toBackup = "to_backup.txt"
 	})
 
-	boshCmdWithGateway := func(stdout io.Writer, command string, args ...string) {
+	boshCmd := func(stdout io.Writer, command string, args ...string) {
 		dep := deployment{}
 
 		manifestBytes, err := ioutil.ReadFile(boshManifest)
@@ -69,16 +69,23 @@ var _ = Describe("release tests", func() {
 			"-e", boshEnv,
 			"-d", dep.Name,
 			command,
-			"--gw-host", boshHost,
-			"--gw-user", boshSSHUser,
-			"--gw-private-key", boshPrivateKeyFile,
 		}
 		allArgs := append(commonArgs, args...)
-		GinkgoWriter.Write([]byte(fmt.Sprintf("running BOSH SSH command %s\n", allArgs)))
+		GinkgoWriter.Write([]byte(fmt.Sprintf("running BOSH command %s\n", allArgs)))
 		cmd := exec.Command("bosh", allArgs...)
 		cmd.Stdout = stdout
 		cmd.Stderr = GinkgoWriter
 		Expect(cmd.Run()).To(Succeed())
+	}
+
+	boshCmdWithGateway := func(stdout io.Writer, command string, args ...string) {
+		gatewayArgs := []string{
+			"--gw-host", boshHost,
+			"--gw-user", boshSSHUser,
+			"--gw-private-key", boshPrivateKeyFile,
+		}
+		allArgs := append(gatewayArgs, args...)
+		boshCmd(stdout, command, allArgs...)
 	}
 
 	boshSSH := func(command string) string {
@@ -356,6 +363,18 @@ var _ = Describe("release tests", func() {
 				boshSSH("sudo /var/vcap/jobs/service-backup/bin/manual-backup")
 				Eventually(errorUploadingToGCS, time.Second*20).ShouldNot(HaveOccurred())
 			})
+		})
+	})
+
+	Context("Deleting a deployment with a stopped service-backup instance", func() {
+		BeforeEach(func() {
+			boshManifest = envMustHave("FOR_DELETE_BOSH_MANIFEST")
+		})
+		It("should successfully complete", func() {
+			buf := new(bytes.Buffer)
+			writer := io.MultiWriter(GinkgoWriter, buf)
+			boshCmd(writer, "stop", "service-backup", "-n")
+			boshCmd(writer, "deld", "-n")
 		})
 	})
 })
