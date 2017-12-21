@@ -61,13 +61,12 @@ func (a *AzureClient) uploadDir(localFilePath, remoteFilePath string, sessionLog
 		"--storage-account", a.accountName)
 
 	cmd.Env = append(cmd.Env,
-		"LANG="+os.Getenv("LANG"),
-		"LC_ALL="+os.Getenv("LC_ALL"),
+		"LANG=C.UTF-8",
 		"BLOBXFER_STORAGE_ACCOUNT_KEY="+a.accountKey,
 	)
 	output, err := cmd.CombinedOutput()
 	if err != nil {
-		sessionLogger.Info("blobxfer combined output", lager.Data{"output": output})
+		sessionLogger.Info("blobxfer combined output", lager.Data{"output": string(output)})
 	}
 	return err
 }
