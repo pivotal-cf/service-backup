@@ -43,10 +43,10 @@ func (a *AzureClient) Upload(localPath string, sessionLogger lager.Logger) error
 	sessionLogger.Info("Uploading azure blobs", lager.Data{"container": a.container, "localPath": localPath, "remotePath": remotePath})
 	sessionLogger.Info("The container and remote path will be created if they don't already exist", lager.Data{"container": a.container, "remotePath": remotePath})
 	sessionLogger.Info(fmt.Sprintf("about to upload %s to Azure remote path %s", localPath, remotePath))
-	return a.uploadDir(localPath, remotePath)
+	return a.uploadDir(localPath, remotePath, sessionLogger)
 }
 
-func (a *AzureClient) uploadDir(localFilePath, remoteFilePath string) error {
+func (a *AzureClient) uploadDir(localFilePath, remoteFilePath string, sessionLogger lager.Logger) error {
 	file, err := os.Open(localFilePath)
 	if err != nil {
 		return err
@@ -65,7 +65,11 @@ func (a *AzureClient) uploadDir(localFilePath, remoteFilePath string) error {
 		"LC_ALL="+os.Getenv("LC_ALL"),
 		"BLOBXFER_STORAGE_ACCOUNT_KEY="+a.accountKey,
 	)
-	return cmd.Run()
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		sessionLogger.Info("blobxfer combined output", lager.Data{"output": output})
+	}
+	return err
 }
 
 func (a *AzureClient) Name() string {
