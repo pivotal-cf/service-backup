@@ -14,14 +14,14 @@ S3 requires the AWS CLI:
 brew install awscli
 ```
 
-Azure requires the [`blobxfer`](https://github.com/Azure/azure-batch-samples/tree/master/Python/Storage) CLI for batch uploads:
+Azure requires the [`blobxfer`](https://github.com/Azure/blobxfer) CLI for batch uploads:
 
 ```sh
 brew install python
 pip install blobxfer
 ```
 
-> NB: blobxfer version 0.11.1 or above is required to set the storage account key using an environment variable
+> NB: blobxfer version 1.0.0 or above is required
 
 The S3 integration tests require access to a bucket called `service-backup-integration-test` with all permissions. Example policy is as follows:
 
