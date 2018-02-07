@@ -14,6 +14,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 	"time"
 
 	. "github.com/onsi/ginkgo"
@@ -21,6 +22,7 @@ import (
 	"github.com/onsi/gomega/gbytes"
 	"github.com/onsi/gomega/gexec"
 	"github.com/onsi/gomega/ghttp"
+	"github.com/pivotal-cf/service-backup/s3testclient"
 	"github.com/satori/go.uuid"
 )
 
@@ -439,7 +441,7 @@ var _ = Describe("S3 Backup", func() {
 					session.Terminate().Wait()
 					Eventually(session).Should(gexec.Exit())
 
-					keys, err := s3TestClient.ListRemotePath(bucketName, region)
+					keys, err := listRemotePath(s3TestClient, bucketName, region)
 					Expect(err).ToNot(HaveOccurred())
 					Expect(keys).ToNot(BeEmpty())
 				})
@@ -471,7 +473,7 @@ var _ = Describe("S3 Backup", func() {
 						session.Terminate().Wait()
 						Eventually(session).Should(gexec.Exit())
 
-						keys, err := s3TestClient.ListRemotePath(bucketName, region)
+						keys, err := listRemotePath(s3TestClient, bucketName, region)
 						Expect(err).ToNot(HaveOccurred())
 						Expect(keys).ToNot(BeEmpty())
 					})
@@ -502,7 +504,7 @@ var _ = Describe("S3 Backup", func() {
 							session.Terminate().Wait()
 							Eventually(session).Should(gexec.Exit())
 
-							keys, err := s3TestClient.ListRemotePath(bucketName, region)
+							keys, err := listRemotePath(s3TestClient, bucketName, region)
 							Expect(err).ToNot(HaveOccurred())
 							Expect(keys).ToNot(BeEmpty())
 						})
@@ -1565,4 +1567,18 @@ func createLargeFileIn(sourceFolder string) (string, string) {
 
 	fileName := filepath.Base(file.Name())
 	return fileName, fileContents
+}
+
+func listRemotePath(s3TestClient *s3testclient.S3TestClient, bucketName, region string) ([]string, error) {
+	var keys []string
+	var err error
+	for i := 0; i < 5; i++ {
+		keys, err = s3TestClient.ListRemotePath(bucketName, region)
+		if err != nil && strings.Contains(err.Error(), "NoSuchBucket") {
+			time.Sleep(time.Second * 30)
+		} else {
+			break
+		}
+	}
+	return keys, err
 }
