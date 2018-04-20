@@ -1,3 +1,4 @@
 .envrc
 *coverprofile*
 gcp_service_account.json
+.idea

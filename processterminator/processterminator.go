@@ -1,29 +1,27 @@
 package processterminator
 
 import (
-	"os"
 	"os/exec"
-	"os/signal"
 	"sync"
 	"syscall"
 )
 
 type ProcessTerminator struct {
 	wg sync.WaitGroup
+	killAll chan struct{}
 }
 
 func New() *ProcessTerminator {
-	return &ProcessTerminator{}
+	pt := &ProcessTerminator{}
+	pt.killAll = make(chan struct{})
+	return pt
 }
 
 func (pt *ProcessTerminator) Start(cmd *exec.Cmd, started chan struct{}) error {
-	sigUsr1Chan := make(chan os.Signal, 1)
 	processExitChan := make(chan error, 1)
-	signal.Notify(sigUsr1Chan, syscall.SIGUSR1)
 
 	err := cmd.Start()
 	if err != nil {
-		signal.Stop(sigUsr1Chan)
 		return err
 	}
 	pt.wg.Add(1)
@@ -35,17 +33,15 @@ func (pt *ProcessTerminator) Start(cmd *exec.Cmd, started chan struct{}) error {
 	}()
 
 	select {
-	case <-sigUsr1Chan:
+	case <-pt.killAll:
 		cmd.Process.Signal(syscall.SIGTERM)
 		return nil
 	case retVal := <-processExitChan:
-		signal.Stop(sigUsr1Chan)
 		return retVal
 	}
 }
 
 func (pt *ProcessTerminator) Terminate() {
-	p, _ := os.FindProcess(os.Getpid())
-	p.Signal(syscall.SIGUSR1)
+	close(pt.killAll)
 	pt.wg.Wait()
 }
