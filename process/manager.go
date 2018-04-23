@@ -1,4 +1,4 @@
-package processterminator
+package process
 
 import (
 	"os/exec"
@@ -6,34 +6,34 @@ import (
 	"syscall"
 )
 
-type ProcessTerminator struct {
+type Manager struct {
 	wg sync.WaitGroup
 	killAll chan struct{}
 }
 
-func New() *ProcessTerminator {
-	pt := &ProcessTerminator{}
+func NewManager() *Manager {
+	pt := &Manager{}
 	pt.killAll = make(chan struct{})
 	return pt
 }
 
-func (pt *ProcessTerminator) Start(cmd *exec.Cmd, started chan struct{}) error {
+func (m *Manager) Start(cmd *exec.Cmd, started chan struct{}) error {
 	processExitChan := make(chan error, 1)
 
 	err := cmd.Start()
 	if err != nil {
 		return err
 	}
-	pt.wg.Add(1)
+	m.wg.Add(1)
 	close(started)
 
 	go func() {
+		defer m.wg.Done()
 		processExitChan <- cmd.Wait()
-		pt.wg.Done()
 	}()
 
 	select {
-	case <-pt.killAll:
+	case <-m.killAll:
 		cmd.Process.Signal(syscall.SIGTERM)
 		return nil
 	case retVal := <-processExitChan:
@@ -41,7 +41,7 @@ func (pt *ProcessTerminator) Start(cmd *exec.Cmd, started chan struct{}) error {
 	}
 }
 
-func (pt *ProcessTerminator) Terminate() {
-	close(pt.killAll)
-	pt.wg.Wait()
+func (m *Manager) Terminate() {
+	close(m.killAll)
+	m.wg.Wait()
 }

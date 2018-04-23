@@ -1,4 +1,4 @@
-package processterminator_test
+package process_test
 
 import (
 	"os/exec"
@@ -6,7 +6,7 @@ import (
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	"github.com/pivotal-cf/service-backup/processterminator"
+	"github.com/pivotal-cf/service-backup/process"
 )
 
 func alive(c *exec.Cmd) bool {
@@ -16,7 +16,7 @@ func alive(c *exec.Cmd) bool {
 
 var _ = Describe("process terminator", func() {
 	It("starts and terminates processes", func() {
-		pt := processterminator.New()
+		pt := process.NewManager()
 		var commands []*exec.Cmd
 		for i := 0; i < 25; i++ {
 			cmd := exec.Command("sleep", "42")
@@ -34,7 +34,7 @@ var _ = Describe("process terminator", func() {
 	})
 
 	It("can perform two consecutive non-overlapping starts", func() {
-		pt := processterminator.New()
+		pt := process.NewManager()
 		cmd1 := exec.Command("true")
 		cmd2 := exec.Command("true")
 
@@ -49,7 +49,7 @@ var _ = Describe("process terminator", func() {
 	})
 
 	It("can perform two consecutive overlapping starts", func() {
-		pt := processterminator.New()
+		pt := process.NewManager()
 		cmd1 := exec.Command("sleep", "0.1")
 		cmd2 := exec.Command("sleep", "0.3")
 		cmd3 := exec.Command("sleep", "0.1")
@@ -83,7 +83,7 @@ var _ = Describe("process terminator", func() {
 	})
 
 	It("produces error if executable doesn't exist", func() {
-		pt := processterminator.New()
+		pt := process.NewManager()
 		cmd1 := exec.Command("idonotexist123")
 		cmd2 := exec.Command("idonotexist124")
 
@@ -95,7 +95,7 @@ var _ = Describe("process terminator", func() {
 	})
 
 	It("produces error if executable has nonzero exit", func() {
-		pt := processterminator.New()
+		pt := process.NewManager()
 		cmd := exec.Command("false")
 
 		err := pt.Start(cmd, make(chan struct{}))
@@ -103,7 +103,7 @@ var _ = Describe("process terminator", func() {
 	})
 
 	It("doesn't kill self and the test runner if never given anything to start", func() {
-		pt := processterminator.New()
+		pt := process.NewManager()
 		pt.Terminate()
 		Expect(true).To(BeTrue())
 	})

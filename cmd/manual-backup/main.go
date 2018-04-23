@@ -14,7 +14,7 @@ import (
 	"code.cloudfoundry.org/lager"
 	"github.com/pivotal-cf/service-backup/config"
 	"github.com/pivotal-cf/service-backup/executor"
-	"github.com/pivotal-cf/service-backup/processterminator"
+	"github.com/pivotal-cf/service-backup/process"
 	"github.com/pivotal-cf/service-backup/upload"
 )
 
@@ -36,7 +36,7 @@ func main() {
 		os.Exit(2)
 	}
 
-	terminator := processterminator.New()
+	terminator := process.NewManager()
 	go func() {
 		<-sigterms
 		terminator.Terminate()
