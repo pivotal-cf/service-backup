@@ -122,6 +122,6 @@ var _ = Describe("process manager", func() {
 		cmd := exec.Command("rm", "foobar")
 
 		out, _ := pt.Start(cmd, make(chan struct{}))
-		Expect(string(out)).Should(ContainSubstring("rm: foobar: No such file or directory"))
+		Expect(string(out)).Should(ContainSubstring("No such file or directory"))
 	})
 })
