@@ -16,6 +16,7 @@ import (
 
 	"cloud.google.com/go/storage"
 	"code.cloudfoundry.org/lager"
+	"github.com/pivotal-cf/service-backup/process"
 	"google.golang.org/api/iterator"
 	"google.golang.org/api/option"
 )
@@ -38,7 +39,7 @@ func New(name, serviceAccountFilePath, projectID, bucketName string, remotePathF
 	}
 }
 
-func (s *StorageClient) Upload(dirToUpload string, logger lager.Logger) error {
+func (s *StorageClient) Upload(dirToUpload string, logger lager.Logger, _ process.ProcessManager) error {
 	errs := func(action string, err error) error {
 		wrappedErr := fmt.Errorf("error %s: %s", action, err)
 		logger.Error("error uploading to Google Cloud Storage", wrappedErr, nil)

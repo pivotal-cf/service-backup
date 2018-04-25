@@ -14,6 +14,7 @@ import (
 	"strconv"
 
 	"code.cloudfoundry.org/lager"
+	"github.com/pivotal-cf/service-backup/process"
 )
 
 type SCPClient struct {
@@ -24,6 +25,8 @@ type SCPClient struct {
 	privateKey   string
 	fingerPrint  string
 	remotePathFn func() string
+	SCPCommand   string
+	SSHCommand   string
 }
 
 func New(name, host string, port int, username, privateKeyPath, fingerPrint string, remotePathFn func() string) *SCPClient {
@@ -35,6 +38,8 @@ func New(name, host string, port int, username, privateKeyPath, fingerPrint stri
 		privateKey:   privateKeyPath,
 		fingerPrint:  fingerPrint,
 		remotePathFn: remotePathFn,
+		SCPCommand:   "scp",
+		SSHCommand:   "ssh",
 	}
 }
 
@@ -74,7 +79,7 @@ func (client *SCPClient) generateKnownHosts(sessionLogger lager.Logger) (string,
 	return knownHostsFile.Name(), nil
 }
 
-func (client *SCPClient) Upload(localPath string, sessionLogger lager.Logger) error {
+func (client *SCPClient) Upload(localPath string, sessionLogger lager.Logger, processManager process.ProcessManager) error {
 	privateKeyFileName, err := client.generateBackupKey()
 	if err != nil {
 		return err
@@ -94,10 +99,10 @@ func (client *SCPClient) Upload(localPath string, sessionLogger lager.Logger) er
 	}
 
 	scpDest := fmt.Sprintf("%s@%s:%s", client.username, client.host, remotePath)
-	cmd := exec.Command("scp", "-oStrictHostKeyChecking=yes", "-i", privateKeyFileName, "-oUserKnownHostsFile="+knownHostsFileName, "-P", strconv.Itoa(client.port), "-r", ".", scpDest)
+	cmd := exec.Command(client.SCPCommand, "-oStrictHostKeyChecking=yes", "-i", privateKeyFileName, "-oUserKnownHostsFile="+knownHostsFileName, "-P", strconv.Itoa(client.port), "-r", ".", scpDest)
 
 	cmd.Dir = localPath
-	scpCommandOutput, err := cmd.CombinedOutput()
+	scpCommandOutput, err := processManager.Start(cmd, make(chan struct{}))
 	if err != nil {
 		wrappedErr := fmt.Errorf("error performing SCP: '%s', output: '%s'", err, scpCommandOutput)
 		sessionLogger.Error("scp", wrappedErr)
@@ -109,7 +114,7 @@ func (client *SCPClient) Upload(localPath string, sessionLogger lager.Logger) er
 }
 
 func (client *SCPClient) ensureRemoteDirectoryExists(remotePath, privateKeyFileName, knownHostsFileName string, sessionLogger lager.Logger) error {
-	cmd := exec.Command("ssh", "-oStrictHostKeyChecking=yes", "-i", privateKeyFileName, "-oUserKnownHostsFile="+knownHostsFileName, "-p", fmt.Sprintf("%d", client.port),
+	cmd := exec.Command(client.SSHCommand, "-oStrictHostKeyChecking=yes", "-i", privateKeyFileName, "-oUserKnownHostsFile="+knownHostsFileName, "-p", fmt.Sprintf("%d", client.port),
 		fmt.Sprintf("%s@%s", client.username, client.host),
 		fmt.Sprintf("mkdir -p %s", remotePath))
 	output, err := cmd.CombinedOutput()

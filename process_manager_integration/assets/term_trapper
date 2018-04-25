@@ -3,6 +3,7 @@
 evidence_file=$1
 sleepyTime=$2
 
+echo "hello"
 trap 'touch $evidence_file' SIGTERM
 
 rm -f "$evidence_file"

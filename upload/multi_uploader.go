@@ -11,20 +11,21 @@ import (
 	"strings"
 
 	"code.cloudfoundry.org/lager"
+	"github.com/pivotal-cf/service-backup/process"
 )
 
 type multiUploader struct {
 	uploaders []Uploader
 }
 
-func (m *multiUploader) Upload(localPath string, logger lager.Logger) error {
+func (m *multiUploader) Upload(localPath string, logger lager.Logger, processManager process.ProcessManager) error {
 	var errors []error
 	for _, u := range m.uploaders {
 		sessionLogger := logger
 		if u.Name() != "" {
 			sessionLogger = logger.WithData(lager.Data{"destination_name": u.Name()})
 		}
-		err := u.Upload(localPath, sessionLogger)
+		err := u.Upload(localPath, sessionLogger, processManager)
 		if err != nil {
 			errors = append(errors, err)
 		}

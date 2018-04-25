@@ -1,0 +1,11 @@
+#!/bin/bash
+
+evidence_file=$5
+sleepyTime=10
+
+trap 'touch $evidence_file' SIGTERM
+
+rm -f "$evidence_file"
+
+sleep $sleepyTime &
+wait

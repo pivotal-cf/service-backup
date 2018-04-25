@@ -13,6 +13,7 @@ import (
 	"time"
 
 	. "github.com/onsi/gomega"
+	"github.com/pivotal-cf/service-backup/process"
 	"github.com/pivotal-cf/service-backup/s3"
 	"github.com/pivotal-cf/service-backup/upload"
 )
@@ -26,6 +27,7 @@ func New(endpointURL, accessKeyID, secretAccessKey, basePath string) *S3TestClie
 	Expect(err).NotTo(HaveOccurred())
 
 	s3CLIClient := s3.New("s3_test_client", "aws", endpointURL, "", accessKeyID, secretAccessKey, caCertPath, upload.RemotePathFunc(basePath, ""))
+	s3CLIClient.ProcessMgr = process.NewManager()
 	return &S3TestClient{S3CliClient: s3CLIClient}
 }
 

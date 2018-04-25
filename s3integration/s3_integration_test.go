@@ -17,11 +17,14 @@ import (
 	"strings"
 	"time"
 
+	"code.cloudfoundry.org/lager"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gbytes"
 	"github.com/onsi/gomega/gexec"
 	"github.com/onsi/gomega/ghttp"
+	"github.com/pivotal-cf/service-backup/process"
+	"github.com/pivotal-cf/service-backup/s3"
 	"github.com/pivotal-cf/service-backup/s3testclient"
 	"github.com/satori/go.uuid"
 )
@@ -802,6 +805,33 @@ var _ = Describe("S3 Backup", func() {
 				Expect(err).ToNot(HaveOccurred())
 				Eventually(session, awsTimeout).Should(gexec.Exit(2))
 				Eventually(session.Out).Should(gbytes.Say("Error scheduling job"))
+			})
+		})
+
+		Context("when the process manager gets the terminate call", func() {
+			It("kills the child s3 upload process with a sigterm", func() {
+				fakeS3Cmd := assetPath("term_trapper")
+				fakeRemotePathFn := func() string { return "hi" }
+
+				evidenceFile, err := ioutil.TempFile("", "")
+				Expect(err).ToNot(HaveOccurred())
+				evidencePath := evidenceFile.Name()
+				err = os.Remove(evidencePath)
+				Expect(err).ToNot(HaveOccurred())
+				defer os.Remove(evidencePath)
+
+				processManager := process.NewManager()
+
+				s3Client := s3.New("", fakeS3Cmd, "", "", "", "", "", fakeRemotePathFn)
+
+				go func() {
+					s3Client.Upload(evidencePath, lager.NewLogger("foo"), processManager)
+				}()
+
+				time.Sleep(100 * time.Millisecond)
+				processManager.Terminate()
+				SetDefaultEventuallyTimeout(2 * time.Second)
+				Eventually(evidencePath).Should(BeAnExistingFile())
 			})
 		})
 	})

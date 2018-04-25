@@ -13,6 +13,7 @@ import (
 	"strings"
 
 	"code.cloudfoundry.org/lager"
+	"github.com/pivotal-cf/service-backup/process"
 )
 
 type S3CliClient struct {
@@ -24,6 +25,7 @@ type S3CliClient struct {
 	region       string
 	caCertPath   string
 	remotePathFn func() string
+	ProcessMgr   process.ProcessManager
 }
 
 func New(name, awsCmdPath, endpointURL, region, accessKey, secretKey, caCertPath string, remotePathFn func() string) *S3CliClient {
@@ -89,7 +91,7 @@ func (c *S3CliClient) remotePathExists(remotePath string, sessionLogger lager.Lo
 
 	cmd := c.S3Cmd("ls", bucketName)
 
-	if out, err := cmd.CombinedOutput(); err != nil {
+	if out, err := c.ProcessMgr.Start(cmd, make(chan struct{})); err != nil {
 		if bytes.Contains(out, []byte("NoSuchBucket")) {
 			return false, nil
 		}
@@ -108,16 +110,20 @@ func (c *S3CliClient) createRemotePath(remotePath string) error {
 	return c.RunCommand(cmd, "create bucket")
 }
 
-func (c *S3CliClient) Upload(localPath string, sessionLogger lager.Logger) error {
+func (c *S3CliClient) Upload(localPath string, sessionLogger lager.Logger, processManager process.ProcessManager) error {
 	defer sessionLogger.Info("s3 completed")
+
+	c.ProcessMgr = processManager
 
 	remotePath := c.remotePathFn()
 
 	sessionLogger.Info(fmt.Sprintf("about to upload %s to S3 remote path %s", localPath, remotePath))
 	cmd := c.S3Cmd("sync", localPath, fmt.Sprintf("s3://%s", remotePath))
-
-	out, err := cmd.CombinedOutput()
+	out, err := c.ProcessMgr.Start(cmd, make(chan struct{}))
 	if err == nil {
+		return nil
+	}
+	if strings.Contains(err.Error(), "SIGTERM") {
 		return nil
 	}
 	if !bytes.Contains(out, []byte("NoSuchBucket")) {
@@ -134,7 +140,7 @@ func (c *S3CliClient) Upload(localPath string, sessionLogger lager.Logger) error
 }
 
 func (c *S3CliClient) RunCommand(cmd *exec.Cmd, stepName string) error {
-	if out, err := cmd.CombinedOutput(); err != nil {
+	if out, err := c.ProcessMgr.Start(cmd, make(chan struct{})); err != nil {
 		return fmt.Errorf("error in %s: %s, output: %s", stepName, err, string(out))
 	}
 	return nil

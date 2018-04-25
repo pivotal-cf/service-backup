@@ -14,12 +14,13 @@ import (
 	"github.com/pivotal-cf/service-backup/azure"
 	"github.com/pivotal-cf/service-backup/config"
 	"github.com/pivotal-cf/service-backup/gcs"
+	"github.com/pivotal-cf/service-backup/process"
 	"github.com/pivotal-cf/service-backup/s3"
 	"github.com/pivotal-cf/service-backup/scp"
 )
 
 type Uploader interface {
-	Upload(localPath string, sessionLogger lager.Logger) error
+	Upload(localPath string, sessionLogger lager.Logger, processManager process.ProcessManager) error
 	Name() string
 }
 

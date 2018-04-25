@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+
+echo "This is a fake failure!"
+
+exit 1

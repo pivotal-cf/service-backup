@@ -5,27 +5,29 @@ import (
 	"os/exec"
 	"sync"
 
-	"github.com/pivotal-cf/service-backup/executor"
+	"github.com/pivotal-cf/service-backup/process"
 )
 
-type FakeProcessStarter struct {
-	StartStub        func(*exec.Cmd, chan struct{}) error
+type FakeProcessManager struct {
+	StartStub        func(*exec.Cmd, chan struct{}) ([]byte, error)
 	startMutex       sync.RWMutex
 	startArgsForCall []struct {
 		arg1 *exec.Cmd
 		arg2 chan struct{}
 	}
 	startReturns struct {
-		result1 error
+		result1 []byte
+		result2 error
 	}
 	startReturnsOnCall map[int]struct {
-		result1 error
+		result1 []byte
+		result2 error
 	}
 	invocations      map[string][][]interface{}
 	invocationsMutex sync.RWMutex
 }
 
-func (fake *FakeProcessStarter) Start(arg1 *exec.Cmd, arg2 chan struct{}) error {
+func (fake *FakeProcessManager) Start(arg1 *exec.Cmd, arg2 chan struct{}) ([]byte, error) {
 	fake.startMutex.Lock()
 	ret, specificReturn := fake.startReturnsOnCall[len(fake.startArgsForCall)]
 	fake.startArgsForCall = append(fake.startArgsForCall, struct {
@@ -38,43 +40,46 @@ func (fake *FakeProcessStarter) Start(arg1 *exec.Cmd, arg2 chan struct{}) error 
 		return fake.StartStub(arg1, arg2)
 	}
 	if specificReturn {
-		return ret.result1
+		return ret.result1, ret.result2
 	}
-	return fake.startReturns.result1
+	return fake.startReturns.result1, fake.startReturns.result2
 }
 
-func (fake *FakeProcessStarter) StartCallCount() int {
+func (fake *FakeProcessManager) StartCallCount() int {
 	fake.startMutex.RLock()
 	defer fake.startMutex.RUnlock()
 	return len(fake.startArgsForCall)
 }
 
-func (fake *FakeProcessStarter) StartArgsForCall(i int) (*exec.Cmd, chan struct{}) {
+func (fake *FakeProcessManager) StartArgsForCall(i int) (*exec.Cmd, chan struct{}) {
 	fake.startMutex.RLock()
 	defer fake.startMutex.RUnlock()
 	return fake.startArgsForCall[i].arg1, fake.startArgsForCall[i].arg2
 }
 
-func (fake *FakeProcessStarter) StartReturns(result1 error) {
+func (fake *FakeProcessManager) StartReturns(result1 []byte, result2 error) {
 	fake.StartStub = nil
 	fake.startReturns = struct {
-		result1 error
-	}{result1}
+		result1 []byte
+		result2 error
+	}{result1, result2}
 }
 
-func (fake *FakeProcessStarter) StartReturnsOnCall(i int, result1 error) {
+func (fake *FakeProcessManager) StartReturnsOnCall(i int, result1 []byte, result2 error) {
 	fake.StartStub = nil
 	if fake.startReturnsOnCall == nil {
 		fake.startReturnsOnCall = make(map[int]struct {
-			result1 error
+			result1 []byte
+			result2 error
 		})
 	}
 	fake.startReturnsOnCall[i] = struct {
-		result1 error
-	}{result1}
+		result1 []byte
+		result2 error
+	}{result1, result2}
 }
 
-func (fake *FakeProcessStarter) Invocations() map[string][][]interface{} {
+func (fake *FakeProcessManager) Invocations() map[string][][]interface{} {
 	fake.invocationsMutex.RLock()
 	defer fake.invocationsMutex.RUnlock()
 	fake.startMutex.RLock()
@@ -86,7 +91,7 @@ func (fake *FakeProcessStarter) Invocations() map[string][][]interface{} {
 	return copiedInvocations
 }
 
-func (fake *FakeProcessStarter) recordInvocation(key string, args []interface{}) {
+func (fake *FakeProcessManager) recordInvocation(key string, args []interface{}) {
 	fake.invocationsMutex.Lock()
 	defer fake.invocationsMutex.Unlock()
 	if fake.invocations == nil {
@@ -98,4 +103,4 @@ func (fake *FakeProcessStarter) recordInvocation(key string, args []interface{})
 	fake.invocations[key] = append(fake.invocations[key], args)
 }
 
-var _ executor.ProcessStarter = new(FakeProcessStarter)
+var _ process.ProcessManager = new(FakeProcessManager)

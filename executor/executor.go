@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"code.cloudfoundry.org/lager"
+	"github.com/pivotal-cf/service-backup/process"
 	"github.com/pivotal-cf/service-backup/upload"
 	"github.com/satori/go.uuid"
 )
@@ -33,7 +34,7 @@ type executor struct {
 	exitIfBackupInProgress bool
 	backupInProgress       bool
 	logger                 lager.Logger
-	processStarter         ProcessStarter
+	processManager         process.ProcessManager
 	execCommand            CmdFunc
 	dirSize                DirSizeFunc
 }
@@ -50,9 +51,10 @@ func NewExecutor(
 	serviceIdentifierCmd string,
 	exitIfInProgress bool,
 	logger lager.Logger,
-	processStarter ProcessStarter,
+	processManager process.ProcessManager,
 	options ...Option,
 ) *executor {
+
 	e := &executor{
 		uploader:               uploader,
 		sourceFolder:           sourceFolder,
@@ -62,7 +64,7 @@ func NewExecutor(
 		exitIfBackupInProgress: exitIfInProgress,
 		backupInProgress:       false,
 		logger:                 logger,
-		processStarter:         processStarter,
+		processManager:         processManager,
 		execCommand:            exec.Command,
 		dirSize:                calculateDirSize,
 	}
@@ -173,7 +175,7 @@ func (e *executor) performBackup(sessionLogger lager.Logger) error {
 	args := strings.Split(e.backupCreatorCmd, " ")
 	cmd := exec.Command(args[0], args[1:]...)
 
-	err := e.processStarter.Start(cmd, make(chan struct{}))
+	_, err := e.processManager.Start(cmd, make(chan struct{}))
 	if err != nil {
 		sessionLogger.Error("Perform backup completed with error", err)
 		return err
@@ -208,7 +210,7 @@ func (e *executor) uploadBackup(sessionLogger lager.Logger) error {
 	sessionLogger.Info("Upload backup started")
 
 	startTime := time.Now()
-	err := e.uploader.Upload(e.sourceFolder, sessionLogger)
+	err := e.uploader.Upload(e.sourceFolder, sessionLogger, e.processManager)
 	duration := time.Since(startTime)
 
 	if err != nil {

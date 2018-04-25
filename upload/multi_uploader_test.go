@@ -12,6 +12,7 @@ import (
 	"code.cloudfoundry.org/lager"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	"github.com/pivotal-cf/service-backup/process"
 )
 
 var _ = Describe("multiUploader", func() {
@@ -21,6 +22,8 @@ var _ = Describe("multiUploader", func() {
 			uploaderB *fakeUploader
 			uploader  *multiUploader
 
+			processManager process.ProcessManager
+
 			localPath = "local/path"
 			logger    = lager.NewLogger("multi-logger")
 		)
@@ -29,11 +32,12 @@ var _ = Describe("multiUploader", func() {
 			uploaderA = new(fakeUploader)
 			uploaderB = new(fakeUploader)
 			uploader = &multiUploader{[]Uploader{uploaderA, uploaderB}}
+			processManager = process.NewManager()
 		})
 
 		Context("when all uploads succeed", func() {
 			It("calls upload on each uploader", func() {
-				err := uploader.Upload(localPath, logger)
+				err := uploader.Upload(localPath, logger, processManager)
 
 				Expect(err).NotTo(HaveOccurred())
 
@@ -57,12 +61,12 @@ var _ = Describe("multiUploader", func() {
 			})
 
 			It("returns the error from the first uploader", func() {
-				err := uploader.Upload(localPath, logger)
+				err := uploader.Upload(localPath, logger, processManager)
 				Expect(err).To(MatchError(ContainSubstring("first backup failed")))
 			})
 
 			It("calls upload on all the uploaders", func() {
-				uploader.Upload(localPath, logger)
+				uploader.Upload(localPath, logger, processManager)
 				Expect(len(uploaderA.uploadArgs)).To(Equal(1))
 				Expect(len(uploaderB.uploadArgs)).To(Equal(1))
 			})
@@ -75,13 +79,13 @@ var _ = Describe("multiUploader", func() {
 			})
 
 			It("returns the errors from both uploaders", func() {
-				err := uploader.Upload(localPath, logger)
+				err := uploader.Upload(localPath, logger, processManager)
 				Expect(err).To(MatchError(ContainSubstring("first backup failed")))
 				Expect(err).To(MatchError(ContainSubstring("second backup failed")))
 			})
 
 			It("calls upload on all the uploaders", func() {
-				uploader.Upload(localPath, logger)
+				uploader.Upload(localPath, logger, processManager)
 				Expect(len(uploaderA.uploadArgs)).To(Equal(1))
 				Expect(len(uploaderB.uploadArgs)).To(Equal(1))
 			})
@@ -105,7 +109,7 @@ type fakeUploader struct {
 	name string
 }
 
-func (f *fakeUploader) Upload(name string, logger lager.Logger) error {
+func (f *fakeUploader) Upload(name string, logger lager.Logger, _ process.ProcessManager) error {
 	f.uploadArgs = append(f.uploadArgs, struct {
 		string
 		lager.Logger

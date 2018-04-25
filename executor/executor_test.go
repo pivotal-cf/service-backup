@@ -20,7 +20,8 @@ import (
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gbytes"
 	"github.com/pivotal-cf/service-backup/executor"
-	"github.com/pivotal-cf/service-backup/executor/fakes"
+	"github.com/pivotal-cf/service-backup/process"
+	processfakes "github.com/pivotal-cf/service-backup/process/fakes"
 )
 
 var _ = Describe("Executor", func() {
@@ -30,7 +31,7 @@ var _ = Describe("Executor", func() {
 		uploader       *fakeUploader
 		logger         lager.Logger
 		log            *gbytes.Buffer
-		processStarter *fakes.FakeProcessStarter
+		processStarter *processfakes.FakeProcessManager
 
 		fakeExecArgs [][]string
 		fakeExec     = func(name string, args ...string) *exec.Cmd {
@@ -41,7 +42,7 @@ var _ = Describe("Executor", func() {
 
 	BeforeEach(func() {
 		fakeExecArgs = [][]string{}
-		processStarter = &fakes.FakeProcessStarter{}
+		processStarter = &processfakes.FakeProcessManager{}
 
 		log = gbytes.NewBuffer()
 		logger = lager.NewLogger("executor")
@@ -96,7 +97,7 @@ var _ = Describe("Executor", func() {
 			)
 
 			stubbedError := errors.New("any error")
-			processStarter.StartReturns(stubbedError)
+			processStarter.StartReturns([]byte{}, stubbedError)
 
 			err := backupExecutor.Execute()
 
@@ -399,7 +400,7 @@ type fakeUploader struct {
 	uploadErr  error
 }
 
-func (f *fakeUploader) Upload(name string, logger lager.Logger) error {
+func (f *fakeUploader) Upload(name string, logger lager.Logger, manager process.ProcessManager) error {
 	if f.uploadStub != nil {
 		return f.uploadStub(name, logger)
 	}

@@ -14,7 +14,7 @@ func alive(c *exec.Cmd) bool {
 		c.Process.Signal(syscall.Signal(0)) == nil
 }
 
-var _ = Describe("process terminator", func() {
+var _ = Describe("process manager", func() {
 	It("starts and terminates processes", func() {
 		pt := process.NewManager()
 		var commands []*exec.Cmd
@@ -39,7 +39,7 @@ var _ = Describe("process terminator", func() {
 		cmd2 := exec.Command("true")
 
 		pt.Start(cmd1, make(chan struct{}))
-		err := pt.Start(cmd2, make(chan struct{}))
+		_, err := pt.Start(cmd2, make(chan struct{}))
 		Expect(err).NotTo(HaveOccurred())
 
 		pt.Terminate()
@@ -69,7 +69,7 @@ var _ = Describe("process terminator", func() {
 		}()
 		go func() {
 			<-cmd1Done
-			err := pt.Start(cmd3, make(chan struct{}))
+			_, err := pt.Start(cmd3, make(chan struct{}))
 			Expect(err).NotTo(HaveOccurred())
 			cmd3Finished <- true
 		}()
@@ -87,10 +87,10 @@ var _ = Describe("process terminator", func() {
 		cmd1 := exec.Command("idonotexist123")
 		cmd2 := exec.Command("idonotexist124")
 
-		err := pt.Start(cmd1, make(chan struct{}))
+		_, err := pt.Start(cmd1, make(chan struct{}))
 		Expect(err).To(HaveOccurred())
 
-		err = pt.Start(cmd2, make(chan struct{}))
+		_, err = pt.Start(cmd2, make(chan struct{}))
 		Expect(err).To(HaveOccurred())
 	})
 
@@ -98,7 +98,7 @@ var _ = Describe("process terminator", func() {
 		pt := process.NewManager()
 		cmd := exec.Command("false")
 
-		err := pt.Start(cmd, make(chan struct{}))
+		_, err := pt.Start(cmd, make(chan struct{}))
 		Expect(err).To(HaveOccurred())
 	})
 
@@ -106,5 +106,22 @@ var _ = Describe("process terminator", func() {
 		pt := process.NewManager()
 		pt.Terminate()
 		Expect(true).To(BeTrue())
+	})
+
+	It("captures stdout from the executable", func() {
+		pt := process.NewManager()
+		cmd := exec.Command("echo", "-n", "foobar")
+
+		out, err := pt.Start(cmd, make(chan struct{}))
+		Expect(err).NotTo(HaveOccurred())
+		Expect(string(out)).Should(Equal("foobar"))
+	})
+
+	It("captures stderr from the executable", func() {
+		pt := process.NewManager()
+		cmd := exec.Command("rm", "foobar")
+
+		out, _ := pt.Start(cmd, make(chan struct{}))
+		Expect(string(out)).Should(ContainSubstring("rm: foobar: No such file or directory"))
 	})
 })

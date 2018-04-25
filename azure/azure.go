@@ -13,6 +13,7 @@ import (
 	"path"
 
 	"code.cloudfoundry.org/lager"
+	"github.com/pivotal-cf/service-backup/process"
 )
 
 type AzureClient struct {
@@ -37,16 +38,16 @@ func New(name, accountKey, accountName, container, blobStoreBaseUrl, azureCmd st
 	}
 }
 
-func (a *AzureClient) Upload(localPath string, sessionLogger lager.Logger) error {
+func (a *AzureClient) Upload(localPath string, sessionLogger lager.Logger, processManager process.ProcessManager) error {
 	remotePath := a.remotePathFn()
 
 	sessionLogger.Info("Uploading azure blobs", lager.Data{"container": a.container, "localPath": localPath, "remotePath": remotePath})
 	sessionLogger.Info("The container and remote path will be created if they don't already exist", lager.Data{"container": a.container, "remotePath": remotePath})
 	sessionLogger.Info(fmt.Sprintf("about to upload %s to Azure remote path %s", localPath, remotePath))
-	return a.uploadDir(localPath, remotePath, sessionLogger)
+	return a.uploadDir(localPath, remotePath, processManager, sessionLogger)
 }
 
-func (a *AzureClient) uploadDir(localFilePath, remoteFilePath string, sessionLogger lager.Logger) error {
+func (a *AzureClient) uploadDir(localFilePath, remoteFilePath string, processManager process.ProcessManager, sessionLogger lager.Logger) error {
 	file, err := os.Open(localFilePath)
 	if err != nil {
 		return err
@@ -64,7 +65,10 @@ func (a *AzureClient) uploadDir(localFilePath, remoteFilePath string, sessionLog
 		"LANG=C.UTF-8",
 		"BLOBXFER_STORAGE_ACCOUNT_KEY="+a.accountKey,
 	)
-	output, err := cmd.CombinedOutput()
+
+	started := make(chan struct{})
+	output, err := processManager.Start(cmd, started)
+
 	if err != nil {
 		sessionLogger.Info("blobxfer combined output", lager.Data{"output": string(output)})
 	}

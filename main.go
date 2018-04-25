@@ -39,7 +39,7 @@ func main() {
 		os.Exit(2)
 	}
 
-	terminator := process.NewManager()
+	manager := process.NewManager()
 
 	var backupExecutor executor.Executor
 	if backupConfig.NoDestinations() {
@@ -59,7 +59,7 @@ func main() {
 			backupConfig.ServiceIdentifierExecutable,
 			backupConfig.ExitIfInProgress,
 			logger,
-			terminator,
+			manager,
 		)
 	}
 
@@ -75,7 +75,7 @@ func main() {
 	go func() {
 		<-sigterms
 		scheduler.Stop()
-		terminator.Terminate()
+		manager.Terminate()
 		logger.Info("All backup processes terminated. Exiting")
 		os.Exit(1)
 	}()

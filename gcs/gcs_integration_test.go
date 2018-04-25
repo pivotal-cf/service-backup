@@ -22,6 +22,7 @@ import (
 	. "github.com/onsi/gomega"
 	"github.com/pborman/uuid"
 	"github.com/pivotal-cf/service-backup/gcs"
+	"github.com/pivotal-cf/service-backup/process"
 	"github.com/pivotal-cf/service-backup/testhelpers"
 	"github.com/pivotal-cf/service-backup/upload"
 	"google.golang.org/api/option"
@@ -72,7 +73,7 @@ var _ = Describe("backups to Google Cloud Storage", func() {
 		JustBeforeEach(func() {
 			logger := lager.NewLogger("[GCS tests] ")
 			logger.RegisterSink(lager.NewWriterSink(GinkgoWriter, lager.DEBUG))
-			Expect(backuper.Upload(dirToBackup, logger)).To(Succeed())
+			Expect(backuper.Upload(dirToBackup, logger, process.NewManager())).To(Succeed())
 		})
 
 		AfterEach(func() {
@@ -97,7 +98,7 @@ var _ = Describe("backups to Google Cloud Storage", func() {
 				backuper := gcs.New("icanbeanything", "idontexist", "", "", upload.RemotePathFunc("", ""))
 				logger := lager.NewLogger("[GCS tests] ")
 				logger.RegisterSink(lager.NewWriterSink(GinkgoWriter, lager.DEBUG))
-				Expect(backuper.Upload("", logger)).To(MatchError(ContainSubstring("error creating Google Cloud Storage client")))
+				Expect(backuper.Upload("", logger, process.NewManager())).To(MatchError(ContainSubstring("error creating Google Cloud Storage client")))
 			})
 		})
 	})
