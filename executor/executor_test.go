@@ -81,7 +81,7 @@ var _ = Describe("Executor", func() {
 
 			Expect(err).NotTo(HaveOccurred())
 			Expect(processManager.StartCallCount()).To(BeNumerically(">", 1))
-			command, _ := processManager.StartArgsForCall(0)
+			command := processManager.StartArgsForCall(0)
 			Expect(command.Path).To(Equal(assetPath("fake-snapshotter")))
 		})
 
@@ -103,7 +103,7 @@ var _ = Describe("Executor", func() {
 			Expect(err).NotTo(HaveOccurred())
 
 			Expect(processManager.StartCallCount()).To(Equal(2))
-			cmd, _ := processManager.StartArgsForCall(1)
+			cmd := processManager.StartArgsForCall(1)
 			Expect(cmd.Path).To(Equal(assetPath("fake-cleanup")))
 		})
 

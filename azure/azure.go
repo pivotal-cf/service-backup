@@ -66,7 +66,6 @@ func (a *AzureClient) uploadDir(localFilePath, remoteFilePath string, processMan
 		"BLOBXFER_STORAGE_ACCOUNT_KEY="+a.accountKey,
 	)
 
-	started := make(chan struct{})
 	output, err := processManager.Start(cmd)
 
 	if err != nil {
