@@ -195,7 +195,7 @@ func (e *executor) performCleanup(sessionLogger lager.Logger) error {
 	args := strings.Split(e.cleanupCmd, " ")
 	cmd := exec.Command(args[0], args[1:]...)
 
-	_, err := cmd.CombinedOutput()
+	_, err := e.processManager.Start(cmd, make(chan struct{}))
 
 	if err != nil {
 		sessionLogger.Error("Cleanup completed with error", err)

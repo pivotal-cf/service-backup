@@ -31,7 +31,7 @@ var _ = Describe("Executor", func() {
 		uploader       *fakeUploader
 		logger         lager.Logger
 		log            *gbytes.Buffer
-		processStarter *processfakes.FakeProcessManager
+		processManager *processfakes.FakeProcessManager
 
 		fakeExecArgs [][]string
 		fakeExec     = func(name string, args ...string) *exec.Cmd {
@@ -42,7 +42,7 @@ var _ = Describe("Executor", func() {
 
 	BeforeEach(func() {
 		fakeExecArgs = [][]string{}
-		processStarter = &processfakes.FakeProcessManager{}
+		processManager = &processfakes.FakeProcessManager{}
 
 		log = gbytes.NewBuffer()
 		logger = lager.NewLogger("executor")
@@ -73,14 +73,38 @@ var _ = Describe("Executor", func() {
 				"",
 				exitIfBackupInProgress,
 				logger,
-				processStarter,
+				processManager,
 				executor.WithCommandFunc(fakeExec),
 			)
 
 			err := backupExecutor.Execute()
 
 			Expect(err).NotTo(HaveOccurred())
-			Expect(processStarter.StartCallCount()).To(Equal(1))
+			Expect(processManager.StartCallCount()).To(BeNumerically(">", 1))
+			command, _ := processManager.StartArgsForCall(0)
+			Expect(command.Path).To(Equal(assetPath("fake-snapshotter")))
+		})
+
+		It("cleans up after uploading", func() {
+			backupExecutor = executor.NewExecutor(
+				uploader,
+				"source-folder",
+				assetPath("fake-snapshotter"),
+				assetPath("fake-cleanup"),
+				"",
+				exitIfBackupInProgress,
+				logger,
+				processManager,
+				executor.WithCommandFunc(fakeExec),
+			)
+
+			err := backupExecutor.Execute()
+
+			Expect(err).NotTo(HaveOccurred())
+
+			Expect(processManager.StartCallCount()).To(Equal(2))
+			cmd, _ := processManager.StartArgsForCall(1)
+			Expect(cmd.Path).To(Equal(assetPath("fake-cleanup")))
 		})
 
 		It("propagates errors from the starter", func() {
@@ -92,12 +116,12 @@ var _ = Describe("Executor", func() {
 				"",
 				exitIfBackupInProgress,
 				logger,
-				processStarter,
+				processManager,
 				executor.WithCommandFunc(fakeExec),
 			)
 
 			stubbedError := errors.New("any error")
-			processStarter.StartReturns([]byte{}, stubbedError)
+			processManager.StartReturns([]byte{}, stubbedError)
 
 			err := backupExecutor.Execute()
 
@@ -116,7 +140,7 @@ var _ = Describe("Executor", func() {
 					serviceIdentifierCmd,
 					exitIfBackupInProgress,
 					logger,
-					processStarter,
+					processManager,
 					executor.WithCommandFunc(fakeExec),
 				)
 
@@ -158,7 +182,7 @@ var _ = Describe("Executor", func() {
 					"",
 					exitIfBackupInProgress,
 					logger,
-					processStarter,
+					processManager,
 					executor.WithCommandFunc(fakeExec),
 				)
 
@@ -187,7 +211,7 @@ var _ = Describe("Executor", func() {
 					"",
 					exitIfBackupInProgress,
 					logger,
-					processStarter,
+					processManager,
 					executor.WithCommandFunc(fakeExec),
 				)
 
@@ -209,7 +233,7 @@ var _ = Describe("Executor", func() {
 					performIdentifyServiceCmd,
 					exitIfBackupInProgress,
 					logger,
-					processStarter,
+					processManager,
 					executor.WithCommandFunc(fakeExec),
 					executor.WithDirSizeFunc(func(string) (int64, error) { return 200, nil }),
 				)
@@ -319,7 +343,7 @@ var _ = Describe("Executor", func() {
 						performIdentifyServiceCmd,
 						exitIfBackupAlreadyInProgress,
 						logger,
-						processStarter,
+						processManager,
 						executor.WithCommandFunc(fakeExec),
 					)
 				})
@@ -366,7 +390,7 @@ var _ = Describe("Executor", func() {
 						performIdentifyServiceCmd,
 						true,
 						logger,
-						processStarter,
+						processManager,
 						executor.WithCommandFunc(fakeExec),
 					)
 
