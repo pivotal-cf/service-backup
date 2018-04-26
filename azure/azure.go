@@ -67,7 +67,7 @@ func (a *AzureClient) uploadDir(localFilePath, remoteFilePath string, processMan
 	)
 
 	started := make(chan struct{})
-	output, err := processManager.Start(cmd, started)
+	output, err := processManager.Start(cmd)
 
 	if err != nil {
 		sessionLogger.Info("blobxfer combined output", lager.Data{"output": string(output)})

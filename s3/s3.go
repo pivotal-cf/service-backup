@@ -91,7 +91,7 @@ func (c *S3CliClient) remotePathExists(remotePath string, sessionLogger lager.Lo
 
 	cmd := c.S3Cmd("ls", bucketName)
 
-	if out, err := c.ProcessMgr.Start(cmd, make(chan struct{})); err != nil {
+	if out, err := c.ProcessMgr.Start(cmd); err != nil {
 		if bytes.Contains(out, []byte("NoSuchBucket")) {
 			return false, nil
 		}
@@ -119,7 +119,7 @@ func (c *S3CliClient) Upload(localPath string, sessionLogger lager.Logger, proce
 
 	sessionLogger.Info(fmt.Sprintf("about to upload %s to S3 remote path %s", localPath, remotePath))
 	cmd := c.S3Cmd("sync", localPath, fmt.Sprintf("s3://%s", remotePath))
-	out, err := c.ProcessMgr.Start(cmd, make(chan struct{}))
+	out, err := c.ProcessMgr.Start(cmd)
 	if err == nil {
 		return nil
 	}
@@ -140,7 +140,7 @@ func (c *S3CliClient) Upload(localPath string, sessionLogger lager.Logger, proce
 }
 
 func (c *S3CliClient) RunCommand(cmd *exec.Cmd, stepName string) error {
-	if out, err := c.ProcessMgr.Start(cmd, make(chan struct{})); err != nil {
+	if out, err := c.ProcessMgr.Start(cmd); err != nil {
 		return fmt.Errorf("error in %s: %s, output: %s", stepName, err, string(out))
 	}
 	return nil

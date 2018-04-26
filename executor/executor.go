@@ -175,7 +175,7 @@ func (e *executor) performBackup(sessionLogger lager.Logger) error {
 	args := strings.Split(e.backupCreatorCmd, " ")
 	cmd := exec.Command(args[0], args[1:]...)
 
-	_, err := e.processManager.Start(cmd, make(chan struct{}))
+	_, err := e.processManager.Start(cmd)
 	if err != nil {
 		sessionLogger.Error("Perform backup completed with error", err)
 		return err
@@ -195,7 +195,7 @@ func (e *executor) performCleanup(sessionLogger lager.Logger) error {
 	args := strings.Split(e.cleanupCmd, " ")
 	cmd := exec.Command(args[0], args[1:]...)
 
-	_, err := e.processManager.Start(cmd, make(chan struct{}))
+	_, err := e.processManager.Start(cmd)
 
 	if err != nil {
 		sessionLogger.Error("Cleanup completed with error", err)

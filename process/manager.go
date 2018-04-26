@@ -11,7 +11,7 @@ import (
 
 //go:generate counterfeiter -o fakes/process_manager.go . ProcessManager
 type ProcessManager interface {
-	Start(*exec.Cmd, chan struct{}) ([]byte, error)
+	Start(*exec.Cmd) ([]byte, error)
 }
 
 type Manager struct {
@@ -35,7 +35,7 @@ func NewManager() *Manager {
 	return pt
 }
 
-func (m *Manager) Start(cmd *exec.Cmd, started chan struct{}) ([]byte, error) {
+func (m *Manager) Start(cmd *exec.Cmd) ([]byte, error) {
 	m.lock.Lock()
 	if m.isBeingShutdown() {
 		return nil, errors.New("Shutdown in progress")
@@ -62,7 +62,6 @@ func (m *Manager) Start(cmd *exec.Cmd, started chan struct{}) ([]byte, error) {
 		return nil, err
 	}
 	m.wg.Add(1)
-	close(started)
 	m.lock.Unlock()
 
 	go func() {

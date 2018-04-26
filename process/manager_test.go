@@ -20,10 +20,8 @@ var _ = Describe("process manager", func() {
 		var commands []*exec.Cmd
 		for i := 0; i < 25; i++ {
 			cmd := exec.Command("sleep", "42")
-			started := make(chan struct{})
 			commands = append(commands, cmd)
-			go func() { pt.Start(cmd, started) }()
-			Eventually(started).Should(BeClosed())
+			go func() { pt.Start(cmd) }()
 		}
 
 		pt.Terminate()
@@ -38,8 +36,8 @@ var _ = Describe("process manager", func() {
 		cmd1 := exec.Command("true")
 		cmd2 := exec.Command("true")
 
-		pt.Start(cmd1, make(chan struct{}))
-		_, err := pt.Start(cmd2, make(chan struct{}))
+		pt.Start(cmd1)
+		_, err := pt.Start(cmd2)
 		Expect(err).NotTo(HaveOccurred())
 
 		pt.Terminate()
@@ -60,16 +58,16 @@ var _ = Describe("process manager", func() {
 
 		go func() {
 			cmd1Started <- true
-			pt.Start(cmd1, make(chan struct{}))
+			pt.Start(cmd1)
 			cmd1Done <- true
 		}()
 		go func() {
 			<-cmd1Started
-			pt.Start(cmd2, make(chan struct{}))
+			pt.Start(cmd2)
 		}()
 		go func() {
 			<-cmd1Done
-			_, err := pt.Start(cmd3, make(chan struct{}))
+			_, err := pt.Start(cmd3)
 			Expect(err).NotTo(HaveOccurred())
 			cmd3Finished <- true
 		}()
@@ -87,10 +85,10 @@ var _ = Describe("process manager", func() {
 		cmd1 := exec.Command("idonotexist123")
 		cmd2 := exec.Command("idonotexist124")
 
-		_, err := pt.Start(cmd1, make(chan struct{}))
+		_, err := pt.Start(cmd1)
 		Expect(err).To(HaveOccurred())
 
-		_, err = pt.Start(cmd2, make(chan struct{}))
+		_, err = pt.Start(cmd2)
 		Expect(err).To(HaveOccurred())
 	})
 
@@ -98,7 +96,7 @@ var _ = Describe("process manager", func() {
 		pt := process.NewManager()
 		cmd := exec.Command("false")
 
-		_, err := pt.Start(cmd, make(chan struct{}))
+		_, err := pt.Start(cmd)
 		Expect(err).To(HaveOccurred())
 	})
 
@@ -112,7 +110,7 @@ var _ = Describe("process manager", func() {
 		pt := process.NewManager()
 		cmd := exec.Command("echo", "-n", "foobar")
 
-		out, err := pt.Start(cmd, make(chan struct{}))
+		out, err := pt.Start(cmd)
 		Expect(err).NotTo(HaveOccurred())
 		Expect(string(out)).Should(Equal("foobar"))
 	})
@@ -121,7 +119,7 @@ var _ = Describe("process manager", func() {
 		pt := process.NewManager()
 		cmd := exec.Command("rm", "foobar")
 
-		out, _ := pt.Start(cmd, make(chan struct{}))
+		out, _ := pt.Start(cmd)
 		Expect(string(out)).Should(ContainSubstring("No such file or directory"))
 	})
 })
