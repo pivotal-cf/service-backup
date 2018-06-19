@@ -96,7 +96,7 @@ func createFilesIn(path string) int64 {
 	size := int64(0)
 
 	for i := 0; i < 5; i++ {
-		file, err := ioutil.TempFile(path, "")
+		file, err := ioutil.TempFile(path, "executor")
 		Expect(err).ToNot(HaveOccurred())
 
 		fileContentsUUID := uuid.NewV4()

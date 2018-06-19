@@ -19,7 +19,7 @@ import (
 var _ = Describe("process manager", func() {
 	Context("Backup command", func() {
 		It("propagates a TERM signal to child backup commands", func() {
-			evidenceFile, err := ioutil.TempFile("", "")
+			evidenceFile, err := ioutil.TempFile("", "process_manager")
 			Expect(err).ToNot(HaveOccurred())
 			err = os.Remove(evidenceFile.Name())
 			Expect(err).ToNot(HaveOccurred())

@@ -42,7 +42,7 @@ var _ = Describe("Azure backup", func() {
 		fakeAzureCmd := assetPath("term_trapper")
 		fakeRemotePathFn := func() string { return "hi" }
 
-		evidenceFile, err := ioutil.TempFile("", "")
+		evidenceFile, err := ioutil.TempFile("", "azure-test")
 		Expect(err).ToNot(HaveOccurred())
 		evidencePath := evidenceFile.Name()
 		err = os.Remove(evidencePath)

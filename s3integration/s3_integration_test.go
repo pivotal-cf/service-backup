@@ -813,7 +813,7 @@ var _ = Describe("S3 Backup", func() {
 				fakeS3Cmd := assetPath("term_trapper")
 				fakeRemotePathFn := func() string { return "hi" }
 
-				evidenceFile, err := ioutil.TempFile("", "")
+				evidenceFile, err := ioutil.TempFile("", "s3-integration")
 				Expect(err).ToNot(HaveOccurred())
 				evidencePath := evidenceFile.Name()
 				err = os.Remove(evidencePath)
@@ -1574,7 +1574,7 @@ func createFilesToUpload(sourceFolder string, smallFile bool) map[string]string 
 }
 
 func createFileIn(sourceFolder string) (string, string) {
-	file, err := ioutil.TempFile(sourceFolder, "")
+	file, err := ioutil.TempFile(sourceFolder, "s3-integration")
 	Expect(err).ToNot(HaveOccurred())
 
 	fileContentsUUID := uuid.NewV4()
@@ -1588,7 +1588,7 @@ func createFileIn(sourceFolder string) (string, string) {
 }
 
 func createLargeFileIn(sourceFolder string) (string, string) {
-	file, err := ioutil.TempFile(sourceFolder, "")
+	file, err := ioutil.TempFile(sourceFolder, "s3-Integration")
 	Expect(err).ToNot(HaveOccurred())
 
 	fileContents := string(make([]byte, 100*1000*1024))

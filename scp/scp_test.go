@@ -19,7 +19,7 @@ var _ = Describe("scp", func() {
 		fakeScpCmd := assetPath("term_trapper")
 		fakeRemotePathFn := func() string { return "hi" }
 
-		evidenceFile, err := ioutil.TempFile("", "")
+		evidenceFile, err := ioutil.TempFile("", "scp-test")
 		Expect(err).ToNot(HaveOccurred())
 		evidencePath := evidenceFile.Name()
 		err = os.Remove(evidencePath)
