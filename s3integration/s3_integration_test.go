@@ -753,7 +753,7 @@ var _ = Describe("S3 Backup", func() {
 				)
 				Expect(err).ToNot(HaveOccurred())
 
-				Eventually(session.Out, awsTimeout).Should(gbytes.Say("Connection aborted"))
+				Eventually(session.Out, awsTimeout).Should(gbytes.Say("Could not connect to the endpoint URL"))
 
 				session.Terminate().Wait()
 				Eventually(session).Should(gexec.Exit())

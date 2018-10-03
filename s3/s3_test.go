@@ -12,7 +12,6 @@ import (
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	"github.com/pivotal-cf/service-backup/process"
 	"github.com/pivotal-cf/service-backup/s3"
 	"github.com/pivotal-cf/service-backup/upload"
 )
@@ -22,7 +21,6 @@ var _ = Describe("S3", func() {
 		var (
 			lsCmd                                                                       *exec.Cmd
 			awsCmdPath, endpointURL, region, accessKey, secretKey, systemTrustStorePath string
-			processManager                                                              process.ProcessManager
 		)
 
 		BeforeEach(func() {
@@ -32,7 +30,6 @@ var _ = Describe("S3", func() {
 			accessKey = "access-key"
 			secretKey = "secret-key"
 			systemTrustStorePath = "path/to/system/trust/store"
-			processManager = process.NewManager()
 		})
 
 		JustBeforeEach(func() {
