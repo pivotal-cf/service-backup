@@ -67,6 +67,7 @@ func (m *Manager) Start(cmd *exec.Cmd) ([]byte, error) {
 	go func() {
 		defer m.wg.Done()
 		scanner := bufio.NewScanner(multi)
+		scanner.Split(splitOn16k)
 		for scanner.Scan() {
 			combinedOutput = append(combinedOutput, scanner.Bytes()...)
 		}
@@ -78,6 +79,7 @@ func (m *Manager) Start(cmd *exec.Cmd) ([]byte, error) {
 		cmd.Process.Signal(syscall.SIGTERM)
 		stdout.Close()
 		stderr.Close()
+		<-processExitChan
 		return combinedOutput, errors.New("SIGTERM propagated to child process")
 	case retVal := <-processExitChan:
 		return combinedOutput, retVal
@@ -89,4 +91,22 @@ func (m *Manager) Terminate() {
 	close(m.killAll)
 	m.wg.Wait()
 	m.lock.Unlock()
+}
+
+func splitOn16k(data []byte, atEOF bool) (advance int, token []byte, err error) {
+	if atEOF && len(data) == 0 {
+		return 0, nil, nil
+	}
+
+	if atEOF {
+		return len(data), data, nil
+	}
+
+	maxBufSize := 16 * 1024
+
+	if len(data) < maxBufSize {
+		return 0, nil, nil
+	}
+
+	return maxBufSize, data[0:maxBufSize], nil
 }

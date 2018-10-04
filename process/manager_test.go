@@ -2,7 +2,9 @@ package process_test
 
 import (
 	"os/exec"
+	"strings"
 	"syscall"
+	"time"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -107,12 +109,28 @@ var _ = Describe("process manager", func() {
 	})
 
 	It("captures stdout from the executable", func() {
+		const minimalBlockingByteCount = 128*1024 + 1
 		pt := process.NewManager()
-		cmd := exec.Command("echo", "-n", "foobar")
+		cmd := exec.Command("echo", "-n", strings.Repeat("X", minimalBlockingByteCount))
 
-		out, err := pt.Start(cmd)
-		Expect(err).NotTo(HaveOccurred())
-		Expect(string(out)).Should(Equal("foobar"))
+		var (
+			out []byte
+			errCh = make(chan error, 1)
+		)
+
+		go func() {
+			var err error
+			out, err = pt.Start(cmd)
+			errCh <- err
+		}()
+
+		select {
+		case err := <-errCh:
+			Expect(err).NotTo(HaveOccurred())
+			Expect(string(out)).Should(Equal(strings.Repeat("X", minimalBlockingByteCount)))
+		case <-time.After(5 * time.Second):
+			Fail("Expected command to exit within 5s, but it did not.")
+		}
 	})
 
 	It("captures stderr from the executable", func() {
