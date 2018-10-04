@@ -110,11 +110,12 @@ var _ = Describe("process manager", func() {
 
 	It("captures stdout from the executable", func() {
 		const minimalBlockingByteCount = 128*1024 + 1
+		cmdstr := "for i in $(seq 1 131073); do echo -n X; done"
 		pt := process.NewManager()
-		cmd := exec.Command("echo", "-n", strings.Repeat("X", minimalBlockingByteCount))
+		cmd := exec.Command("bash", "-c", cmdstr)
 
 		var (
-			out []byte
+			out   []byte
 			errCh = make(chan error, 1)
 		)
 
