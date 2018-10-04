@@ -42,7 +42,6 @@ func (m *Manager) Start(cmd *exec.Cmd) ([]byte, error) {
 
 	processExitChan := make(chan error, 1)
 
-	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
 	stdout := &bytes.Buffer{}
 	stderr := &bytes.Buffer{}
 	cmd.Stdout = stdout
@@ -65,7 +64,7 @@ func (m *Manager) Start(cmd *exec.Cmd) ([]byte, error) {
 
 	select {
 	case <-m.killAll:
-		syscall.Kill(-cmd.Process.Pid, syscall.SIGTERM)
+		cmd.Process.Signal(syscall.SIGTERM)
 		<-processExitChan
 		return combinedOutput(), errors.New("SIGTERM propagated to child process")
 	case retVal := <-processExitChan:
