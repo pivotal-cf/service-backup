@@ -755,8 +755,7 @@ var _ = Describe("S3 Backup", func() {
 
 				Eventually(session.Out, awsTimeout).Should(gbytes.Say("Could not connect to the endpoint URL"))
 
-				session.Terminate().Wait()
-				Eventually(session).Should(gexec.Exit())
+				session.Terminate().Wait("10s")
 			})
 		})
 
