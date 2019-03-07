@@ -58,7 +58,7 @@ func (b *uploaderFactory) Azure(destination config.Destination) *azure.AzureClie
 		toString(destination.Config["storage_access_key"]),
 		toString(destination.Config["storage_account"]),
 		toString(destination.Config["container"]),
-		toString(destination.Config["blob_store_base_url"]),
+		toString(destination.Config["endpoint"]),
 		b.backupConfig.AzureCliPath,
 		RemotePathFunc(toString(destination.Config["path"]), b.backupConfig.DeploymentName),
 	)

@@ -17,24 +17,24 @@ import (
 )
 
 type AzureClient struct {
-	name             string
-	accountName      string
-	accountKey       string
-	container        string
-	blobStoreBaseUrl string
-	azureCmd         string
-	remotePathFn     func() string
+	name         string
+	accountName  string
+	accountKey   string
+	container    string
+	endpoint     string
+	azureCmd     string
+	remotePathFn func() string
 }
 
-func New(name, accountKey, accountName, container, blobStoreBaseUrl, azureCmd string, remotePathFn func() string) *AzureClient {
+func New(name, accountKey, accountName, container, endpoint, azureCmd string, remotePathFn func() string) *AzureClient {
 	return &AzureClient{
-		name:             name,
-		accountKey:       accountKey,
-		accountName:      accountName,
-		container:        container,
-		blobStoreBaseUrl: blobStoreBaseUrl,
-		remotePathFn:     remotePathFn,
-		azureCmd:         azureCmd,
+		name:         name,
+		accountKey:   accountKey,
+		accountName:  accountName,
+		container:    container,
+		endpoint:     endpoint,
+		remotePathFn: remotePathFn,
+		azureCmd:     azureCmd,
 	}
 }
 
@@ -52,17 +52,24 @@ func (a *AzureClient) uploadDir(localFilePath, remoteFilePath string, processMan
 	if err != nil {
 		return err
 	}
-
 	defer file.Close()
 
-	cmd := exec.Command(
-		a.azureCmd, "upload",
+	args := []string{
+		"upload",
 		"--local-path", localFilePath,
 		"--remote-path", path.Join(a.container, remoteFilePath),
-		"--storage-account", a.accountName)
+		"--storage-account", a.accountName}
+	if a.endpoint != "" {
+		args = append(args, "--endpoint", a.endpoint)
+	}
+	cmd := exec.Command(a.azureCmd, args...)
 
+	lang := os.Getenv("LANG")
+	if lang == "" {
+		lang = "C.UTF-8"
+	}
 	cmd.Env = append(cmd.Env,
-		"LANG=C.UTF-8",
+		"LANG="+lang,
 		"BLOBXFER_STORAGE_ACCOUNT_KEY="+a.accountKey,
 	)
 

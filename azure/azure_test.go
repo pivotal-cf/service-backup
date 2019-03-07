@@ -18,9 +18,66 @@ import (
 	"code.cloudfoundry.org/lager"
 	. "github.com/pivotal-cf/service-backup/azure"
 	"github.com/pivotal-cf/service-backup/process"
+	"github.com/pivotal-cf/service-backup/process/fakes"
 )
 
 var _ = Describe("Azure backup", func() {
+	Describe("Upload", func() {
+		var (
+			processManager *fakes.FakeProcessManager
+			name           string
+			accountKey     string
+			accountName    string
+			container      string
+			command        string
+			localPath      string
+			logger         lager.Logger
+			remotePathFn   func() string
+			endpoint       string
+		)
+
+		BeforeEach(func() {
+			processManager = new(fakes.FakeProcessManager)
+			name = "name"
+			accountKey = "accountKey"
+			accountName = "accountName"
+			container = "container"
+			command = "blobxfer"
+			remotePathFn = func() string { return "" }
+			localPath = "/tmp"
+			logger = lager.NewLogger("test")
+		})
+
+		Context("without endpoint configured", func() {
+			It("doesn't add --endpoint to blobxfer", func() {
+				azureClient := New(name, accountKey, accountName, container, endpoint, command, remotePathFn)
+				err := azureClient.Upload(localPath, logger, processManager)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(processManager.StartCallCount()).To(Equal(1))
+				startCmd := processManager.StartArgsForCall(0)
+				Expect(startCmd.Args).To(
+					Equal([]string{command, "upload", "--local-path", localPath, "--remote-path", container, "--storage-account", accountName}),
+				)
+			})
+		})
+
+		Context("with endpoint configured", func() {
+			It("passes --endpoint to blobxfer", func() {
+				endpoint = "a.new.endpoint"
+				azureClient := New(name, accountKey, accountName, container, endpoint, command, remotePathFn)
+				err := azureClient.Upload(localPath, logger, processManager)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(processManager.StartCallCount()).To(Equal(1))
+				startCmd := processManager.StartArgsForCall(0)
+				Expect(startCmd.Args).To(
+					Equal(
+						[]string{command, "upload", "--local-path", localPath, "--remote-path", container, "--storage-account", accountName, "--endpoint", endpoint},
+					),
+				)
+			})
+		})
+	})
+
 	Context("when the child Azure process fails", func() {
 		It("reports the failure", func() {
 			fakeAzureCmd := assetPath("fail_with_output")

@@ -25,13 +25,13 @@ import (
 )
 
 var _ = Describe("AzureClient", func() {
+	var azureContainer string
+
+	BeforeEach(func() {
+		azureContainer = "ci-blobs-" + strconv.Itoa(int(time.Now().UnixNano()))
+	})
+
 	Context("the client is correctly configured", func() {
-		var azureContainer string
-
-		BeforeEach(func() {
-			azureContainer = "ci-blobs-" + strconv.Itoa(int(time.Now().UnixNano()))
-		})
-
 		AfterEach(func() {
 			deleteAzureContainer(azureContainer)
 		})
@@ -60,7 +60,7 @@ var _ = Describe("AzureClient", func() {
 				deploymentName := ""
 				destinationPath := fmt.Sprintf("path/to/blobs/%d", today.Unix())
 
-				session := performBackup(sourceFolder, azureContainer, destinationPath, deploymentName)
+				session := performBackup(sourceFolder, azureContainer, destinationPath, deploymentName, "")
 
 				Eventually(session.Out, azureTimeout).Should(gbytes.Say("Cleanup completed successfully"))
 				session.Terminate().Wait()
@@ -83,8 +83,52 @@ var _ = Describe("AzureClient", func() {
 				uploadsTheBackup(azureContainer, true)
 			})
 		})
+
+		Context("with endpoint configured", func() {
+			It("uploads the backup", func() {
+				sourceFolder := prepareBackupContents()
+
+				destinationPath := fmt.Sprintf("path/to/blobs/%d", time.Now().Unix())
+
+				session := performBackup(sourceFolder, azureContainer, destinationPath, "", "core.windows.net")
+				Eventually(session.Out, azureTimeout).Should(gbytes.Say(`"destination_name":"foo"`))
+				Eventually(session.Out, azureTimeout).Should(gbytes.Say("Cleanup completed successfully"))
+				session.Terminate().Wait()
+
+				Eventually(session).Should(gexec.Exit())
+			})
+		})
+
+	})
+
+	Context("the client endpoint is misconfigured", func() {
+		It("fails to upload", func() {
+			sourceFolder := prepareBackupContents()
+
+			destinationPath := fmt.Sprintf("path/to/blobs/%d", time.Now().Unix())
+
+			session := performBackup(sourceFolder, azureContainer, destinationPath, "", "wrong.example.com")
+			Eventually(session.Out, azureTimeout).Should(gbytes.Say("Failed to establish a new connection"))
+			Eventually(session.Out, azureTimeout).Should(gbytes.Say("Upload backup completed with error"))
+			session.Terminate().Wait()
+
+			Eventually(session).Should(gexec.Exit())
+		})
 	})
 })
+
+func prepareBackupContents() string {
+	sourceFolder, err := ioutil.TempDir("", "azure")
+	Expect(err).ToNot(HaveOccurred())
+	firstBackupFileName := "morning/events.log"
+	firstBackupFileContent := "coffee"
+	secondBackupFileName := "afternoon/events.log"
+	secondBackupFileContent := "ping-pong"
+	createFakeBackupFile(sourceFolder, firstBackupFileName, firstBackupFileContent)
+	createFakeBackupFile(sourceFolder, secondBackupFileName, secondBackupFileContent)
+
+	return sourceFolder
+}
 
 func uploadsTheBackup(azureContainer string, addDeploymentName bool) {
 	sourceFolder, err := ioutil.TempDir("", "azure")
@@ -106,7 +150,7 @@ func uploadsTheBackup(azureContainer string, addDeploymentName bool) {
 		deploymentName = "deployment-name"
 	}
 
-	session := performBackup(sourceFolder, azureContainer, destinationPath, deploymentName)
+	session := performBackup(sourceFolder, azureContainer, destinationPath, deploymentName, "")
 	Eventually(session.Out, azureTimeout).Should(gbytes.Say(`"destination_name":"foo"`))
 	Eventually(session.Out, azureTimeout).Should(gbytes.Say("Cleanup completed successfully"))
 	session.Terminate().Wait()
@@ -152,7 +196,7 @@ func runBackup(params ...string) *gexec.Session {
 	return session
 }
 
-func performBackup(sourceFolder, azureContainer, destinationPath, deploymentName string) *gexec.Session {
+func performBackup(sourceFolder, azureContainer, destinationPath, deploymentName, endpoint string) *gexec.Session {
 	file, err := ioutil.TempFile("", "config.yml")
 	Expect(err).NotTo(HaveOccurred())
 
@@ -167,7 +211,7 @@ destinations:
     storage_access_key: %s
     container: %s
     path: %s
-    blob_store_base_url: core.windows.net
+    endpoint: %s
 source_folder: %s
 source_executable: true
 azure_cli_path: blobxfer
@@ -177,7 +221,7 @@ cleanup_executable: true
 missing_properties_message: custom message
 deployment_name: %s
 add_deployment_name_to_backup_path: %t`, azureAccountName, azureAccountKey, azureContainer,
-		destinationPath, sourceFolder, deploymentName, addDeploymentNameToPath,
+		destinationPath, endpoint, sourceFolder, deploymentName, addDeploymentNameToPath,
 	)))
 	file.Close()
 

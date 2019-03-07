@@ -65,7 +65,6 @@ func main() {
 			terminator,
 		)
 	}
-
 	if err := backupExecutor.Execute(); err != nil {
 		logger.Error("Error running backup", err)
 		os.Exit(2)

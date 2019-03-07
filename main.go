@@ -38,7 +38,6 @@ func main() {
 	if err != nil {
 		os.Exit(2)
 	}
-
 	manager := process.NewManager()
 
 	var backupExecutor executor.Executor
