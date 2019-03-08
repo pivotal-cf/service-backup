@@ -52,7 +52,7 @@ var _ = Describe("release tests", func() {
 
 	BeforeEach(func() {
 		boshEnv = envMustHave("BOSH_ENVIRONMENT")
-		boshHost = envMustHave("BOSH_HOST")
+		boshHost = envMustHave("BOSH_GW_HOST")
 		boshPrivateKeyFile = envMustHave("BOSH_GW_PRIVATE_KEY")
 		boshSSHUser = envMustHave("BOSH_GW_USER")
 		toBackup = "to_backup.txt"
