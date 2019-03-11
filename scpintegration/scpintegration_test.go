@@ -49,6 +49,18 @@ var _ = Describe("SCP Backup", func() {
 			return filepath.Join(args...)
 		}
 
+		checkFilesHaveBeenCopied := func(deploymentName string) {
+			content1, err := ioutil.ReadFile(pathWithDate(deploymentName, "1.txt"))
+			Expect(err).NotTo(HaveOccurred())
+			Expect(content1).To(Equal([]byte("1")))
+			content2, err := ioutil.ReadFile(pathWithDate(deploymentName, "subdir", "2.txt"))
+			Expect(err).NotTo(HaveOccurred())
+			Expect(content2).To(Equal([]byte("2")))
+			contentDotFile, err := ioutil.ReadFile(pathWithDate(deploymentName, ".dotFile.txt"))
+			Expect(err).NotTo(HaveOccurred())
+			Expect(contentDotFile).To(Equal([]byte("I'm a hidden file")))
+		}
+
 		JustBeforeEach(func() {
 			var err error
 			baseDir, err = ioutil.TempDir("", "scp-integration-tests")
@@ -58,6 +70,7 @@ var _ = Describe("SCP Backup", func() {
 			Expect(os.Mkdir(dirToBackup, 0755)).To(Succeed())
 			Expect(os.Mkdir(destPath, 0755)).To(Succeed())
 
+			Expect(ioutil.WriteFile(filepath.Join(dirToBackup, ".dotFile.txt"), []byte("I'm a hidden file"), 0644)).To(Succeed())
 			Expect(ioutil.WriteFile(filepath.Join(dirToBackup, "1.txt"), []byte("1"), 0644)).To(Succeed())
 			Expect(os.Mkdir(filepath.Join(dirToBackup, "subdir"), 0755)).To(Succeed())
 			Expect(ioutil.WriteFile(filepath.Join(dirToBackup, "subdir", "2.txt"), []byte("2"), 0644)).To(Succeed())
@@ -80,12 +93,7 @@ var _ = Describe("SCP Backup", func() {
 				Eventually(runningBin.Out, scpTimeout).Should(gbytes.Say("scp completed"))
 				Eventually(runningBin.Out, scpTimeout).Should(gbytes.Say(`"destination_name":"foo"`))
 				runningBin.Terminate().Wait()
-				content1, err := ioutil.ReadFile(pathWithDate(deploymentName, "1.txt"))
-				Expect(err).NotTo(HaveOccurred())
-				Expect(content1).To(Equal([]byte("1")))
-				content2, err := ioutil.ReadFile(pathWithDate(deploymentName, "subdir", "2.txt"))
-				Expect(err).NotTo(HaveOccurred())
-				Expect(content2).To(Equal([]byte("2")))
+				checkFilesHaveBeenCopied(deploymentName)
 			})
 		})
 
@@ -103,12 +111,7 @@ var _ = Describe("SCP Backup", func() {
 				Eventually(runningBin.Out, scpTimeout).Should(gbytes.Say("scp completed"))
 				Eventually(runningBin.Out, scpTimeout).Should(gbytes.Say(`"destination_name":"foo"`))
 				runningBin.Terminate().Wait()
-				content1, err := ioutil.ReadFile(pathWithDate(deploymentName, "1.txt"))
-				Expect(err).NotTo(HaveOccurred())
-				Expect(content1).To(Equal([]byte("1")))
-				content2, err := ioutil.ReadFile(pathWithDate(deploymentName, "subdir", "2.txt"))
-				Expect(err).NotTo(HaveOccurred())
-				Expect(content2).To(Equal([]byte("2")))
+				checkFilesHaveBeenCopied(deploymentName)
 			})
 		})
 
@@ -136,12 +139,7 @@ var _ = Describe("SCP Backup", func() {
 				Eventually(runningBin.Out, scpTimeout).Should(gbytes.Say("scp completed"))
 				Eventually(runningBin.Out, scpTimeout).Should(gbytes.Say(`"destination_name":"foo"`))
 				runningBin.Terminate().Wait()
-				content1, err := ioutil.ReadFile(pathWithDate(deploymentName, "1.txt"))
-				Expect(err).NotTo(HaveOccurred())
-				Expect(content1).To(Equal([]byte("1")))
-				content2, err := ioutil.ReadFile(pathWithDate(deploymentName, "subdir", "2.txt"))
-				Expect(err).NotTo(HaveOccurred())
-				Expect(content2).To(Equal([]byte("2")))
+				checkFilesHaveBeenCopied(deploymentName)
 			})
 		})
 	})

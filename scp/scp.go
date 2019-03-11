@@ -99,17 +99,25 @@ func (client *SCPClient) Upload(localPath string, sessionLogger lager.Logger, pr
 	}
 
 	scpDest := fmt.Sprintf("%s@%s:%s", client.username, client.host, remotePath)
-	cmd := exec.Command(client.SCPCommand, "-oStrictHostKeyChecking=yes", "-i", privateKeyFileName, "-oUserKnownHostsFile="+knownHostsFileName, "-P", strconv.Itoa(client.port), "-r", localPath, scpDest)
-	fmt.Println(cmd)
-
-	scpCommandOutput, err := processManager.Start(cmd)
+	files, err := ioutil.ReadDir(localPath)
 	if err != nil {
-		wrappedErr := fmt.Errorf("error performing SCP: '%s', output: '%s'", err, scpCommandOutput)
-		sessionLogger.Error("scp", wrappedErr)
-		return wrappedErr
+		return err
+	}
+
+	for _, f := range files {
+		cmd := exec.Command(client.SCPCommand, "-oStrictHostKeyChecking=yes", "-i", privateKeyFileName, "-oUserKnownHostsFile="+knownHostsFileName, "-P", strconv.Itoa(client.port), "-r", f.Name(), scpDest)
+		cmd.Dir = localPath
+
+		scpCommandOutput, err := processManager.Start(cmd)
+		if err != nil {
+			wrappedErr := fmt.Errorf("error performing SCP: %q, output: %q", err, scpCommandOutput)
+			sessionLogger.Error("scp", wrappedErr)
+			return wrappedErr
+		}
 	}
 
 	sessionLogger.Info("scp completed")
+
 	return nil
 }
 
