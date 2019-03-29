@@ -9,4 +9,6 @@ trap 'touch $evidence_file' SIGTERM
 rm -f "$evidence_file"
 
 sleep $sleepyTime &
+PID=$!
 wait
+kill -9 $PID

@@ -1,9 +1,8 @@
 package process
 
 import (
-	"bufio"
+	"bytes"
 	"errors"
-	"io"
 	"os/exec"
 	"sync"
 	"syscall"
@@ -43,20 +42,12 @@ func (m *Manager) Start(cmd *exec.Cmd) ([]byte, error) {
 
 	processExitChan := make(chan error, 1)
 
-	stdout, err := cmd.StdoutPipe()
-	if err != nil {
-		m.lock.Unlock()
-		return nil, err
-	}
-	stderr, err := cmd.StderrPipe()
-	if err != nil {
-		m.lock.Unlock()
-		return nil, err
-	}
-	multi := io.MultiReader(stdout, stderr)
-	combinedOutput := []byte{}
+	var cmdOutput bytes.Buffer
 
-	err = cmd.Start()
+	cmd.Stdout = &cmdOutput
+	cmd.Stderr = &cmdOutput
+
+	err := cmd.Start()
 	if err != nil {
 		m.lock.Unlock()
 		return nil, err
@@ -66,23 +57,16 @@ func (m *Manager) Start(cmd *exec.Cmd) ([]byte, error) {
 
 	go func() {
 		defer m.wg.Done()
-		scanner := bufio.NewScanner(multi)
-		scanner.Split(splitOn16k)
-		for scanner.Scan() {
-			combinedOutput = append(combinedOutput, scanner.Bytes()...)
-		}
 		processExitChan <- cmd.Wait()
 	}()
 
 	select {
 	case <-m.killAll:
 		cmd.Process.Signal(syscall.SIGTERM)
-		stdout.Close()
-		stderr.Close()
 		<-processExitChan
-		return combinedOutput, errors.New("SIGTERM propagated to child process")
+		return cmdOutput.Bytes(), errors.New("SIGTERM propagated to child process")
 	case retVal := <-processExitChan:
-		return combinedOutput, retVal
+		return cmdOutput.Bytes(), retVal
 	}
 }
 
