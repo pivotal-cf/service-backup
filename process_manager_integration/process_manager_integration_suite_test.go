@@ -13,15 +13,21 @@ func TestProcessManagerIntegration(t *testing.T) {
 	RunSpecs(t, "ProcessManagerIntegration Suite")
 }
 
-var err error
-var pathToServiceBackupBinary string
-var pathToTermTrapperBinary string
+var (
+	pathToServiceBackupBinary  string
+	pathToTermTrapperBinary    string
+	pathToAWSTermTrapperBinary string
+)
 
 var _ = BeforeSuite(func() {
+	var err error
 	pathToServiceBackupBinary, err = gexec.Build("github.com/pivotal-cf/service-backup")
 	Expect(err).ToNot(HaveOccurred())
 
-	pathToTermTrapperBinary, err = gexec.Build("github.com/pivotal-cf/service-backup/process_manager_integration/fixtures/term-trapper")
+	pathToTermTrapperBinary, err = gexec.Build("github.com/pivotal-cf/service-backup/process_manager_integration/fixtures/backup-term-trapper")
+	Expect(err).NotTo(HaveOccurred())
+
+	pathToAWSTermTrapperBinary, err = gexec.Build("github.com/pivotal-cf/service-backup/process_manager_integration/fixtures/aws-term-trapper")
 	Expect(err).NotTo(HaveOccurred())
 })
 

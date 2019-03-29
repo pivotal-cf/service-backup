@@ -1,7 +1,6 @@
-package main
+package shared
 
 import (
-	"fmt"
 	"log"
 	"os"
 	"os/signal"
@@ -10,17 +9,11 @@ import (
 	"time"
 )
 
-func main() {
+func InterruptibleSleep(evidenceFile, startedFile, timeout string) {
 	signalChan := make(chan os.Signal, 1)
 	signal.Notify(signalChan, syscall.SIGTERM)
 
-	if len(os.Args) != 4 {
-		fmt.Fprintf(os.Stderr, "Usage: %s <startFile> <evidenceFile> <sleepyTime>", os.Args[0])
-		os.Exit(1)
-	}
-
-	evidenceFile, startFile, timeout := os.Args[1], os.Args[2], os.Args[3]
-	createFile(startFile)
+	createFile(startedFile)
 
 	sleepyTime := convertToInteger(timeout)
 

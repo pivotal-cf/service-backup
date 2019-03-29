@@ -7,7 +7,6 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
-	"syscall"
 	"time"
 
 	. "github.com/onsi/ginkgo"
@@ -20,17 +19,42 @@ var _ = Describe("process manager", func() {
 	var (
 		evidenceFile string
 		startedFile  string
+		configFile   *os.File
 	)
 
 	BeforeEach(func() {
 		evidenceFile = getTempFilePath()
 		startedFile = getTempFilePath()
+
+		var err error
+		configFile, err = ioutil.TempFile("", "config.yml")
+		Expect(err).NotTo(HaveOccurred())
 	})
 
 	AfterEach(func() {
 		os.Remove(evidenceFile)
 		os.Remove(startedFile)
+		os.Remove(configFile.Name())
 	})
+
+	performBackup := func(backupMock, uploadMock string) (*gexec.Session, error) {
+		_, err := fmt.Fprintf(configFile, `---
+destinations:
+- type: s3
+  config:
+    endpoint_url: %s
+    region: %s
+aws_cli_path: %s
+source_executable: %s
+cron_schedule: '* * * * * *'
+`, evidenceFile, startedFile, uploadMock, backupMock)
+		Expect(err).NotTo(HaveOccurred())
+
+		backupCmd := exec.Command(pathToServiceBackupBinary, configFile.Name())
+		session, err := gexec.Start(backupCmd, GinkgoWriter, GinkgoWriter)
+
+		return session, err
+	}
 
 	Context("inspiring confidence in our term-trapper fixture", func() {
 		It("should create startedFile and then exit 0 after sleepytime", func() {
@@ -66,7 +90,7 @@ var _ = Describe("process manager", func() {
 			sleepyTime := 1000
 
 			backupScriptMock := fmt.Sprintf("%s %s %s %d", pathToTermTrapperBinary, evidenceFile, startedFile, sleepyTime)
-			session, _, err := performBackup(pathToServiceBackupBinary, backupScriptMock)
+			session, err := performBackup(backupScriptMock, "not-needed")
 			Expect(err).NotTo(HaveOccurred())
 
 			By("waiting for the backup command to create the started file", func() {
@@ -85,11 +109,11 @@ var _ = Describe("process manager", func() {
 			os.Remove(fileName)
 
 			executableCommand := fmt.Sprintf("%s %s %d", assetPath("slowly_logs_on_start"), fileName, 2)
-			session, cmd, err := performBackup(pathToServiceBackupBinary, executableCommand)
+			session, err := performBackup(executableCommand, "not-needed")
 			Expect(err).NotTo(HaveOccurred())
 			time.Sleep(1010 * time.Millisecond)
 
-			cmd.Process.Signal(syscall.SIGTERM)
+			session.Terminate()
 			Eventually(session, 16).Should(gexec.Exit())
 
 			logFileContent, err := ioutil.ReadFile(fileName)
@@ -106,50 +130,22 @@ var _ = Describe("process manager", func() {
 			evidencePath := "/tmp/process_manager_integration_test_sigterm_received.txt"
 			os.Remove(evidencePath)
 
-			sleepyTime := 20
-
-			session, _, err := performBackup(pathToServiceBackupBinary, fmt.Sprintf("%s %s %d", assetPath("term_trapper"), evidencePath, sleepyTime))
-
+			session, err := performBackup("true", pathToAWSTermTrapperBinary)
 			Expect(err).NotTo(HaveOccurred())
-			time.Sleep(1 * time.Second)
+
+			By("waiting for the backup command to create the started file", func() {
+				Eventually(startedFile, 3).Should(BeAnExistingFile())
+			})
 
 			session.Terminate()
-			Eventually(evidencePath).Should(BeAnExistingFile())
-			Eventually(session, 2).Should(gexec.Exit())
+
+			Eventually(evidenceFile, 5).Should(BeAnExistingFile())
+			Eventually(session, 5).Should(gexec.Exit())
 			Eventually(session.Out).Should(gbytes.Say("All backup processes terminated"))
 		})
 	})
+
 })
-
-func performBackup(pathToServiceBackupBinary string, executable string) (*gexec.Session, *exec.Cmd, error) {
-	configFile, err := ioutil.TempFile("", "config.yml")
-	Expect(err).NotTo(HaveOccurred())
-
-	configContent := fmt.Sprintf(`---
-destinations:
-- type: s3
-  config:
-    endpoint_url: www.example.com
-    bucket_name: a_bucket
-    bucket_path: a_bucket_path
-    access_key_id: some_access_key
-    secret_access_key: some_secret
-source_folder: /tmp
-source_executable: %s
-exit_if_in_progress: false
-cron_schedule: '* * * * * *'
-cleanup_executable: ''
-missing_properties_message: custom message
-deployment_name: 'service-backup'
-add_deployment_name_to_backup_path: true`, executable)
-	configFile.Write([]byte(configContent))
-	configFile.Close()
-
-	backupCmd := exec.Command(pathToServiceBackupBinary, configFile.Name())
-	session, err := gexec.Start(backupCmd, GinkgoWriter, GinkgoWriter)
-
-	return session, backupCmd, err
-}
 
 func assetPath(filename string) string {
 	path, err := filepath.Abs(filepath.Join("assets", filename))
