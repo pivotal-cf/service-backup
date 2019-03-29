@@ -28,11 +28,13 @@ func main() {
 	configPath := os.Args[1]
 	backupConfig, err := config.Parse(configPath, logger)
 	if err != nil {
+		logger.Error("failed to parse config", err)
 		os.Exit(2)
 	}
 
 	backuper, err := upload.Initialize(&backupConfig, logger)
 	if err != nil {
+		logger.Error("failed to initialize uploader", err)
 		os.Exit(2)
 	}
 
