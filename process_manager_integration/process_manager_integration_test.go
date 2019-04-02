@@ -16,29 +16,12 @@ import (
 )
 
 var _ = Describe("process manager", func() {
-	var (
-		evidenceFile string
-		startedFile  string
-		configFile   *os.File
-	)
-
-	BeforeEach(func() {
-		evidenceFile = getTempFilePath()
-		startedFile = getTempFilePath()
-
+	performBackup := func(backupMock, uploadMock, evidenceFile, startedFile string) (*gexec.Session, error) {
 		var err error
-		configFile, err = ioutil.TempFile("", "config.yml")
+		configFile, err := ioutil.TempFile("", "config.yml")
 		Expect(err).NotTo(HaveOccurred())
-	})
 
-	AfterEach(func() {
-		os.Remove(evidenceFile)
-		os.Remove(startedFile)
-		os.Remove(configFile.Name())
-	})
-
-	performBackup := func(backupMock, uploadMock string) (*gexec.Session, error) {
-		_, err := fmt.Fprintf(configFile, `---
+		_, err = fmt.Fprintf(configFile, `---
 destinations:
 - type: s3
   config:
@@ -60,6 +43,11 @@ cron_schedule: '* * * * * *'
 		It("should create startedFile and then exit 0 after sleepytime", func() {
 			sleepyTime := "1"
 
+			evidenceFile := getTempFilePath()
+			startedFile := getTempFilePath()
+			defer os.Remove(startedFile)
+			defer os.Remove(evidenceFile)
+
 			backupCmd := exec.Command(pathToTermTrapperBinary, evidenceFile, startedFile, sleepyTime)
 			session, err := gexec.Start(backupCmd, GinkgoWriter, GinkgoWriter)
 			Expect(err).NotTo(HaveOccurred())
@@ -69,6 +57,11 @@ cron_schedule: '* * * * * *'
 
 		It("should exit on SIGTERM and create evidence file", func() {
 			sleepyTime := "1000"
+
+			evidenceFile := getTempFilePath()
+			startedFile := getTempFilePath()
+			defer os.Remove(startedFile)
+			defer os.Remove(evidenceFile)
 
 			backupCmd := exec.Command(pathToTermTrapperBinary, evidenceFile, startedFile, sleepyTime)
 			session, err := gexec.Start(backupCmd, GinkgoWriter, GinkgoWriter)
@@ -89,8 +82,13 @@ cron_schedule: '* * * * * *'
 		It("propagates a TERM signal to child backup commands", func() {
 			sleepyTime := 1000
 
+			evidenceFile := getTempFilePath()
+			startedFile := getTempFilePath()
+			defer os.Remove(startedFile)
+			defer os.Remove(evidenceFile)
+
 			backupScriptMock := fmt.Sprintf("%s %s %s %d", pathToTermTrapperBinary, evidenceFile, startedFile, sleepyTime)
-			session, err := performBackup(backupScriptMock, "not-needed")
+			session, err := performBackup(backupScriptMock, "not-needed", evidenceFile, startedFile)
 			Expect(err).NotTo(HaveOccurred())
 
 			By("waiting for the backup command to create the started file", func() {
@@ -105,11 +103,12 @@ cron_schedule: '* * * * * *'
 		})
 
 		It("stops cron before terminating backup commands", func() {
-			fileName := "/tmp/log-to-me-please"
-			os.Remove(fileName)
+			fileName := getTempFilePath()
+			defer os.Remove(fileName)
 
 			executableCommand := fmt.Sprintf("%s %s %d", assetPath("slowly_logs_on_start"), fileName, 2)
-			session, err := performBackup(executableCommand, "not-needed")
+			session, err := performBackup(executableCommand, "not-needed", "not-needed", "not-needed")
+
 			Expect(err).NotTo(HaveOccurred())
 			time.Sleep(1010 * time.Millisecond)
 
@@ -127,10 +126,13 @@ cron_schedule: '* * * * * *'
 
 	Context("file upload", func() {
 		It("propagates a TERM signal to the upload process", func() {
-			evidencePath := "/tmp/process_manager_integration_test_sigterm_received.txt"
-			os.Remove(evidencePath)
 
-			session, err := performBackup("true", pathToAWSTermTrapperBinary)
+			evidenceFile := getTempFilePath()
+			startedFile := getTempFilePath()
+			defer os.Remove(startedFile)
+			defer os.Remove(evidenceFile)
+
+			session, err := performBackup("true", pathToAWSTermTrapperBinary, evidenceFile, startedFile)
 			Expect(err).NotTo(HaveOccurred())
 
 			By("waiting for the backup command to create the started file", func() {
