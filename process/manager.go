@@ -76,21 +76,3 @@ func (m *Manager) Terminate() {
 	m.wg.Wait()
 	m.lock.Unlock()
 }
-
-func splitOn16k(data []byte, atEOF bool) (advance int, token []byte, err error) {
-	if atEOF && len(data) == 0 {
-		return 0, nil, nil
-	}
-
-	if atEOF {
-		return len(data), data, nil
-	}
-
-	maxBufSize := 16 * 1024
-
-	if len(data) < maxBufSize {
-		return 0, nil, nil
-	}
-
-	return maxBufSize, data[0:maxBufSize], nil
-}
