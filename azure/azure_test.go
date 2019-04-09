@@ -4,8 +4,6 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 
-	"time"
-
 	"path/filepath"
 
 	"io/ioutil"
@@ -19,6 +17,7 @@ import (
 	. "github.com/pivotal-cf/service-backup/azure"
 	"github.com/pivotal-cf/service-backup/process"
 	"github.com/pivotal-cf/service-backup/process/fakes"
+	"github.com/pivotal-cf/service-backup/testhelpers"
 )
 
 var _ = Describe("Azure backup", func() {
@@ -96,29 +95,29 @@ var _ = Describe("Azure backup", func() {
 	})
 
 	It("when the process manager gets the terminate call, the child azure upload process gets a sigterm", func() {
-		fakeAzureCmd := assetPath("term_trapper")
-		fakeRemotePathFn := func() string { return "hi" }
+		fakeAzureCmd := pathToTermTrapper
 
-		evidenceFile, err := ioutil.TempFile("", "azure-test")
-		Expect(err).ToNot(HaveOccurred())
-		evidencePath := evidenceFile.Name()
-		err = os.Remove(evidencePath)
-		Expect(err).ToNot(HaveOccurred())
+		startedFilePath := testhelpers.GetTempFilePath()
+		evidencePath := testhelpers.GetTempFilePath()
 		defer os.Remove(evidencePath)
+		defer os.Remove(startedFilePath)
+
+		fakeRemotePathFn := func() string { return "hi" }
 
 		processManager := process.NewManager()
 
-		// using accountName field to inject evidence file path to fake upload executable
-		azureClient := New("foo", "foo", evidencePath, "foo", "foo", fakeAzureCmd, fakeRemotePathFn)
+		accountName := evidencePath + ":" + startedFilePath
+		azureClient := New("foo", "foo", accountName, "foo", "foo", fakeAzureCmd, fakeRemotePathFn)
 
 		go func() {
-			azureClient.Upload("/tmp", lager.NewLogger("foo"), processManager)
+			logger := lager.NewLogger("term trapper")
+			logger.RegisterSink(lager.NewWriterSink(GinkgoWriter, lager.DEBUG))
+			azureClient.Upload("/tmp", logger, processManager)
 		}()
 
-		time.Sleep(100 * time.Millisecond)
+		Eventually(startedFilePath).Should(BeAnExistingFile())
 		processManager.Terminate()
-		SetDefaultEventuallyTimeout(2 * time.Second)
-		Eventually(evidencePath).Should(BeAnExistingFile())
+		Eventually(evidencePath, 2).Should(BeAnExistingFile())
 	})
 })
 
