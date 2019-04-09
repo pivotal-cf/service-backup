@@ -28,7 +28,7 @@ const (
 )
 
 var _ = Describe("Multiple destinations backup", func() {
-	var uploadTimeout = time.Second * 20
+	var uploadTimeout = time.Second * 60
 
 	Context("When SCP and S3 destinations are correctly configured", func() {
 		var (
