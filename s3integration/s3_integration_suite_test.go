@@ -48,6 +48,8 @@ var (
 	awsSecretAccessKeyRestricted string
 
 	s3TestClient *s3testclient.S3TestClient
+
+	pathToTermTrapper string
 )
 
 type config struct {
@@ -57,6 +59,7 @@ type config struct {
 	AWSSecretAccessKeyRestricted string `json:"awsSecretAccessKeyRestricted"`
 	PathToBackupBinary           string `json:"pathToBackupBinary"`
 	PathToManualBinary           string `json:"pathToManualBinary"`
+	PathToTermTrapper            string `json:"pathToTermTrapper"`
 }
 
 func TestServiceBackupBinary(t *testing.T) {
@@ -85,6 +88,8 @@ func beforeSuiteFirstNode() []byte {
 	Expect(err).ToNot(HaveOccurred())
 	pathToManualBackupBinary, err = gexec.Build("github.com/pivotal-cf/service-backup/cmd/manual-backup")
 	Expect(err).ToNot(HaveOccurred())
+	pathToTermTrapper, err = gexec.Build("github.com/pivotal-cf/service-backup/s3integration/fixtures/s3-term-trapper")
+	Expect(err).ToNot(HaveOccurred())
 
 	c := config{
 		AWSAccessKeyID:               awsAccessKeyID,
@@ -93,6 +98,7 @@ func beforeSuiteFirstNode() []byte {
 		AWSSecretAccessKeyRestricted: awsSecretAccessKeyRestricted,
 		PathToBackupBinary:           pathToServiceBackupBinary,
 		PathToManualBinary:           pathToManualBackupBinary,
+		PathToTermTrapper:            pathToTermTrapper,
 	}
 
 	data, err := json.Marshal(c)
@@ -112,7 +118,7 @@ func assetPath(filename string) string {
 	return path
 }
 
-func beforeSuiteOtherNodes(b []byte) {
+func beforeSuiteAllNodes(b []byte) {
 	var c config
 	err := json.Unmarshal(b, &c)
 	Expect(err).ToNot(HaveOccurred())
@@ -124,9 +130,10 @@ func beforeSuiteOtherNodes(b []byte) {
 	pathToServiceBackupBinary = c.PathToBackupBinary
 	pathToManualBackupBinary = c.PathToManualBinary
 	s3TestClient = s3testclient.New(endpointURL, awsAccessKeyID, awsSecretAccessKey, existingBucketInDefaultRegion)
+	pathToTermTrapper = c.PathToTermTrapper
 }
 
-var _ = SynchronizedBeforeSuite(beforeSuiteFirstNode, beforeSuiteOtherNodes)
+var _ = SynchronizedBeforeSuite(beforeSuiteFirstNode, beforeSuiteAllNodes)
 
 var _ = SynchronizedAfterSuite(func() {
 	return

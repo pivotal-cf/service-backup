@@ -17,6 +17,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/pivotal-cf/service-backup/testhelpers"
+
 	"code.cloudfoundry.org/lager"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -26,7 +28,7 @@ import (
 	"github.com/pivotal-cf/service-backup/process"
 	"github.com/pivotal-cf/service-backup/s3"
 	"github.com/pivotal-cf/service-backup/s3testclient"
-	"github.com/satori/go.uuid"
+	uuid "github.com/satori/go.uuid"
 )
 
 var _ = Describe("S3 Backup", func() {
@@ -809,28 +811,26 @@ var _ = Describe("S3 Backup", func() {
 
 		Context("when the process manager gets the terminate call", func() {
 			It("kills the child s3 upload process with a sigterm", func() {
-				fakeS3Cmd := assetPath("term_trapper")
-				fakeRemotePathFn := func() string { return "hi" }
-
-				evidenceFile, err := ioutil.TempFile("", "s3-integration")
-				Expect(err).ToNot(HaveOccurred())
-				evidencePath := evidenceFile.Name()
-				err = os.Remove(evidencePath)
-				Expect(err).ToNot(HaveOccurred())
+				startedFilePath := testhelpers.GetTempFilePath()
+				evidencePath := testhelpers.GetTempFilePath()
 				defer os.Remove(evidencePath)
+				defer os.Remove(startedFilePath)
 
 				processManager := process.NewManager()
 
-				s3Client := s3.New("", fakeS3Cmd, "", "", "", "", "", fakeRemotePathFn)
+				fakeRemotePathFn := func() string { return startedFilePath }
+
+				s3Client := s3.New("", pathToTermTrapper, "", "", "", "", "", fakeRemotePathFn)
 
 				go func() {
+					logger := lager.NewLogger("term trapper")
+					logger.RegisterSink(lager.NewWriterSink(GinkgoWriter, lager.DEBUG))
 					s3Client.Upload(evidencePath, lager.NewLogger("foo"), processManager)
 				}()
 
-				time.Sleep(100 * time.Millisecond)
+				Eventually(startedFilePath, 10).Should(BeAnExistingFile())
 				processManager.Terminate()
-				SetDefaultEventuallyTimeout(2 * time.Second)
-				Eventually(evidencePath).Should(BeAnExistingFile())
+				Eventually(evidencePath, 2).Should(BeAnExistingFile())
 			})
 		})
 	})
