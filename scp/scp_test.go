@@ -1,9 +1,10 @@
 package scp_test
 
 import (
-	"io/ioutil"
 	"os"
 	"time"
+
+	"github.com/pivotal-cf/service-backup/testhelpers"
 
 	"code.cloudfoundry.org/lager"
 	. "github.com/onsi/ginkgo"
@@ -17,8 +18,8 @@ var _ = Describe("scp", func() {
 	It("terminates the child process when the process manager gets the terminate call", func() {
 		fakeScpCmd := pathToBackupFixture
 
-		startedPath := getTempFilePath()
-		evidencePath := getTempFilePath()
+		startedPath := testhelpers.GetTempFilePath()
+		evidencePath := testhelpers.GetTempFilePath()
 		defer os.Remove(evidencePath)
 		defer os.Remove(startedPath)
 
@@ -44,11 +45,3 @@ var _ = Describe("scp", func() {
 		Eventually(evidencePath).Should(BeAnExistingFile())
 	})
 })
-
-func getTempFilePath() string {
-	f, err := ioutil.TempFile("", "process_manager")
-	Expect(err).ToNot(HaveOccurred())
-	err = os.Remove(f.Name())
-	Expect(err).ToNot(HaveOccurred())
-	return f.Name()
-}

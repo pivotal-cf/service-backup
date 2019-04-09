@@ -9,6 +9,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/pivotal-cf/service-backup/testhelpers"
+
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gbytes"
@@ -43,8 +45,8 @@ cron_schedule: '* * * * * *'
 		It("should create startedFile and then exit 0 after sleepytime", func() {
 			sleepyTime := "1"
 
-			evidenceFile := getTempFilePath()
-			startedFile := getTempFilePath()
+			evidenceFile := testhelpers.GetTempFilePath()
+			startedFile := testhelpers.GetTempFilePath()
 			defer os.Remove(startedFile)
 			defer os.Remove(evidenceFile)
 
@@ -58,8 +60,8 @@ cron_schedule: '* * * * * *'
 		It("should exit on SIGTERM and create evidence file", func() {
 			sleepyTime := "1000"
 
-			evidenceFile := getTempFilePath()
-			startedFile := getTempFilePath()
+			evidenceFile := testhelpers.GetTempFilePath()
+			startedFile := testhelpers.GetTempFilePath()
 			defer os.Remove(startedFile)
 			defer os.Remove(evidenceFile)
 
@@ -82,8 +84,8 @@ cron_schedule: '* * * * * *'
 		It("propagates a TERM signal to child backup commands", func() {
 			sleepyTime := 1000
 
-			evidenceFile := getTempFilePath()
-			startedFile := getTempFilePath()
+			evidenceFile := testhelpers.GetTempFilePath()
+			startedFile := testhelpers.GetTempFilePath()
 			defer os.Remove(startedFile)
 			defer os.Remove(evidenceFile)
 
@@ -103,7 +105,7 @@ cron_schedule: '* * * * * *'
 		})
 
 		It("stops cron before terminating backup commands", func() {
-			fileName := getTempFilePath()
+			fileName := testhelpers.GetTempFilePath()
 			defer os.Remove(fileName)
 
 			executableCommand := fmt.Sprintf("%s %s %d", assetPath("slowly_logs_on_start"), fileName, 2)
@@ -127,8 +129,8 @@ cron_schedule: '* * * * * *'
 	Context("file upload", func() {
 		It("propagates a TERM signal to the upload process", func() {
 
-			evidenceFile := getTempFilePath()
-			startedFile := getTempFilePath()
+			evidenceFile := testhelpers.GetTempFilePath()
+			startedFile := testhelpers.GetTempFilePath()
 			defer os.Remove(startedFile)
 			defer os.Remove(evidenceFile)
 
@@ -153,12 +155,4 @@ func assetPath(filename string) string {
 	path, err := filepath.Abs(filepath.Join("assets", filename))
 	Expect(err).ToNot(HaveOccurred())
 	return path
-}
-
-func getTempFilePath() string {
-	f, err := ioutil.TempFile("", "process_manager")
-	Expect(err).ToNot(HaveOccurred())
-	err = os.Remove(f.Name())
-	Expect(err).ToNot(HaveOccurred())
-	return f.Name()
 }
