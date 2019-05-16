@@ -7,14 +7,12 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
-	"time"
-
-	"github.com/pivotal-cf/service-backup/testhelpers"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gbytes"
 	"github.com/onsi/gomega/gexec"
+	"github.com/pivotal-cf/service-backup/testhelpers"
 )
 
 var _ = Describe("process manager", func() {
@@ -104,31 +102,36 @@ cron_schedule: '* * * * * *'
 			Eventually(session.Out).Should(gbytes.Say("All backup processes terminated"))
 		})
 
-		It("stops cron before terminating backup commands", func() {
-			fileName := testhelpers.GetTempFilePath()
-			defer os.Remove(fileName)
+		It("doesn't start a new backup after a sigterm is received", func() {
+			sleepyTime := 3000
+			sleepAfterSigterm := 2000
 
-			executableCommand := fmt.Sprintf("%s %s %d", assetPath("slowly_logs_on_start"), fileName, 2)
-			session, err := performBackup(executableCommand, "not-needed", "not-needed", "not-needed")
+			evidenceFile := testhelpers.GetTempFilePath()
+			startedFile := testhelpers.GetTempFilePath()
+			defer os.Remove(startedFile)
+			defer os.Remove(evidenceFile)
 
+			backupScriptMock := fmt.Sprintf("%s %s %s %d %d", pathToTermTrapperBinary, evidenceFile, startedFile, sleepyTime, sleepAfterSigterm)
+			session, err := performBackup(backupScriptMock, "not-needed", evidenceFile, startedFile)
 			Expect(err).NotTo(HaveOccurred())
-			time.Sleep(1010 * time.Millisecond)
+
+			By("waiting for the backup command to create the started file", func() {
+				Eventually(startedFile, 3).Should(BeAnExistingFile())
+			})
 
 			session.Terminate()
-			Eventually(session, 16).Should(gexec.Exit())
 
-			logFileContent, err := ioutil.ReadFile(fileName)
-			Expect(err).NotTo(HaveOccurred())
-			strippedContent := strings.TrimSpace(string(logFileContent))
-			logFileLines := strings.Split(strippedContent, "\n")
-			Expect(logFileLines).To(HaveLen(1))
-			Eventually(session.Out).Should(gbytes.Say("All backup processes terminated"))
+			Eventually(session, 5).Should(gexec.Exit())
+			Expect(evidenceFile).To(BeAnExistingFile())
+			Expect(session.Out).To(gbytes.Say("All backup processes terminated"))
+
+			backupsStarted := strings.Count(string(session.Out.Contents()), "Perform backup started")
+			Expect(backupsStarted).To(Equal(1))
 		})
 	})
 
 	Context("file upload", func() {
 		It("propagates a TERM signal to the upload process", func() {
-
 			evidenceFile := testhelpers.GetTempFilePath()
 			startedFile := testhelpers.GetTempFilePath()
 			defer os.Remove(startedFile)

@@ -14,5 +14,5 @@ func main() {
 	}
 
 	evidenceFile, startFile := os.Args[2], os.Args[4]
-	shared.InterruptibleSleep(evidenceFile, startFile, "20")
+	shared.InterruptibleSleep(evidenceFile, startFile, "20", "0")
 }

@@ -22,5 +22,5 @@ func main() {
 	fmt.Println("startedFile", startFile)
 
 	timeout := "10000"
-	shared.InterruptibleSleep(evidenceFile, startFile, timeout)
+	shared.InterruptibleSleep(evidenceFile, startFile, timeout, "0")
 }

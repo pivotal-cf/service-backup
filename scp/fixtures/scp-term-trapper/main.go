@@ -20,5 +20,5 @@ func main() {
 	evidenceFile := atSplit[0]
 	startFile := colonSplit[1]
 	timeout := "10000"
-	shared.InterruptibleSleep(evidenceFile, startFile, timeout)
+	shared.InterruptibleSleep(evidenceFile, startFile, timeout, "0")
 }
