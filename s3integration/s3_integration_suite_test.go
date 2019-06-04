@@ -29,7 +29,7 @@ const (
 
 	integrationTestBucketNamePrefix  = "service-backup-integration-"
 	existingBucketInNonDefaultRegion = integrationTestBucketNamePrefix + "test"
-	existingBucketInDefaultRegion    = integrationTestBucketNamePrefix + "test2"
+	existingBucketInDefaultRegion    = integrationTestBucketNamePrefix + "test-restricted"
 
 	integrationTestDeploymentName = "test-deployment"
 
