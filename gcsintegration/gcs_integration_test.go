@@ -23,18 +23,29 @@ import (
 	"github.com/onsi/gomega/gbytes"
 	"github.com/onsi/gomega/gexec"
 	"github.com/pborman/uuid"
+	"google.golang.org/api/iterator"
 	"google.golang.org/api/option"
 )
 
 var _ = Describe("gcs", func() {
 	const uploadTimeout = time.Second * 20
 
+	var bucketName string
+	var gcpServiceAccountFilePath string
+
 	Context("when the deployment name is configured", func() {
+		BeforeEach(func() {
+			gcpServiceAccountFilePath = envMustHave("SERVICE_BACKUP_TESTS_GCP_SERVICE_ACCOUNT_FILE")
+			bucketName = fmt.Sprintf("service-backup-test-%s", uuid.New())
+		})
+
+		AfterEach(func() {
+			deleteBucket(bucketName, gcpServiceAccountFilePath)
+		})
+
 		It("uploads to GCS with deployment name in the remote path", func() {
-			gcpServiceAccountFilePath := envMustHave("SERVICE_BACKUP_TESTS_GCP_SERVICE_ACCOUNT_FILE")
 			os.Setenv("GCP_SERVICE_ACCOUNT_FILE", gcpServiceAccountFilePath)
 			projectID := envMustHave("SERVICE_BACKUP_TESTS_GCP_PROJECT_NAME")
-			bucketName := fmt.Sprintf("service-backup-test-%s", uuid.New())
 			baseDir := createBaseDir()
 			sourceDir := createSourceDir(baseDir)
 			deploymentName := "deployment-name"
@@ -126,4 +137,24 @@ func newBucketHandle(ctx context.Context, gcpServiceAccountFilePath, bucketName 
 	client, err := storage.NewClient(ctx, option.WithServiceAccountFile(gcpServiceAccountFilePath))
 	Expect(err).NotTo(HaveOccurred())
 	return client.Bucket(bucketName)
+}
+
+func deleteBucket(bucketName, gcpServiceAccountFilePath string) {
+	client, err := storage.NewClient(context.Background(), option.WithServiceAccountFile(gcpServiceAccountFilePath))
+	Expect(err).NotTo(HaveOccurred())
+	bucket := client.Bucket(bucketName)
+	objsIt := bucket.Objects(context.Background(), nil)
+	for {
+		attrs, err := objsIt.Next()
+		if err == iterator.Done {
+			break
+		}
+		if err != nil {
+			Fail(err.Error())
+		}
+		Expect(bucket.Object(attrs.Name).Delete(context.Background())).To(Succeed())
+	}
+
+	err = bucket.Delete(context.Background())
+	Expect(err).NotTo(HaveOccurred())
 }
