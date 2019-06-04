@@ -31,7 +31,7 @@ func TestMultiintegration(t *testing.T) {
 
 const (
 	sshKeyUsername                   = "service-backup-tmp-key"
-	existingBucketInDefaultRegion    = "service-backup-integration-test2"
+	existingBucketInDefaultRegion    = "service-backup-integration-test-restricted"
 	existingBucketInNonDefaultRegion = "service-backup-integration-test"
 )
 
