@@ -100,9 +100,7 @@ func createFilesIn(path string) int64 {
 		file, err := ioutil.TempFile(path, "executor")
 		Expect(err).ToNot(HaveOccurred())
 
-		fileContentsUUID := uuid.NewV4()
-
-		fileContents := fmt.Sprint(fileContentsUUID)
+		fileContents := fmt.Sprint(uuid.NewV4())
 		_, err = file.Write([]byte(fileContents))
 		Expect(err).ToNot(HaveOccurred())
 
