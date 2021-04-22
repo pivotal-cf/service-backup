@@ -87,7 +87,7 @@ func readObject(ctx context.Context, bucket *storage.BucketHandle, deploymentNam
 	remoteContents := new(bytes.Buffer)
 	_, err = io.Copy(remoteContents, objReader)
 	Expect(err).NotTo(HaveOccurred())
-	return remoteContents.String()
+	return fmt.Sprint(remoteContents)
 }
 
 func remotePathInBucket(deploymentName, relativePath string) string {

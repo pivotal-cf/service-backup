@@ -8,6 +8,7 @@ package executor
 
 import (
 	"errors"
+	"fmt"
 	"os"
 	"os/exec"
 	"strings"
@@ -99,7 +100,7 @@ func (e *executor) doneBackup() {
 }
 
 func (e *executor) Execute() error {
-	sessionLogger := e.logger.WithData(lager.Data{"backup_guid": uuid.NewV4().String()})
+	sessionLogger := e.logger.WithData(lager.Data{"backup_guid": fmt.Sprint(uuid.NewV4())})
 
 	serviceInstanceID := e.identifyService(sessionLogger)
 	if serviceInstanceID != "" {
