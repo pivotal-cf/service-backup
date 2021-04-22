@@ -7,6 +7,7 @@
 package executor
 
 import (
+	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -101,7 +102,7 @@ func createFilesIn(path string) int64 {
 
 		fileContentsUUID := uuid.NewV4()
 
-		fileContents := fileContentsUUID.String()
+		fileContents := fmt.Sprint(fileContentsUUID)
 		_, err = file.Write([]byte(fileContents))
 		Expect(err).ToNot(HaveOccurred())
 

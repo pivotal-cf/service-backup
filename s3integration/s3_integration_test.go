@@ -44,7 +44,7 @@ var _ = Describe("S3 Backup", func() {
 		endpointURL = "https://s3.amazonaws.com"
 		region = ""
 		bucketName = existingBucketInDefaultRegion
-		bucketPath = uuid.NewV4().String()
+		bucketPath = fmt.Sprint(uuid.NewV4())
 	})
 
 	AfterEach(func() {
@@ -414,7 +414,7 @@ var _ = Describe("S3 Backup", func() {
 				BeforeEach(func() {
 					endpointURL = ""
 
-					strippedUUID = uuid.NewV4().String()
+					strippedUUID = fmt.Sprint(uuid.NewV4())
 					strippedUUID = strippedUUID[:10]
 
 					bucketName = integrationTestBucketNamePrefix + strippedUUID
@@ -671,7 +671,7 @@ var _ = Describe("S3 Backup", func() {
 
 				Context("when the bucket does not exist", func() {
 					BeforeEach(func() {
-						bucketName = "doesnotexist" + uuid.NewV4().String()
+						bucketName = "doesnotexist" + fmt.Sprint(uuid.NewV4())
 
 						By("Not specifing a endpoint url")
 						endpointURL = ""
@@ -706,7 +706,7 @@ var _ = Describe("S3 Backup", func() {
 			)
 
 			It("fails to upload a directory", func() {
-				bucketPath = uuid.NewV4().String()
+				bucketPath = fmt.Sprint(uuid.NewV4())
 				By("Trying to upload the file to the blobstore")
 				session, err := performBackup(
 					invalidAwsAccessKeyID,
@@ -1575,10 +1575,8 @@ func createFilesToUpload(sourceFolder string, smallFile bool) map[string]string 
 func createFileIn(sourceFolder string) (string, string) {
 	file, err := ioutil.TempFile(sourceFolder, "s3-integration")
 	Expect(err).ToNot(HaveOccurred())
-
-	fileContentsUUID := uuid.NewV4()
-
-	fileContents := fileContentsUUID.String()
+	
+	fileContents := fmt.Sprint(uuid.NewV4())
 	_, err = file.Write([]byte(fileContents))
 	Expect(err).ToNot(HaveOccurred())
 

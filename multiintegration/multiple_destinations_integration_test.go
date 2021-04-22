@@ -45,7 +45,7 @@ var _ = Describe("Multiple destinations backup", func() {
 			destPathSCP = filepath.Join(baseDir, "target")
 			Expect(os.Mkdir(destPathSCP, 0755)).To(Succeed())
 
-			destPathS3 = uuid.NewV4().String()
+			destPathS3 = fmt.Sprint(uuid.NewV4())
 
 			runningBin = runBackup(createConfigFile(`---
 destinations:
@@ -220,8 +220,8 @@ missing_properties_message: custom message`, unixUser.Username, destPathSCP1, pa
 			baseDir = createBaseDir()
 			sourceDir := createSourceDir(baseDir)
 
-			dest1PathS3 = uuid.NewV4().String()
-			dest2PathS3 = uuid.NewV4().String()
+			dest1PathS3 = fmt.Sprint(uuid.NewV4())
+			dest2PathS3 = fmt.Sprint(uuid.NewV4())
 
 			runningBin = runBackup(createConfigFile(`---
 destinations:
