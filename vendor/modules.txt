@@ -106,5 +106,5 @@ google.golang.org/grpc/peer
 google.golang.org/grpc/transport
 # gopkg.in/robfig/cron.v2 v2.0.0-20150107220207-be2e0b0deed5
 gopkg.in/robfig/cron.v2
-# gopkg.in/yaml.v2 v2.0.0-20160301204022-a83829b6f129
+# gopkg.in/yaml.v2 v2.4.0
 gopkg.in/yaml.v2
