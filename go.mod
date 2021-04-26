@@ -9,7 +9,7 @@ require (
 	github.com/cenk/backoff v2.2.1+incompatible // indirect
 	github.com/craigfurman/herottp v0.0.0-20190418132442-c546d62f2a8d // indirect
 	github.com/gorilla/mux v1.8.0 // indirect
-	github.com/onsi/ginkgo v1.12.1
+	github.com/onsi/ginkgo v1.16.1
 	github.com/onsi/gomega v1.11.0
 	github.com/pborman/uuid v1.2.1
 	github.com/pivotal-cf/service-alerts-client v0.0.0-20190725132148-4a3ed3e6ac41
