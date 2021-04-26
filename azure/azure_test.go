@@ -45,6 +45,7 @@ var _ = Describe("Azure backup", func() {
 			remotePathFn = func() string { return "" }
 			localPath = "/tmp"
 			logger = lager.NewLogger("test")
+			endpoint = ""
 		})
 
 		Context("without endpoint configured", func() {
@@ -61,8 +62,11 @@ var _ = Describe("Azure backup", func() {
 		})
 
 		Context("with endpoint configured", func() {
-			It("passes --endpoint to blobxfer", func() {
+			BeforeEach(func() {
 				endpoint = "a.new.endpoint"
+			})
+
+			It("passes --endpoint to blobxfer", func() {
 				azureClient := New(name, accountKey, accountName, container, endpoint, command, remotePathFn)
 				err := azureClient.Upload(localPath, logger, processManager)
 				Expect(err).NotTo(HaveOccurred())
