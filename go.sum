@@ -10,6 +10,8 @@ github.com/craigfurman/herottp v0.0.0-20190418132442-c546d62f2a8d h1:Qun4nleHcXe
 github.com/craigfurman/herottp v0.0.0-20190418132442-c546d62f2a8d/go.mod h1:cdSmtCDwTFPxU6jMgG8LBcDZCCAI7ixcpAjXC0lm/q8=
 github.com/golang/protobuf v0.0.0-20160930204858-df1d3ca07d2d h1:THgtaeKocdlJrzf0jwy5JNrYAk+YObQ/I5Rdmsvrxto=
 github.com/golang/protobuf v0.0.0-20160930204858-df1d3ca07d2d/go.mod h1:6lQm79b+lXiMfvg/cZm0SGofjICqVBUtrP5yJMmIC1U=
+github.com/google/uuid v1.0.0 h1:b4Gk+7WdP/d3HZH8EJsZpvV7EtDOgaZLtnaNGIu1adA=
+github.com/google/uuid v1.0.0/go.mod h1:TIyPZe4MgqvfeYDBFedMoGGpEw/LqOeaOT+nhxU+yHo=
 github.com/gorilla/mux v1.8.0 h1:i40aqfkR1h2SlN9hojwV5ZA91wcXFOvkdNIeFDP5koI=
 github.com/gorilla/mux v1.8.0/go.mod h1:DVbg23sWSpFRCP0SfiEN6jmj59UnW/n46BH5rLB71So=
 github.com/kr/pretty v0.2.1 h1:Fmg33tUaq4/8ym9TJN1x7sLJnHVwhP33CNkpYV/7rwI=
@@ -21,8 +23,8 @@ github.com/onsi/ginkgo v1.2.1-0.20161007050402-acfa16ac8e9e h1:oPGT3lPqs9MUlzaJR
 github.com/onsi/ginkgo v1.2.1-0.20161007050402-acfa16ac8e9e/go.mod h1:lLunBs/Ym6LB5Z9jYTR76FiuTmxDTDusOGeTQH+WWjE=
 github.com/onsi/gomega v0.0.0-20161118205129-f1f0f388b31e h1:LvgsjG0xVufTzEfSK5jwC3vYGHA7A7zzVrr85O+IEHc=
 github.com/onsi/gomega v0.0.0-20161118205129-f1f0f388b31e/go.mod h1:C1qb7wdrVGGVU+Z6iS04AVkA3Q65CEZX59MT0QO5uiA=
-github.com/pborman/uuid v0.0.0-20161005151609-3d4f2ba23642 h1:J22llJ7OhnIIcOpVXVyG0DniMepToKlbCZrzcGbzwOE=
-github.com/pborman/uuid v0.0.0-20161005151609-3d4f2ba23642/go.mod h1:VyrYX9gd7irzKovcSS6BIIEwPRkP2Wm2m9ufcdFSJ34=
+github.com/pborman/uuid v1.2.1 h1:+ZZIw58t/ozdjRaXh/3awHfmWRbzYxJoAdNJxe/3pvw=
+github.com/pborman/uuid v1.2.1/go.mod h1:X/NO0urCmaxf9VXbdlT7C2Yzkj2IKimNn4k+gtPdI/k=
 github.com/pivotal-cf/service-alerts-client v0.0.0-20190725132148-4a3ed3e6ac41 h1:ev2ap9OXzJ0A+UqiBhkY4mykG0CrXfxD/8FFwpVcr4U=
 github.com/pivotal-cf/service-alerts-client v0.0.0-20190725132148-4a3ed3e6ac41/go.mod h1:IGNnRxARdRBvq4Yic3/6CZk+iZ7h8N+zOlwTO9nBOUg=
 github.com/satori/go.uuid v1.2.0 h1:0uYX9dsZ2yD7q2RtLRtPSdGDWzjeM3TbMJP9utgA0ww=

@@ -12,7 +12,7 @@ require (
 	github.com/gorilla/mux v1.8.0 // indirect
 	github.com/onsi/ginkgo v1.2.1-0.20161007050402-acfa16ac8e9e
 	github.com/onsi/gomega v0.0.0-20161118205129-f1f0f388b31e
-	github.com/pborman/uuid v0.0.0-20161005151609-3d4f2ba23642
+	github.com/pborman/uuid v1.2.1
 	github.com/pivotal-cf/service-alerts-client v0.0.0-20190725132148-4a3ed3e6ac41
 	github.com/satori/go.uuid v1.2.0
 	github.com/tedsuo/ifrit v0.0.0-20150410161953-65ca48cd8a94
