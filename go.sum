@@ -1,7 +1,7 @@
 cloud.google.com/go v0.2.1-0.20161007000817-86c12b7c8187 h1:5Q2Onsoin3nblH3fuMfz0ZLmQ+e6EGVz6SzwS6RFzk4=
 cloud.google.com/go v0.2.1-0.20161007000817-86c12b7c8187/go.mod h1:aQUYkXzVsufM+DwF1aE+0xfcU+56JwCaLick0ClmMTw=
-code.cloudfoundry.org/lager v0.0.0-20160705185753-62951a8009ab h1:lamQId0GOSSGcen1F4v9UF5+uBdi64n5KgVkSTuT408=
-code.cloudfoundry.org/lager v0.0.0-20160705185753-62951a8009ab/go.mod h1:O2sS7gKP3HM2iemG+EnwvyNQK7pTSC6Foi4QiMp9sSk=
+code.cloudfoundry.org/lager v2.0.0+incompatible h1:WZwDKDB2PLd/oL+USK4b4aEjUymIej9My2nUQ9oWEwQ=
+code.cloudfoundry.org/lager v2.0.0+incompatible/go.mod h1:O2sS7gKP3HM2iemG+EnwvyNQK7pTSC6Foi4QiMp9sSk=
 github.com/Azure/azure-sdk-for-go v0.0.0-20160210183655-95361a2573b1 h1:VzNN3+5jVFP+WIxT8j1n3XP3zS7bO6a3AB7EJcnFjjM=
 github.com/Azure/azure-sdk-for-go v0.0.0-20160210183655-95361a2573b1/go.mod h1:9XXNKU+eRnpl9moKnB4QOLf1HestfXbmab5FXxiDBjc=
 github.com/cenk/backoff v2.2.1+incompatible h1:djdFT7f4gF2ttuzRKPbMOWgZajgesItGLwG5FTQKmmE=

@@ -4,7 +4,7 @@ go 1.13
 
 require (
 	cloud.google.com/go v0.2.1-0.20161007000817-86c12b7c8187
-	code.cloudfoundry.org/lager v0.0.0-20160705185753-62951a8009ab
+	code.cloudfoundry.org/lager v2.0.0+incompatible
 	github.com/Azure/azure-sdk-for-go v0.0.0-20160210183655-95361a2573b1
 	github.com/cenk/backoff v2.2.1+incompatible // indirect
 	github.com/craigfurman/herottp v0.0.0-20190418132442-c546d62f2a8d // indirect

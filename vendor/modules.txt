@@ -2,7 +2,7 @@
 cloud.google.com/go/compute/metadata
 cloud.google.com/go/internal
 cloud.google.com/go/storage
-# code.cloudfoundry.org/lager v0.0.0-20160705185753-62951a8009ab
+# code.cloudfoundry.org/lager v2.0.0+incompatible
 code.cloudfoundry.org/lager
 # github.com/Azure/azure-sdk-for-go v0.0.0-20160210183655-95361a2573b1
 github.com/Azure/azure-sdk-for-go/storage
