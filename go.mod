@@ -14,7 +14,7 @@ require (
 	github.com/onsi/gomega v0.0.0-20161118205129-f1f0f388b31e
 	github.com/pborman/uuid v0.0.0-20161005151609-3d4f2ba23642
 	github.com/pivotal-cf/service-alerts-client v0.0.0-20190725132148-4a3ed3e6ac41
-	github.com/satori/go.uuid v1.1.0
+	github.com/satori/go.uuid v1.2.0
 	github.com/tedsuo/ifrit v0.0.0-20150410161953-65ca48cd8a94
 	golang.org/x/net v0.0.0-20161007143504-f4b625ec9b21 // indirect
 	golang.org/x/oauth2 v0.0.0-20160902055913-3c3a985cb79f // indirect

@@ -49,7 +49,7 @@ github.com/onsi/gomega/types
 github.com/pborman/uuid
 # github.com/pivotal-cf/service-alerts-client v0.0.0-20190725132148-4a3ed3e6ac41
 github.com/pivotal-cf/service-alerts-client/client
-# github.com/satori/go.uuid v1.1.0
+# github.com/satori/go.uuid v1.2.0
 github.com/satori/go.uuid
 # github.com/tedsuo/ifrit v0.0.0-20150410161953-65ca48cd8a94
 github.com/tedsuo/ifrit
