@@ -20,7 +20,7 @@ require (
 	github.com/pivotal-cf/service-alerts-client v0.0.0-20190725132148-4a3ed3e6ac41
 	github.com/robfig/cron/v3 v3.0.1
 	github.com/satori/go.uuid v1.2.0
-	github.com/tedsuo/ifrit v0.0.0-20150410161953-65ca48cd8a94
+	github.com/tedsuo/ifrit v0.0.0-20191009134036-9a97d0632f00
 	golang.org/x/net v0.0.0-20210423184538-5f58ad60dda6 // indirect
 	golang.org/x/sys v0.0.0-20210426230700-d19ff857e887 // indirect
 	google.golang.org/api v0.45.0
