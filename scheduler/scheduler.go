@@ -14,8 +14,8 @@ import (
 	alerts "github.com/pivotal-cf/service-alerts-client/client"
 	"github.com/pivotal-cf/service-backup/config"
 	"github.com/pivotal-cf/service-backup/executor"
+	cron "github.com/robfig/cron/v3"
 	"github.com/tedsuo/ifrit"
-	cron "gopkg.in/robfig/cron.v2"
 )
 
 type Scheduler struct {

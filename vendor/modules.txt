@@ -102,6 +102,8 @@ github.com/onsi/gomega/types
 github.com/pborman/uuid
 # github.com/pivotal-cf/service-alerts-client v0.0.0-20190725132148-4a3ed3e6ac41
 github.com/pivotal-cf/service-alerts-client/client
+# github.com/robfig/cron/v3 v3.0.1
+github.com/robfig/cron/v3
 # github.com/satori/go.uuid v1.2.0
 github.com/satori/go.uuid
 # github.com/tedsuo/ifrit v0.0.0-20150410161953-65ca48cd8a94
@@ -303,8 +305,6 @@ google.golang.org/protobuf/types/known/anypb
 google.golang.org/protobuf/types/known/durationpb
 google.golang.org/protobuf/types/known/timestamppb
 google.golang.org/protobuf/types/pluginpb
-# gopkg.in/robfig/cron.v2 v2.0.0-20150107220207-be2e0b0deed5
-gopkg.in/robfig/cron.v2
 # gopkg.in/tomb.v1 v1.0.0-20141024135613-dd632973f1e7
 gopkg.in/tomb.v1
 # gopkg.in/yaml.v2 v2.4.0
