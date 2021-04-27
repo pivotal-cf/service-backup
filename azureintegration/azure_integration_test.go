@@ -9,14 +9,13 @@ package azureintegration_test
 import (
 	"crypto/rand"
 	"fmt"
+	"github.com/Azure/azure-sdk-for-go/storage"
 	"io/ioutil"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strconv"
 	"time"
-
-	"github.com/Azure/azure-sdk-for-go/storage"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -180,12 +179,15 @@ func azureBlobService() storage.BlobStorageClient {
 
 func createAzureContainer(name string) {
 	service := azureBlobService()
-	Expect(service.CreateContainer(name, storage.ContainerAccessTypePrivate)).To(Succeed())
+
+	containerRef := service.GetContainerReference(name)
+	Expect(containerRef.Create(&storage.CreateContainerOptions{Access: storage.ContainerAccessTypePrivate})).To(Succeed())
 }
 
 func deleteAzureContainer(name string) {
 	service := azureBlobService()
-	_, err := service.DeleteContainerIfExists(name)
+	containerRef := service.GetContainerReference(name)
+	_, err := containerRef.DeleteIfExists(&storage.DeleteContainerOptions{})
 	Expect(err).To(Succeed())
 }
 
@@ -235,9 +237,14 @@ func createFakeBackupFile(sourceFolder, fileName, content string) {
 }
 
 func downloadBlob(azureBlobService storage.BlobStorageClient, azureContainer, path string) []byte {
-	blob, err := azureBlobService.GetBlob(azureContainer, path)
-	Expect(err).ToNot(HaveOccurred())
-	content, err := ioutil.ReadAll(blob)
+	blob := storage.Blob{
+		Container: azureBlobService.GetContainerReference(azureContainer),
+		Name: path,
+	}
+	b, err := blob.Get(&storage.GetBlobOptions{})
+	Expect(err).NotTo(HaveOccurred())
+
+	content, err := ioutil.ReadAll(b)
 	Expect(err).ToNot(HaveOccurred())
 	return content
 }

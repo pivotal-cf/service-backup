@@ -204,14 +204,22 @@ var _ = Describe("release tests", func() {
 		AfterEach(func() {
 			boshSSH(fmt.Sprintf("rm -f %s%s", testSourceFolder, toBackup))
 
-			_, err := azureBlobService.DeleteBlobIfExists(bucketName, fmt.Sprintf("%s/%s", pathWithDate(testPath), toBackup))
+			blob := storage.Blob{
+				Container: azureBlobService.GetContainerReference(bucketName),
+				Name: fmt.Sprintf("%s/%s", pathWithDate(testPath), toBackup),
+			}
+			_, err := blob.DeleteIfExists(&storage.DeleteBlobOptions{})
 			Expect(err).NotTo(HaveOccurred())
 		})
 
 		Context("automatic backup", func() {
 			It("Uploads files in the backup directory", func() {
 				Eventually(func() bool {
-					exists, err := azureBlobService.BlobExists(bucketName, fmt.Sprintf("%s/%s", pathWithDate(testPath), toBackup))
+					blob := storage.Blob{
+						Container: azureBlobService.GetContainerReference(bucketName),
+						Name: fmt.Sprintf("%s/%s", pathWithDate(testPath), toBackup),
+					}
+					exists, err := blob.Exists()
 					Expect(err).NotTo(HaveOccurred())
 					return exists
 				}, time.Minute).Should(BeTrue())
@@ -230,7 +238,11 @@ var _ = Describe("release tests", func() {
 			It("uploads files in the backup directory", func() {
 				boshSSH("sudo /var/vcap/jobs/service-backup/bin/manual-backup")
 				Eventually(func() bool {
-					exists, err := azureBlobService.BlobExists(bucketName, fmt.Sprintf("%s/%s", pathWithDate(testPath), toBackup))
+					blob := storage.Blob{
+						Container: azureBlobService.GetContainerReference(bucketName),
+						Name: fmt.Sprintf("%s/%s", pathWithDate(testPath), toBackup),
+					}
+					exists, err := blob.Exists()
 					Expect(err).NotTo(HaveOccurred())
 					return exists
 				}, time.Minute).Should(BeTrue())

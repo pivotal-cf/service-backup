@@ -4,17 +4,35 @@ cloud.google.com/go/internal
 cloud.google.com/go/storage
 # code.cloudfoundry.org/lager v2.0.0+incompatible
 code.cloudfoundry.org/lager
-# github.com/Azure/azure-sdk-for-go v0.0.0-20160210183655-95361a2573b1
+# github.com/Azure/azure-sdk-for-go v53.4.0+incompatible
 github.com/Azure/azure-sdk-for-go/storage
+github.com/Azure/azure-sdk-for-go/version
+# github.com/Azure/go-autorest v14.2.0+incompatible
+github.com/Azure/go-autorest
+# github.com/Azure/go-autorest/autorest v0.11.18
+github.com/Azure/go-autorest/autorest
+github.com/Azure/go-autorest/autorest/azure
+# github.com/Azure/go-autorest/autorest/adal v0.9.13
+github.com/Azure/go-autorest/autorest/adal
+# github.com/Azure/go-autorest/autorest/date v0.3.0
+github.com/Azure/go-autorest/autorest/date
+# github.com/Azure/go-autorest/logger v0.2.1
+github.com/Azure/go-autorest/logger
+# github.com/Azure/go-autorest/tracing v0.6.0
+github.com/Azure/go-autorest/tracing
 # github.com/cenk/backoff v2.2.1+incompatible
 github.com/cenk/backoff
 # github.com/craigfurman/herottp v0.0.0-20190418132442-c546d62f2a8d
 github.com/craigfurman/herottp
+# github.com/form3tech-oss/jwt-go v3.2.2+incompatible
+github.com/form3tech-oss/jwt-go
 # github.com/fsnotify/fsnotify v1.4.9
 github.com/fsnotify/fsnotify
+# github.com/gofrs/uuid v4.0.0+incompatible
+github.com/gofrs/uuid
 # github.com/golang/protobuf v1.4.3
 github.com/golang/protobuf/proto
-# github.com/google/uuid v1.0.0
+# github.com/google/uuid v1.2.0
 github.com/google/uuid
 # github.com/nxadm/tail v1.4.8
 github.com/nxadm/tail
@@ -68,7 +86,10 @@ github.com/pivotal-cf/service-alerts-client/client
 github.com/satori/go.uuid
 # github.com/tedsuo/ifrit v0.0.0-20150410161953-65ca48cd8a94
 github.com/tedsuo/ifrit
-# golang.org/x/net v0.0.0-20201202161906-c7110b5ffcbb
+# golang.org/x/crypto v0.0.0-20201002170205-7f63de1d35b0
+golang.org/x/crypto/pkcs12
+golang.org/x/crypto/pkcs12/internal/rc2
+# golang.org/x/net v0.0.0-20210423184538-5f58ad60dda6
 golang.org/x/net/context
 golang.org/x/net/context/ctxhttp
 golang.org/x/net/html
@@ -86,10 +107,10 @@ golang.org/x/oauth2/google
 golang.org/x/oauth2/internal
 golang.org/x/oauth2/jws
 golang.org/x/oauth2/jwt
-# golang.org/x/sys v0.0.0-20210426080607-c94f62235c83
+# golang.org/x/sys v0.0.0-20210426230700-d19ff857e887
 golang.org/x/sys/internal/unsafeheader
 golang.org/x/sys/unix
-# golang.org/x/text v0.3.3
+# golang.org/x/text v0.3.6
 golang.org/x/text/encoding
 golang.org/x/text/encoding/charmap
 golang.org/x/text/encoding/htmlindex
