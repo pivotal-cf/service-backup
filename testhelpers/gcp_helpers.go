@@ -8,6 +8,7 @@ package testhelpers
 
 import (
 	"context"
+	"google.golang.org/api/iterator"
 
 	"cloud.google.com/go/storage"
 	. "github.com/onsi/gomega"
@@ -17,7 +18,7 @@ func DeleteGCSBucket(ctx context.Context, bucket *storage.BucketHandle) {
 	objectsInBucket := bucket.Objects(ctx, nil)
 	for {
 		obj, err := objectsInBucket.Next()
-		if err == storage.Done {
+		if err == iterator.Done {
 			break
 		}
 		Expect(err).NotTo(HaveOccurred())

@@ -1,4 +1,4 @@
-// Copyright 2016 Google Inc. All Rights Reserved.
+// Copyright 2016 Google LLC
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -19,7 +19,14 @@ Google Cloud Storage stores data in named objects, which are grouped into bucket
 More information about Google Cloud Storage is available at
 https://cloud.google.com/storage/docs.
 
-Note: This package is experimental and may make backwards-incompatible changes.
+See https://godoc.org/cloud.google.com/go for authentication, timeouts,
+connection pooling and similar aspects of this package.
+
+All of the methods of this package use exponential backoff to retry calls that fail
+with certain errors, as described in
+https://cloud.google.com/storage/docs/exponential-backoff. Retrying continues
+indefinitely unless the controlling context is canceled or the client is closed. See
+context.WithTimeout and context.WithCancel.
 
 
 Creating a Client
@@ -31,6 +38,15 @@ To start working with this package, create a client:
     if err != nil {
         // TODO: Handle error.
     }
+
+The client will use your default application credentials. Clients should be
+reused instead of created as needed. The methods of Client are safe for
+concurrent use by multiple goroutines.
+
+If you only wish to access public data, you can create
+an unauthenticated client with
+
+    client, err := storage.NewClient(ctx, option.WithoutAuthentication())
 
 Buckets
 
@@ -52,7 +68,7 @@ global across all projects.
 
 Each bucket has associated metadata, represented in this package by
 BucketAttrs. The third argument to BucketHandle.Create allows you to set
-the intial BucketAttrs of a bucket. To retrieve a bucket's attributes, use
+the initial BucketAttrs of a bucket. To retrieve a bucket's attributes, use
 Attrs:
 
     attrs, err := bkt.Attrs(ctx)
@@ -65,15 +81,16 @@ Attrs:
 Objects
 
 An object holds arbitrary data as a sequence of bytes, like a file. You
-refer to objects using a handle, just as with buckets. You can use the
-standard Go io.Reader and io.Writer interfaces to read and write
-object data:
+refer to objects using a handle, just as with buckets, but unlike buckets
+you don't explicitly create an object. Instead, the first time you write
+to an object it will be created. You can use the standard Go io.Reader
+and io.Writer interfaces to read and write object data:
 
     obj := bkt.Object("data")
     // Write something to obj.
     // w implements io.Writer.
     w := obj.NewWriter(ctx)
-    // Write some text to obj. This will overwrite whatever is there.
+    // Write some text to obj. This will either create the object or overwrite whatever is there already.
     if _, err := fmt.Fprintf(w, "This object contains text.\n"); err != nil {
         // TODO: Handle error.
     }
@@ -101,6 +118,44 @@ Objects also have attributes, which you can fetch with Attrs:
     }
     fmt.Printf("object %s has size %d and can be read using %s\n",
         objAttrs.Name, objAttrs.Size, objAttrs.MediaLink)
+
+Listing objects
+
+Listing objects in a bucket is done with the Bucket.Objects method:
+
+    query := &storage.Query{Prefix: ""}
+
+    var names []string
+    it := bkt.Objects(ctx, query)
+    for {
+        attrs, err := it.Next()
+        if err == iterator.Done {
+            break
+        }
+        if err != nil {
+            log.Fatal(err)
+        }
+        names = append(names, attrs.Name)
+    }
+
+Objects are listed lexicographically by name. To filter objects
+lexicographically, Query.StartOffset and/or Query.EndOffset can be used:
+
+    query := &storage.Query{
+        Prefix: "",
+        StartOffset: "bar/",  // Only list objects lexicographically >= "bar/"
+        EndOffset: "foo/",    // Only list objects lexicographically < "foo/"
+    }
+
+    // ... as before
+
+If only a subset of object attributes is needed when listing, specifying this
+subset using Query.SetAttrSelection may speed up the listing process:
+
+    query := &storage.Query{Prefix: ""}
+    query.SetAttrSelection([]string{"Name"})
+
+    // ... as before
 
 ACLs
 
@@ -134,8 +189,7 @@ For example, say you've read an object's metadata into objAttrs. Now
 you want to write to that object, but only if its contents haven't changed
 since you read it. Here is how to express that:
 
-    cond := storage.IfGenerationMatch(objAttrs.Generation)
-    w = obj.WithConditions(cond).NewWriter(ctx)
+    w = obj.If(storage.Conditions{GenerationMatch: objAttrs.Generation}).NewWriter(ctx)
     // Proceed with writing as above.
 
 Signed URLs
@@ -149,5 +203,29 @@ SignedURL for details.
         // TODO: Handle error.
     }
     fmt.Println(url)
+
+Post Policy V4 Signed Request
+
+A type of signed request that allows uploads through HTML forms directly to Cloud Storage with
+temporary permission. Conditions can be applied to restrict how the HTML form is used and exercised
+by a user.
+
+For more information, please see https://cloud.google.com/storage/docs/xml-api/post-object as well
+as the documentation of GenerateSignedPostPolicyV4.
+
+    pv4, err := storage.GenerateSignedPostPolicyV4(bucketName, objectName, opts)
+    if err != nil {
+        // TODO: Handle error.
+    }
+    fmt.Printf("URL: %s\nFields; %v\n", pv4.URL, pv4.Fields)
+
+Errors
+
+Errors returned by this client are often of the type [`googleapi.Error`](https://godoc.org/google.golang.org/api/googleapi#Error).
+These errors can be introspected for more information by type asserting to the richer `googleapi.Error` type. For example:
+
+	if e, ok := err.(*googleapi.Error); ok {
+		  if e.Code == 409 { ... }
+	}
 */
 package storage // import "cloud.google.com/go/storage"
