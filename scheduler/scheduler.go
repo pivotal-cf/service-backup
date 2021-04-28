@@ -24,7 +24,9 @@ type Scheduler struct {
 }
 
 func NewScheduler(e executor.Executor, backupConfig config.BackupConfig, alertsClient *alerts.ServiceAlertsClient, logger lager.Logger) Scheduler {
-	scheduler := cron.New(cron.WithSeconds())
+	scheduler := cron.New(cron.WithParser(cron.NewParser(
+		cron.SecondOptional | cron.Minute | cron.Hour | cron.Dom | cron.Month | cron.Dow | cron.Descriptor,
+	)))
 
 	_, err := scheduler.AddFunc(backupConfig.CronSchedule, func() {
 		backupErr := e.Execute()
