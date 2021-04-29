@@ -27,7 +27,7 @@ func main() {
 	signal.Notify(sigterms, syscall.SIGTERM)
 
 	logger := lager.NewLogger("ServiceBackup")
-	logger.RegisterSink(lager.NewWriterSink(os.Stdout, lager.INFO))
+	logger.RegisterSink(lager.NewPrettySink(os.Stdout, lager.INFO))
 	configPath := os.Args[1]
 	backupConfig, err := config.Parse(configPath, logger)
 	if err != nil {
