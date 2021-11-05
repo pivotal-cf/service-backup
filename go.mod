@@ -21,7 +21,7 @@ require (
 	github.com/robfig/cron/v3 v3.0.1
 	github.com/satori/go.uuid v1.2.0
 	github.com/tedsuo/ifrit v0.0.0-20191009134036-9a97d0632f00
-	google.golang.org/api v0.58.0
+	google.golang.org/api v0.60.0
 	gopkg.in/check.v1 v1.0.0-20201130134442-10cb98267c6c // indirect
 	gopkg.in/yaml.v2 v2.4.0
 )
