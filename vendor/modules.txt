@@ -13,7 +13,7 @@ cloud.google.com/go/storage/internal/apiv2
 # code.cloudfoundry.org/lager v2.0.0+incompatible
 ## explicit
 code.cloudfoundry.org/lager
-# github.com/Azure/azure-sdk-for-go v53.4.0+incompatible
+# github.com/Azure/azure-sdk-for-go v60.1.0+incompatible
 ## explicit
 github.com/Azure/azure-sdk-for-go/storage
 github.com/Azure/azure-sdk-for-go/version
