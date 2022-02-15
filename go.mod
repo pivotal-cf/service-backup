@@ -15,7 +15,7 @@ require (
 	github.com/google/uuid v1.2.0 // indirect
 	github.com/gorilla/mux v1.8.0 // indirect
 	github.com/onsi/ginkgo v1.16.5
-	github.com/onsi/gomega v1.17.0
+	github.com/onsi/gomega v1.18.1
 	github.com/pborman/uuid v1.2.1
 	github.com/pivotal-cf/service-alerts-client v0.0.0-20190725132148-4a3ed3e6ac41
 	github.com/robfig/cron/v3 v3.0.1
