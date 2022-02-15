@@ -3,8 +3,7 @@ module github.com/pivotal-cf/service-backup
 go 1.16
 
 require (
-	cloud.google.com/go/iam v0.1.1 // indirect
-	cloud.google.com/go/storage v1.18.2
+	cloud.google.com/go/storage v1.20.0
 	code.cloudfoundry.org/lager v2.0.0+incompatible
 	github.com/Azure/azure-sdk-for-go v61.5.0+incompatible
 	github.com/Azure/go-autorest/autorest v0.11.18 // indirect
