@@ -5,7 +5,7 @@ go 1.16
 require (
 	cloud.google.com/go/storage v1.20.0
 	code.cloudfoundry.org/lager v2.0.0+incompatible
-	github.com/Azure/azure-sdk-for-go v62.0.0+incompatible
+	github.com/Azure/azure-sdk-for-go v62.1.0+incompatible
 	github.com/Azure/go-autorest/autorest v0.11.18 // indirect
 	github.com/Azure/go-autorest/autorest/to v0.4.0 // indirect
 	github.com/cenk/backoff v2.2.1+incompatible // indirect
