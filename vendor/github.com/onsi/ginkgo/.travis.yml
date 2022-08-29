@@ -21,4 +21,4 @@ install:
 script:
   - GO111MODULE="on" go mod tidy && git diff --exit-code go.mod go.sum
   - go vet
-  - ginkgo -r --randomize-all --randomize-suites --race --trace
+  - ginkgo -r --randomizeAllSpecs --randomizeSuites --race --trace
