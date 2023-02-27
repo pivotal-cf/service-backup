@@ -17,7 +17,7 @@ require (
 	github.com/onsi/ginkgo v1.16.5
 	github.com/onsi/gomega v1.19.0
 	github.com/pborman/uuid v1.2.1
-	github.com/pivotal-cf/service-alerts-client v0.0.0-20190725132148-4a3ed3e6ac41
+	github.com/pivotal-cf/service-alerts-client v0.3.0
 	github.com/robfig/cron/v3 v3.0.1
 	github.com/satori/go.uuid v1.2.0
 	github.com/tedsuo/ifrit v0.0.0-20191009134036-9a97d0632f00
