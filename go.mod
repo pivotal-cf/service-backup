@@ -3,7 +3,7 @@ module github.com/pivotal-cf/service-backup
 go 1.16
 
 require (
-	cloud.google.com/go/storage v1.20.0
+	cloud.google.com/go/storage v1.29.0
 	code.cloudfoundry.org/lager v2.0.0+incompatible
 	github.com/Azure/azure-sdk-for-go v63.4.0+incompatible
 	github.com/Azure/go-autorest/autorest v0.11.18 // indirect
@@ -12,7 +12,6 @@ require (
 	github.com/craigfurman/herottp v0.0.0-20190418132442-c546d62f2a8d // indirect
 	github.com/dnaeon/go-vcr v1.1.0 // indirect
 	github.com/gofrs/uuid v4.0.0+incompatible // indirect
-	github.com/google/uuid v1.2.0 // indirect
 	github.com/gorilla/mux v1.8.0 // indirect
 	github.com/onsi/ginkgo v1.16.5
 	github.com/onsi/gomega v1.19.0
@@ -21,7 +20,6 @@ require (
 	github.com/robfig/cron/v3 v3.0.1
 	github.com/satori/go.uuid v1.2.0
 	github.com/tedsuo/ifrit v0.0.0-20191009134036-9a97d0632f00
-	google.golang.org/api v0.68.0
-	gopkg.in/check.v1 v1.0.0-20201130134442-10cb98267c6c // indirect
+	google.golang.org/api v0.122.0
 	gopkg.in/yaml.v2 v2.4.0
 )
