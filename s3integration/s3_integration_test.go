@@ -42,7 +42,7 @@ var _ = Describe("S3 Backup", func() {
 
 	BeforeEach(func() {
 		endpointURL = "https://s3.amazonaws.com"
-		region = ""
+		region = "us-west-2"
 		bucketName = existingBucketInDefaultRegion
 		bucketPath = fmt.Sprint(uuid.NewV4())
 	})
@@ -1575,7 +1575,7 @@ func createFilesToUpload(sourceFolder string, smallFile bool) map[string]string 
 func createFileIn(sourceFolder string) (string, string) {
 	file, err := ioutil.TempFile(sourceFolder, "s3-integration")
 	Expect(err).ToNot(HaveOccurred())
-	
+
 	fileContents := fmt.Sprint(uuid.NewV4())
 	_, err = file.Write([]byte(fileContents))
 	Expect(err).ToNot(HaveOccurred())
