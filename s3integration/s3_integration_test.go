@@ -41,8 +41,8 @@ var _ = Describe("S3 Backup", func() {
 	)
 
 	BeforeEach(func() {
-		endpointURL = "https://s3.amazonaws.com"
 		region = "us-west-2"
+		endpointURL = fmt.Sprintf("https://s3-%s.amazonaws.com", region)
 		bucketName = existingBucketInDefaultRegion
 		bucketPath = fmt.Sprint(uuid.NewV4())
 	})
