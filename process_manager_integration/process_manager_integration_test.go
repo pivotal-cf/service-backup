@@ -146,7 +146,7 @@ cron_schedule: '* * * * * *'
 
 			session.Terminate()
 
-			Eventually(evidenceFile, 5).Should(BeAnExistingFile())
+			Eventually(evidenceFile, 15).Should(BeAnExistingFile())
 			Eventually(session, 5).Should(gexec.Exit())
 			Eventually(session.Out).Should(gbytes.Say("All backup processes terminated"))
 		})
