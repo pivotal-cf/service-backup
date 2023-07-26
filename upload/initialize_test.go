@@ -86,7 +86,7 @@ var _ = Describe("Initialize", func() {
 	Context("when generating an Azure uploader", func() {
 		It("returns a list of 1 backuper", func() {
 			backupConfig := backupConfig("azure")
-			factory.AzureReturns(azure.New("azure", "", "", "", "", "", nil))
+			factory.AzureReturns(azure.New("azure", "", "", "", "", nil))
 
 			uploader, err := upload.Initialize(backupConfig, logger, upload.WithUploaderFactory(factory), upload.WithCACertLocator(noopCACertLocator))
 

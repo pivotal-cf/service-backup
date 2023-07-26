@@ -46,7 +46,6 @@ var _ = Describe("Parse", func() {
 				Expect(backupConfig.ExitIfInProgress).To(BeTrue())
 				Expect(backupConfig.ServiceIdentifierExecutable).To(Equal("whoami"))
 				Expect(backupConfig.AwsCliPath).To(Equal("path/to/aws_cli"))
-				Expect(backupConfig.AzureCliPath).To(Equal("path/to/azure_cli"))
 			})
 		})
 	})
@@ -78,7 +77,6 @@ var _ = Describe("Parse", func() {
 				Expect(backupConfig.ExitIfInProgress).To(BeTrue())
 				Expect(backupConfig.ServiceIdentifierExecutable).To(Equal("whoami"))
 				Expect(backupConfig.AwsCliPath).To(Equal("path/to/aws_cli"))
-				Expect(backupConfig.AzureCliPath).To(Equal("path/to/azure_cli"))
 				Expect(backupConfig.Alerts).To(Equal(&config.Alerts{
 					ProductName: "MySQL",
 					Config: alerts.Config{
@@ -129,7 +127,6 @@ var _ = Describe("Parse", func() {
 				Expect(backupConfig.ExitIfInProgress).To(BeFalse())
 				Expect(backupConfig.ServiceIdentifierExecutable).To(Equal(""))
 				Expect(backupConfig.AwsCliPath).To(Equal("path/to/aws_cli"))
-				Expect(backupConfig.AzureCliPath).To(Equal("path/to/azure_cli"))
 				Expect(backupConfig.Alerts).To(BeNil())
 			})
 		})

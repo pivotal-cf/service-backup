@@ -24,7 +24,6 @@ service_identifier_executable: whoami
 deployment_name: deployment-name
 add_deployment_name_to_backup_path: true
 aws_cli_path: path/to/aws_cli
-azure_cli_path: path/to/azure_cli
 alerts:
   product_name: MySQL
   config:

@@ -56,7 +56,6 @@ type BackupConfig struct {
 	DeploymentName              string        `yaml:"deployment_name"`
 	AddDeploymentName           bool          `yaml:"add_deployment_name_to_backup_path"`
 	AwsCliPath                  string        `yaml:"aws_cli_path"`
-	AzureCliPath                string        `yaml:"azure_cli_path"`
 	Alerts                      *Alerts       `yaml:"alerts,omitempty"`
 }
 

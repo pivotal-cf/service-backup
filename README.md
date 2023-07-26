@@ -14,15 +14,10 @@ S3 requires the AWS CLI:
 brew install awscli
 ```
 
-Azure requires the [`blobxfer`](https://github.com/Azure/blobxfer) CLI for batch uploads:
-
 ```sh
-brew install python
-pip install blobxfer
+brew install python3
 ```
 
-> NB: blobxfer version 1.0.0 or above is required
- 
 ## Running Tests
 
 The environment variables required to run the tests are listed in `.envrc.template`.
