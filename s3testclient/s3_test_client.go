@@ -26,7 +26,7 @@ func New(endpointURL, accessKeyID, secretAccessKey, basePath string) *S3TestClie
 	caCertPath, err := upload.CACertPath()
 	Expect(err).NotTo(HaveOccurred())
 
-	s3CLIClient := s3.New("s3_test_client", "aws", endpointURL, "", accessKeyID, secretAccessKey, caCertPath, upload.RemotePathFunc(basePath, ""))
+	s3CLIClient := s3.New("s3_test_client", "aws", endpointURL, "us-west-2", accessKeyID, secretAccessKey, caCertPath, upload.RemotePathFunc(basePath, ""))
 	s3CLIClient.ProcessMgr = process.NewManager()
 	return &S3TestClient{S3CliClient: s3CLIClient}
 }
@@ -55,7 +55,7 @@ func (c *S3TestClient) ListRemotePath(bucketName, region string) ([]string, erro
 }
 
 func (c *S3TestClient) RemotePathExistsInBucket(bucketName, remotePath string) bool {
-	keys, err := c.ListRemotePath(bucketName, "")
+	keys, err := c.ListRemotePath(bucketName, "us-west-2")
 	Expect(err).ToNot(HaveOccurred())
 
 	for _, key := range keys {
