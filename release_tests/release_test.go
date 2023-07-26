@@ -122,7 +122,7 @@ var _ = Describe("release tests", func() {
 
 		AfterEach(func() {
 			boshSSH(fmt.Sprintf("rm -f %s%s", testSourceFolder, toBackup))
-			Expect(client.DeleteRemotePath(bucketName, testPath, "")).To(Succeed())
+			Expect(client.DeleteRemotePath(bucketName, testPath, "us-west-2")).To(Succeed())
 		})
 
 		Context("automatic backup", func() {
