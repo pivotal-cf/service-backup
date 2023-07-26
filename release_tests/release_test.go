@@ -117,7 +117,7 @@ var _ = Describe("release tests", func() {
 
 			awsAccessKeyID := envMustHave("AWS_ACCESS_KEY_ID")
 			awsSecretKey := envMustHave("AWS_SECRET_ACCESS_KEY")
-			client = s3testclient.New("https://s3.amazonaws.com", awsAccessKeyID, awsSecretKey, testPath)
+			client = s3testclient.New("https://s3-us-west-2.amazonaws.com", awsAccessKeyID, awsSecretKey, testPath)
 		})
 
 		AfterEach(func() {
@@ -161,7 +161,7 @@ var _ = Describe("release tests", func() {
 
 			awsAccessKeyID := envMustHave("AWS_ACCESS_KEY_ID")
 			awsSecretKey := envMustHave("AWS_SECRET_ACCESS_KEY")
-			client = s3testclient.New("https://s3.amazonaws.com", awsAccessKeyID, awsSecretKey, testPath)
+			client = s3testclient.New("https://s3-us-west-2.amazonaws.com", awsAccessKeyID, awsSecretKey, testPath)
 		})
 
 		AfterEach(func() {
@@ -206,7 +206,7 @@ var _ = Describe("release tests", func() {
 
 			blob := storage.Blob{
 				Container: azureBlobService.GetContainerReference(bucketName),
-				Name: fmt.Sprintf("%s/%s", pathWithDate(testPath), toBackup),
+				Name:      fmt.Sprintf("%s/%s", pathWithDate(testPath), toBackup),
 			}
 			_, err := blob.DeleteIfExists(&storage.DeleteBlobOptions{})
 			Expect(err).NotTo(HaveOccurred())
@@ -217,7 +217,7 @@ var _ = Describe("release tests", func() {
 				Eventually(func() bool {
 					blob := storage.Blob{
 						Container: azureBlobService.GetContainerReference(bucketName),
-						Name: fmt.Sprintf("%s/%s", pathWithDate(testPath), toBackup),
+						Name:      fmt.Sprintf("%s/%s", pathWithDate(testPath), toBackup),
 					}
 					exists, err := blob.Exists()
 					Expect(err).NotTo(HaveOccurred())
@@ -240,7 +240,7 @@ var _ = Describe("release tests", func() {
 				Eventually(func() bool {
 					blob := storage.Blob{
 						Container: azureBlobService.GetContainerReference(bucketName),
-						Name: fmt.Sprintf("%s/%s", pathWithDate(testPath), toBackup),
+						Name:      fmt.Sprintf("%s/%s", pathWithDate(testPath), toBackup),
 					}
 					exists, err := blob.Exists()
 					Expect(err).NotTo(HaveOccurred())
