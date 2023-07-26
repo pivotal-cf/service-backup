@@ -136,7 +136,7 @@ func (e *executor) Execute() error {
 	}
 
 	// Do not return error if cleanup command failed.
-	e.performCleanup(sessionLogger)
+	_ = e.performCleanup(sessionLogger)
 
 	sessionLogger = e.logger
 

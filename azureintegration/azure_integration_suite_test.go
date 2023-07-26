@@ -18,7 +18,7 @@ import (
 )
 
 const (
-	azureTimeout           = "20s"
+	azureTimeout           = "3m"
 	azureAccountNameEnvKey = "AZURE_STORAGE_ACCOUNT"
 	azureAccountKeyEnvKey  = "AZURE_STORAGE_ACCESS_KEY"
 	azureCmd               = ""

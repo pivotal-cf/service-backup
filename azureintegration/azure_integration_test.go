@@ -216,7 +216,6 @@ destinations:
     endpoint: %s
 source_folder: %s
 source_executable: true
-azure_cli_path: blobxfer
 exit_if_in_progress: true
 cron_schedule: '*/5 * * * * *'
 cleanup_executable: true
@@ -239,7 +238,7 @@ func createFakeBackupFile(sourceFolder, fileName, content string) {
 func downloadBlob(azureBlobService storage.BlobStorageClient, azureContainer, path string) []byte {
 	blob := storage.Blob{
 		Container: azureBlobService.GetContainerReference(azureContainer),
-		Name: path,
+		Name:      path,
 	}
 	b, err := blob.Get(&storage.GetBlobOptions{})
 	Expect(err).NotTo(HaveOccurred())

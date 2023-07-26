@@ -1224,7 +1224,6 @@ cron_schedule: '%s'
 destinations: []
 exit_if_in_progress: false
 aws_cli_path: "/var/vcap/packages/aws-cli/bin/aws"
-azure_cli_path: "/var/vcap/packages/blobxfer/bin/blobxfer"
 missing_properties_message: Provide these missing fields in your manifest.
 service_identifier_executable:
 source_executable:

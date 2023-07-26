@@ -7,13 +7,13 @@
 package azure
 
 import (
-	"fmt"
-	"os"
-	"os/exec"
-	"path"
-
 	"code.cloudfoundry.org/lager"
+	"fmt"
+	"github.com/Azure/azure-sdk-for-go/storage"
 	"github.com/pivotal-cf/service-backup/process"
+	"os"
+	"path/filepath"
+	"strings"
 )
 
 type AzureClient struct {
@@ -22,11 +22,10 @@ type AzureClient struct {
 	accountKey   string
 	container    string
 	endpoint     string
-	azureCmd     string
 	remotePathFn func() string
 }
 
-func New(name, accountKey, accountName, container, endpoint, azureCmd string, remotePathFn func() string) *AzureClient {
+func New(name, accountKey, accountName, container, endpoint string, remotePathFn func() string) *AzureClient {
 	return &AzureClient{
 		name:         name,
 		accountKey:   accountKey,
@@ -34,7 +33,6 @@ func New(name, accountKey, accountName, container, endpoint, azureCmd string, re
 		container:    container,
 		endpoint:     endpoint,
 		remotePathFn: remotePathFn,
-		azureCmd:     azureCmd,
 	}
 }
 
@@ -47,38 +45,57 @@ func (a *AzureClient) Upload(localPath string, sessionLogger lager.Logger, proce
 	return a.uploadDir(localPath, remotePath, processManager, sessionLogger)
 }
 
-func (a *AzureClient) uploadDir(localFilePath, remoteFilePath string, processManager process.ProcessManager, sessionLogger lager.Logger) error {
+func (a *AzureClient) uploadFile(sessionLogger lager.Logger, containerReference *storage.Container, localFilePath, remoteFilePath string) error {
+	sessionLogger.Info(fmt.Sprintf("uploadFile: %s to %s", localFilePath, remoteFilePath))
 	file, err := os.Open(localFilePath)
 	if err != nil {
-		return err
+		return fmt.Errorf("error in uploadFile could not open file: %w", err)
 	}
 	defer file.Close()
 
-	args := []string{
-		"upload",
-		"--local-path", localFilePath,
-		"--remote-path", path.Join(a.container, remoteFilePath),
-		"--storage-account", a.accountName}
-	if a.endpoint != "" {
-		args = append(args, "--endpoint", a.endpoint)
-	}
-	cmd := exec.Command(a.azureCmd, args...)
+	blob := containerReference.GetBlobReference(remoteFilePath)
 
-	lang := os.Getenv("LANG")
-	if lang == "" {
-		lang = "C.UTF-8"
-	}
-	cmd.Env = append(cmd.Env,
-		"LANG="+lang,
-		"BLOBXFER_STORAGE_ACCOUNT_KEY="+a.accountKey,
-	)
-
-	output, err := processManager.Start(cmd)
-
+	err = blob.CreateBlockBlobFromReader(file, &storage.PutBlobOptions{})
 	if err != nil {
-		sessionLogger.Info("blobxfer combined output", lager.Data{"output": string(output)})
+		return fmt.Errorf("error in uploadFile could not create block: %w", err)
 	}
-	return err
+
+	return nil
+}
+
+func (a *AzureClient) uploadDir(localFilePath, remoteFileRoot string, processManager process.ProcessManager, sessionLogger lager.Logger) error {
+	endpoint := storage.DefaultBaseURL
+	if len(a.endpoint) != 0 {
+		endpoint = a.endpoint
+	}
+	azureClient, err := storage.NewClient(a.accountName, a.accountKey, endpoint, storage.DefaultAPIVersion, true)
+	if err != nil {
+		return fmt.Errorf("error in uploadDir when creating client: %w", err)
+	}
+
+	azureBlobService := azureClient.GetBlobService()
+
+	containerReference := azureBlobService.GetContainerReference(a.container)
+	_, err = containerReference.CreateIfNotExists(&storage.CreateContainerOptions{})
+	if err != nil {
+		return fmt.Errorf("error in uploadDir Failed to establish a new connection: %w", err)
+	}
+
+	err = filepath.Walk(localFilePath, func(filePath string, d os.FileInfo, err error) error {
+		if d.IsDir() {
+			return nil
+		}
+
+		filePathDifference := strings.Replace(filePath, localFilePath, "", -1)
+		remoteFilePath := filepath.Join(remoteFileRoot, filePathDifference)
+
+		return a.uploadFile(sessionLogger, containerReference, filePath, remoteFilePath)
+	})
+	if err != nil {
+		return fmt.Errorf("error in uploadDir when walking dir: %w", err)
+	}
+
+	return nil
 }
 
 func (a *AzureClient) Name() string {
