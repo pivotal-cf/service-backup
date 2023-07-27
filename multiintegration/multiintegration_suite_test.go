@@ -31,8 +31,8 @@ func TestMultiintegration(t *testing.T) {
 
 const (
 	sshKeyUsername                   = "service-backup-tmp-key"
-	existingBucketInDefaultRegion    = "service-backup-integration-test-restricted"
-	existingBucketInNonDefaultRegion = "service-backup-integration-test"
+	existingBucketInDefaultRegion    = "pcf-redis-service-backup-integration-test-restricted"
+	existingBucketInNonDefaultRegion = "pcf-redis-service-backup-integration-test"
 )
 
 type TestData struct {

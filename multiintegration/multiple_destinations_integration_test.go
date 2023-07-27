@@ -60,8 +60,8 @@ destinations:
     port: 22
 - type: s3
   config:
-    endpoint_url: 'https://s3.amazonaws.com'
-    region: ''
+    endpoint_url: 'https://s3-us-west-2.amazonaws.com'
+    region: 'us-west-2'
     bucket_name: %s
     bucket_path: %s
     access_key_id: %s
@@ -227,8 +227,8 @@ missing_properties_message: custom message`, unixUser.Username, destPathSCP1, pa
 destinations:
 - type: s3
   config:
-    endpoint_url: 'https://s3.amazonaws.com'
-    region: ''
+    endpoint_url: 'https://s3-us-west-2.amazonaws.com'
+    region: 'us-west-2'
     bucket_name: %s
     bucket_path: %s
     access_key_id: %s
