@@ -9,6 +9,7 @@ package s3testclient
 import (
 	"fmt"
 	"os"
+	"os/exec"
 	"strings"
 	"time"
 
@@ -22,11 +23,11 @@ type S3TestClient struct {
 	*s3.S3CliClient
 }
 
-func New(endpointURL, accessKeyID, secretAccessKey, basePath string) *S3TestClient {
+func New(endpointURL, accessKeyID, secretAccessKey, basePath, region string) *S3TestClient {
 	caCertPath, err := upload.CACertPath()
 	Expect(err).NotTo(HaveOccurred())
 
-	s3CLIClient := s3.New("s3_test_client", "aws", endpointURL, "us-west-2", accessKeyID, secretAccessKey, caCertPath, upload.RemotePathFunc(basePath, ""))
+	s3CLIClient := s3.New("s3_test_client", "aws", endpointURL, region, accessKeyID, secretAccessKey, caCertPath, upload.RemotePathFunc(basePath, ""))
 	s3CLIClient.ProcessMgr = process.NewManager()
 	return &S3TestClient{S3CliClient: s3CLIClient}
 }
@@ -109,4 +110,11 @@ func (c *S3TestClient) DeleteBucket(bucketName, region string) {
 		err = c.RunCommand(cmd, "retry delete bucket")
 		Expect(err).ToNot(HaveOccurred())
 	}
+}
+
+func (c *S3TestClient) RunCommand(cmd *exec.Cmd, stepName string) error {
+	if out, err := c.ProcessMgr.Start(cmd); err != nil {
+		return fmt.Errorf("error in %s: %s, output: %s", stepName, err, string(out))
+	}
+	return nil
 }

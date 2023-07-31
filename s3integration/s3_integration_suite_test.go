@@ -9,6 +9,7 @@ package s3integration_test
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/pivotal-cf/service-backup/s3"
 	"os"
 	"path/filepath"
 	"testing"
@@ -26,6 +27,7 @@ const (
 	awsSecretAccessKeyEnvKey           = "AWS_SECRET_ACCESS_KEY"
 	awsAccessKeyIDEnvKeyRestricted     = "AWS_ACCESS_KEY_ID_RESTRICTED"
 	awsSecretAccessKeyEnvKeyRestricted = "AWS_SECRET_ACCESS_KEY_RESTRICTED"
+	region                             = "us-west-2"
 
 	integrationTestBucketNamePrefix  = "pcf-redis-service-backup-integration-"
 	existingBucketInNonDefaultRegion = integrationTestBucketNamePrefix + "test"
@@ -105,9 +107,10 @@ func beforeSuiteFirstNode() []byte {
 	Expect(err).ToNot(HaveOccurred())
 
 	logger := lager.NewLogger("before-suite")
-	s3TestClient = s3testclient.New("", awsAccessKeyID, awsSecretAccessKey, existingBucketInDefaultRegion)
-	Expect(s3TestClient.CreateRemotePathIfNeeded(existingBucketInDefaultRegion, logger)).To(Succeed())
-	Expect(s3TestClient.CreateRemotePathIfNeeded(existingBucketInNonDefaultRegion, logger)).To(Succeed())
+	s3TestClient = s3testclient.New("", awsAccessKeyID, awsSecretAccessKey, existingBucketInDefaultRegion, region)
+	s3Client, err := s3.CreateS3Client(logger, awsAccessKeyID, awsSecretAccessKey, "", region)
+	Expect(s3TestClient.CreateBucketIfNeeded(s3Client, existingBucketInDefaultRegion, logger)).To(Succeed())
+	Expect(s3TestClient.CreateBucketIfNeeded(s3Client, existingBucketInNonDefaultRegion, logger)).To(Succeed())
 
 	return data
 }
@@ -129,7 +132,7 @@ func beforeSuiteAllNodes(b []byte) {
 	awsSecretAccessKeyRestricted = c.AWSSecretAccessKeyRestricted
 	pathToServiceBackupBinary = c.PathToBackupBinary
 	pathToManualBackupBinary = c.PathToManualBinary
-	s3TestClient = s3testclient.New(endpointURL, awsAccessKeyID, awsSecretAccessKey, existingBucketInDefaultRegion)
+	s3TestClient = s3testclient.New(endpointURL, awsAccessKeyID, awsSecretAccessKey, existingBucketInDefaultRegion, region)
 	pathToTermTrapper = c.PathToTermTrapper
 }
 

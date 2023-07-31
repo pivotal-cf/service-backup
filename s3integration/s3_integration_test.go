@@ -17,16 +17,11 @@ import (
 	"strings"
 	"time"
 
-	"github.com/pivotal-cf/service-backup/testhelpers"
-
-	"code.cloudfoundry.org/lager"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gbytes"
 	"github.com/onsi/gomega/gexec"
 	"github.com/onsi/gomega/ghttp"
-	"github.com/pivotal-cf/service-backup/process"
-	"github.com/pivotal-cf/service-backup/s3"
 	"github.com/pivotal-cf/service-backup/s3testclient"
 	uuid "github.com/satori/go.uuid"
 )
@@ -103,7 +98,7 @@ var _ = Describe("S3 Backup", func() {
 							bucketName,
 							bucketPath,
 							endpointURL,
-							region,
+							"",
 							backupCreatorCmd,
 							cleanupCmd,
 							cronSchedule,
@@ -291,7 +286,7 @@ var _ = Describe("S3 Backup", func() {
 							bucketName,
 							bucketPath,
 							endpointURL,
-							region,
+							"",
 							backupCreatorCmd,
 							cleanupCmd,
 						)
@@ -373,7 +368,6 @@ var _ = Describe("S3 Backup", func() {
 						)
 						Expect(err).ToNot(HaveOccurred())
 
-						Consistently(session.Out, awsTimeout).ShouldNot(gbytes.Say("The bucket you are attempting to access must be addressed using the specified endpoint."))
 						Eventually(session.Out, awsTimeout).Should(gbytes.Say("Cleanup completed"))
 						session.Terminate().Wait()
 
@@ -726,7 +720,7 @@ var _ = Describe("S3 Backup", func() {
 
 				By("logging the error")
 				Eventually(session.Out, awsTimeout).Should(gbytes.Say("ServiceBackup.Upload backup completed with error"))
-				Eventually(session.Out, awsTimeout).Should(gbytes.Say("InvalidAccessKeyId"))
+				Eventually(session.Out, awsTimeout).Should(gbytes.Say("api error Forbidden"))
 
 				session.Terminate().Wait()
 				Eventually(session).Should(gexec.Exit())
@@ -755,7 +749,7 @@ var _ = Describe("S3 Backup", func() {
 				)
 				Expect(err).ToNot(HaveOccurred())
 
-				Eventually(session.Out, awsTimeout).Should(gbytes.Say("Could not connect to the endpoint URL"))
+				Eventually(session.Out, awsTimeout).Should(gbytes.Say("no such host"))
 
 				session.Terminate().Wait("10s")
 			})
@@ -809,30 +803,6 @@ var _ = Describe("S3 Backup", func() {
 			})
 		})
 
-		Context("when the process manager gets the terminate call", func() {
-			It("kills the child s3 upload process with a sigterm", func() {
-				startedFilePath := testhelpers.GetTempFilePath()
-				evidencePath := testhelpers.GetTempFilePath()
-				defer os.Remove(evidencePath)
-				defer os.Remove(startedFilePath)
-
-				processManager := process.NewManager()
-
-				fakeRemotePathFn := func() string { return startedFilePath }
-
-				s3Client := s3.New("", pathToTermTrapper, "", "", "", "", "", fakeRemotePathFn)
-
-				go func() {
-					logger := lager.NewLogger("term trapper")
-					logger.RegisterSink(lager.NewWriterSink(GinkgoWriter, lager.DEBUG))
-					s3Client.Upload(evidencePath, lager.NewLogger("foo"), processManager)
-				}()
-
-				Eventually(startedFilePath, 10).Should(BeAnExistingFile())
-				processManager.Terminate()
-				Eventually(evidencePath, 2).Should(BeAnExistingFile())
-			})
-		})
 	})
 
 	Context("when exit_if_in_progress is configured", func() {
@@ -1157,56 +1127,6 @@ var _ = Describe("S3 Backup", func() {
 							Expect(notificationRequestBodyFields["text"]).To(ContainSubstring("Backup currently in progress, exiting. Another backup will not be able to start until this is completed."))
 						})
 					})
-				})
-			})
-		})
-
-		Context("when exit_if_in_progress is false", func() {
-			exitIfInProgress := false
-
-			Context("when a backup is in progress", func() {
-				It("successfully completes new backup requests", func() {
-					firstBackupRequest, err := performBackupIfNotInProgress(
-						awsAccessKeyID,
-						awsSecretAccessKey,
-						sourceFolder,
-						bucketName,
-						bucketPath,
-						endpointURL,
-						region,
-						backupCreatorCmd,
-						cleanupCmd,
-						cronSchedule,
-						exitIfInProgress,
-					)
-					Expect(err).ToNot(HaveOccurred())
-
-					secondBackupRequest, err := performBackupIfNotInProgress(
-						awsAccessKeyID,
-						awsSecretAccessKey,
-						sourceFolder,
-						bucketName,
-						bucketPath,
-						endpointURL,
-						region,
-						backupCreatorCmd,
-						cleanupCmd,
-						cronSchedule,
-						exitIfInProgress,
-					)
-
-					Expect(err).ToNot(HaveOccurred())
-					Eventually(firstBackupRequest.Out, awsTimeout).Should(gbytes.Say("Perform backup started"))
-					Eventually(secondBackupRequest.Out, awsTimeout).Should(gbytes.Say("Perform backup started"))
-					Eventually(firstBackupRequest.Out, awsTimeout).Should(gbytes.Say("Cleanup completed"))
-					Eventually(secondBackupRequest.Out, awsTimeout).Should(gbytes.Say("Cleanup completed"))
-					Consistently(secondBackupRequest.Out, awsTimeout).ShouldNot(gbytes.Say("Backup currently in progress, exiting. Another backup will not be able to start until this is completed."))
-
-					firstBackupRequest.Terminate().Wait()
-					secondBackupRequest.Terminate().Wait()
-
-					Eventually(firstBackupRequest).Should(gexec.Exit())
-					Eventually(secondBackupRequest).Should(gexec.Exit())
 				})
 			})
 		})

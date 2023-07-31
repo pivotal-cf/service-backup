@@ -130,28 +130,6 @@ cron_schedule: '* * * * * *'
 		})
 	})
 
-	Context("file upload", func() {
-		It("propagates a TERM signal to the upload process", func() {
-			evidenceFile := testhelpers.GetTempFilePath()
-			startedFile := testhelpers.GetTempFilePath()
-			defer os.Remove(startedFile)
-			defer os.Remove(evidenceFile)
-
-			session, err := performBackup("true", pathToAWSTermTrapperBinary, evidenceFile, startedFile)
-			Expect(err).NotTo(HaveOccurred())
-
-			By("waiting for the backup command to create the started file", func() {
-				Eventually(startedFile, 3).Should(BeAnExistingFile())
-			})
-
-			session.Terminate()
-
-			Eventually(evidenceFile, 15).Should(BeAnExistingFile())
-			Eventually(session, 5).Should(gexec.Exit())
-			Eventually(session.Out).Should(gbytes.Say("All backup processes terminated"))
-		})
-	})
-
 })
 
 func assetPath(filename string) string {

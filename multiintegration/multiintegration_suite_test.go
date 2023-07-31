@@ -33,6 +33,7 @@ const (
 	sshKeyUsername                   = "service-backup-tmp-key"
 	existingBucketInDefaultRegion    = "pcf-redis-service-backup-integration-test-restricted"
 	existingBucketInNonDefaultRegion = "pcf-redis-service-backup-integration-test"
+	region                           = "us-west-2"
 )
 
 type TestData struct {
@@ -107,7 +108,7 @@ var _ = SynchronizedBeforeSuite(func() []byte {
 
 	awsAccessKeyID = os.Getenv(awsAccessKeyIDEnvKey)
 	awsSecretAccessKey = os.Getenv(awsSecretAccessKeyEnvKey)
-	s3TestClient = s3testclient.New("", awsAccessKeyID, awsSecretAccessKey, existingBucketInDefaultRegion)
+	s3TestClient = s3testclient.New("", awsAccessKeyID, awsSecretAccessKey, existingBucketInDefaultRegion, region)
 
 	forOtherNodes, err := json.Marshal(TestData{
 		PathToServiceBackupBinary: pathToServiceBackupBinary,
@@ -125,7 +126,7 @@ var _ = SynchronizedBeforeSuite(func() []byte {
 	unixUser = t.UnixUser
 	awsAccessKeyID = t.AwsAccessKeyID
 	awsSecretAccessKey = t.AwsSecretAccessKey
-	s3TestClient = s3testclient.New("", awsAccessKeyID, awsSecretAccessKey, existingBucketInDefaultRegion)
+	s3TestClient = s3testclient.New("", awsAccessKeyID, awsSecretAccessKey, existingBucketInDefaultRegion, region)
 
 	var publicKeyPath string
 	publicKeyPath, privateKeyPath, privateKeyContents = createSSHKey()
