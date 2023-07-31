@@ -7,9 +7,18 @@
 package s3
 
 import (
-	"bytes"
+	"context"
+	"errors"
 	"fmt"
+	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/credentials"
+	"github.com/aws/aws-sdk-go-v2/service/s3"
+	"github.com/aws/aws-sdk-go-v2/service/s3/types"
+	"github.com/aws/smithy-go"
+	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 
 	"code.cloudfoundry.org/lager"
@@ -52,7 +61,6 @@ func (c *S3CliClient) S3Cmd(args ...string) *exec.Cmd {
 		cmdArgs = append(cmdArgs, "--region", c.region)
 	}
 
-	cmdArgs = append(cmdArgs, "--ca-bundle", c.caCertPath)
 	cmdArgs = append(cmdArgs, "s3")
 	cmdArgs = append(cmdArgs, args...)
 
@@ -62,9 +70,9 @@ func (c *S3CliClient) S3Cmd(args ...string) *exec.Cmd {
 	return cmd
 }
 
-func (c *S3CliClient) CreateRemotePathIfNeeded(remotePath string, sessionLogger lager.Logger) error {
+func (c *S3CliClient) CreateBucketIfNeeded(client *s3.Client, remotePath string, sessionLogger lager.Logger) error {
 	sessionLogger.Info("Checking for remote path", lager.Data{"remotePath": remotePath})
-	remotePathExists, err := c.remotePathExists(remotePath, sessionLogger)
+	remotePathExists, err := c.bucketExists(client, remotePath, sessionLogger)
 	if err != nil {
 		return err
 	}
@@ -74,7 +82,7 @@ func (c *S3CliClient) CreateRemotePathIfNeeded(remotePath string, sessionLogger 
 	}
 
 	sessionLogger.Info("Checking for remote path - remote path does not exist - making it now")
-	err = c.createRemotePath(remotePath)
+	err = c.createBucket(client, remotePath)
 	if err != nil {
 		if strings.Contains(err.Error(), "AccessDenied") {
 			sessionLogger.Error("Configured S3 user unable to create buckets", err)
@@ -86,28 +94,83 @@ func (c *S3CliClient) CreateRemotePathIfNeeded(remotePath string, sessionLogger 
 	return nil
 }
 
-func (c *S3CliClient) remotePathExists(remotePath string, sessionLogger lager.Logger) (bool, error) {
-	bucketName := strings.Split(remotePath, "/")[0]
+func (c *S3CliClient) bucketExists(client *s3.Client, fullRemoteFilePath string, sessionLogger lager.Logger) (bool, error) {
+	remoteFilePathElements := strings.Split(fullRemoteFilePath, "/")
+	bucketName := remoteFilePathElements[0]
 
-	cmd := c.S3Cmd("ls", bucketName)
+	input := &s3.HeadBucketInput{
+		Bucket: &bucketName,
+	}
 
-	if out, err := c.ProcessMgr.Start(cmd); err != nil {
-		if bytes.Contains(out, []byte("NoSuchBucket")) {
-			return false, nil
+	_, err := client.HeadBucket(context.TODO(), input)
+	if err != nil {
+		var apiError smithy.APIError
+
+		if errors.As(err, &apiError) {
+			switch apiError.(type) {
+			case *types.NotFound:
+				return false, nil
+			default:
+				return false, fmt.Errorf("bucketExists: api error, %v", err)
+			}
+		} else {
+			return false, fmt.Errorf("bucketExists: error listing objects, %v", err)
 		}
-
-		wrappedErr := fmt.Errorf("unknown s3 error occurred: '%s' with output: '%s'", err, string(out))
-		sessionLogger.Error("error checking if bucket exists", wrappedErr)
-		return false, wrappedErr
 	}
 
 	return true, nil
 }
 
-func (c *S3CliClient) createRemotePath(remotePath string) error {
+func (c *S3CliClient) createBucket(client *s3.Client, remotePath string) error {
 	bucketName := strings.Split(remotePath, "/")[0]
-	cmd := c.S3Cmd("mb", fmt.Sprintf("s3://%s", bucketName))
-	return c.RunCommand(cmd, "create bucket")
+	input := &s3.CreateBucketInput{
+		Bucket: aws.String(bucketName),
+		CreateBucketConfiguration: &types.CreateBucketConfiguration{
+			LocationConstraint: types.BucketLocationConstraint(c.region),
+		},
+	}
+	_, err := client.CreateBucket(context.TODO(), input)
+
+	return err
+}
+
+func CreateS3Client(sessionLogger lager.Logger, accessKey, secretKey, endpointURL, region string) (*s3.Client, error) {
+	if len(region) == 0 {
+		sessionLogger.Info("CreateS3Client: ===warning=== region is empty. therefore using default region us-west-2")
+		region = "us-west-2"
+	}
+
+	customResolver := aws.EndpointResolverWithOptionsFunc(func(service, region string, options ...interface{}) (aws.Endpoint, error) {
+		return aws.Endpoint{
+			URL:           endpointURL,
+			SigningRegion: region,
+			Source:        aws.EndpointSourceCustom,
+		}, nil
+	})
+
+	var cfg aws.Config
+	var err error
+	if len(endpointURL) == 0 {
+		cfg, err = config.LoadDefaultConfig(
+			context.TODO(),
+			config.WithRegion(region),
+			config.WithCredentialsProvider(credentials.NewStaticCredentialsProvider(accessKey, secretKey, "")))
+	} else {
+		sessionLogger.Info("using a custom endpoint is deprecated with the aws sdk")
+		cfg, err = config.LoadDefaultConfig(
+			context.TODO(),
+			config.WithRegion(region),
+			config.WithCredentialsProvider(credentials.NewStaticCredentialsProvider(accessKey, secretKey, "")),
+			config.WithEndpointResolverWithOptions(customResolver))
+	}
+
+	if err != nil {
+		return nil, fmt.Errorf("UploadDir: failed to load SDK configuration, %v", err)
+	}
+
+	client := s3.NewFromConfig(cfg)
+
+	return client, nil
 }
 
 func (c *S3CliClient) Upload(localPath string, sessionLogger lager.Logger, processManager process.ProcessManager) error {
@@ -118,34 +181,63 @@ func (c *S3CliClient) Upload(localPath string, sessionLogger lager.Logger, proce
 	remotePath := c.remotePathFn()
 
 	sessionLogger.Info(fmt.Sprintf("about to upload %s to S3 remote path %s", localPath, remotePath))
-	cmd := c.S3Cmd("sync", localPath, fmt.Sprintf("s3://%s", remotePath))
-	out, err := c.ProcessMgr.Start(cmd)
-	if err == nil {
-		return nil
-	}
-	if strings.Contains(err.Error(), "SIGTERM") {
-		return nil
-	}
-	if !bytes.Contains(out, []byte("NoSuchBucket")) {
-		return fmt.Errorf("error in sync: %s, output: %s", err, string(out))
+
+	client, err := CreateS3Client(sessionLogger, c.accessKey, c.secretKey, c.endpointURL, c.region)
+	if err != nil {
+		return fmt.Errorf("upload: couldn't create client: %v", err)
 	}
 
-	err = c.CreateRemotePathIfNeeded(remotePath, sessionLogger)
+	err = c.CreateBucketIfNeeded(client, remotePath, sessionLogger)
 	if err != nil {
 		return err
 	}
 
-	cmd = c.S3Cmd("sync", localPath, fmt.Sprintf("s3://%s", remotePath))
-	return c.RunCommand(cmd, "sync")
-}
-
-func (c *S3CliClient) RunCommand(cmd *exec.Cmd, stepName string) error {
-	if out, err := c.ProcessMgr.Start(cmd); err != nil {
-		return fmt.Errorf("error in %s: %s, output: %s", stepName, err, string(out))
-	}
-	return nil
+	return c.UploadDir(client, sessionLogger, localPath, remotePath)
 }
 
 func (c *S3CliClient) Name() string {
 	return c.name
+}
+
+func (c *S3CliClient) UploadFile(logger lager.Logger, client *s3.Client, localFilePath, fullRemoteFilePath string) error {
+	remoteFilePathElements := strings.Split(fullRemoteFilePath, "/")
+	bucketName := remoteFilePathElements[0]
+	remotePath := strings.Join(remoteFilePathElements[1:], "/")
+
+	logger.Info(fmt.Sprintf("S3 putting local file: %s into bucket %s with remote file: %s ", localFilePath, bucketName, remotePath))
+
+	file, err := os.Open(localFilePath)
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+
+	_, err = client.PutObject(context.TODO(), &s3.PutObjectInput{
+		Bucket: &bucketName,
+		Key:    &remotePath,
+		Body:   file,
+	})
+	if err != nil {
+		return fmt.Errorf("UploadFile: failed to put object: %v", err)
+	}
+
+	return nil
+}
+
+func (c *S3CliClient) UploadDir(client *s3.Client, logger lager.Logger, localDir string, remotePath string) error {
+	err := filepath.Walk(localDir, func(filePath string, d os.FileInfo, err error) error {
+		if d.IsDir() {
+			return nil
+		}
+
+		relativeFilePath := strings.Replace(filePath, localDir, "", -1)
+		remoteFilePath := filepath.Join(remotePath, relativeFilePath)
+
+		return c.UploadFile(logger, client, filePath, remoteFilePath)
+	})
+	if err != nil {
+		return fmt.Errorf("UploadDir: failed to walk dir, %v", err)
+	}
+
+	return nil
 }

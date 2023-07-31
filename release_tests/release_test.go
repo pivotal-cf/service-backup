@@ -35,6 +35,7 @@ var _ = Describe("release tests", func() {
 		bucketName       = "pcf-redis-service-backup-test"
 		testPath         = "release-tests"
 		testSourceFolder = "/tmp/to_upload/"
+		region           = "us-west-2"
 	)
 
 	var (
@@ -117,7 +118,7 @@ var _ = Describe("release tests", func() {
 
 			awsAccessKeyID := envMustHave("AWS_ACCESS_KEY_ID")
 			awsSecretKey := envMustHave("AWS_SECRET_ACCESS_KEY")
-			client = s3testclient.New("https://s3-us-west-2.amazonaws.com", awsAccessKeyID, awsSecretKey, testPath)
+			client = s3testclient.New("https://s3-us-west-2.amazonaws.com", awsAccessKeyID, awsSecretKey, testPath, region)
 		})
 
 		AfterEach(func() {
@@ -161,7 +162,7 @@ var _ = Describe("release tests", func() {
 
 			awsAccessKeyID := envMustHave("AWS_ACCESS_KEY_ID")
 			awsSecretKey := envMustHave("AWS_SECRET_ACCESS_KEY")
-			client = s3testclient.New("https://s3-us-west-2.amazonaws.com", awsAccessKeyID, awsSecretKey, testPath)
+			client = s3testclient.New("https://s3-us-west-2.amazonaws.com", awsAccessKeyID, awsSecretKey, testPath, region)
 		})
 
 		AfterEach(func() {
