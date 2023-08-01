@@ -8,11 +8,15 @@ package s3
 
 import (
 	"bytes"
+	"context"
 	"fmt"
+	"log"
 	"os/exec"
 	"strings"
 
 	"code.cloudfoundry.org/lager"
+	"github.com/aws/aws-sdk-go-v2/config"
+	aws_s3 "github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/pivotal-cf/service-backup/process"
 )
 
@@ -28,7 +32,7 @@ type S3CliClient struct {
 	ProcessMgr   process.ProcessManager
 }
 
-func New(name, awsCmdPath, endpointURL, region, accessKey, secretKey, caCertPath string, remotePathFn func() string) *S3CliClient {
+func New(name, awsCmdPath, endpointURL, region, accessKey, secretKey, caCertPath string, remotePathFn func() string) *S3ClientConfig {
 	return &S3CliClient{
 		name:         name,
 		awsCmdPath:   awsCmdPath,
@@ -41,25 +45,49 @@ func New(name, awsCmdPath, endpointURL, region, accessKey, secretKey, caCertPath
 	}
 }
 
-func (c *S3CliClient) S3Cmd(args ...string) *exec.Cmd {
-	var cmdArgs []string
+func (c *S3CliClient) S3Cmd(args ...string) *aws_s3.Client {
+	//var cmdArgs []string
 
-	if c.endpointURL != "" {
-		cmdArgs = append(cmdArgs, "--endpoint-url", c.endpointURL)
+	//var credentials = aws.Credentials{
+	//	AccessKeyID:     c.accessKey,
+	//	SecretAccessKey: c.secretKey,
+	//}
+	fmt.Sprintf("AWS_ACCESS_KEY_ID=%s", c.accessKey)
+	fmt.Sprintf("AWS_SECRET_ACCESS_KEY=%s", c.secretKey)
+	cfg, err := config.LoadDefaultConfig(
+		context.TODO(),
+		config.WithRegion(c.region),
+		config.WithCustomCABundle(strings.NewReader(c.caCertPath)),
+	)
+
+	if err != nil {
+		log.Fatal(err)
 	}
 
-	if c.region != "" {
-		cmdArgs = append(cmdArgs, "--region", c.region)
-	}
+	//var envConfig = config.EnvConfig{
+	//	Credentials:    credentials,
+	//	Region:         c.region,
+	//	CustomCABundle: c.caCertPath,
+	//}
 
-	cmdArgs = append(cmdArgs, "--ca-bundle", c.caCertPath)
-	cmdArgs = append(cmdArgs, "s3")
-	cmdArgs = append(cmdArgs, args...)
+	//if c.endpointURL != "" {
+	//	cmdArgs = append(cmdArgs, "--endpoint-url", c.endpointURL)
+	//}
 
-	cmd := exec.Command(c.awsCmdPath, cmdArgs...)
-	cmd.Env = append(cmd.Env, fmt.Sprintf("AWS_ACCESS_KEY_ID=%s", c.accessKey))
-	cmd.Env = append(cmd.Env, fmt.Sprintf("AWS_SECRET_ACCESS_KEY=%s", c.secretKey))
-	return cmd
+	//if c.region != "" {
+	//	cmdArgs = append(cmdArgs, "--region", c.region)
+	//}
+
+	//cmdArgs = append(cmdArgs, "--ca-bundle", c.caCertPath)
+	//cmdArgs = append(cmdArgs, "s3")
+	//cmdArgs = append(cmdArgs, args...)
+
+	//cmd := exec.Command(c.awsCmdPath, cmdArgs...)
+	//cmd.Env = append(cmd.Env, fmt.Sprintf("AWS_ACCESS_KEY_ID=%s", c.accessKey))
+	//cmd.Env = append(cmd.Env, fmt.Sprintf("AWS_SECRET_ACCESS_KEY=%s", c.secretKey))
+
+	var client = aws_s3.NewFromConfig(cfg)
+	return client
 }
 
 func (c *S3CliClient) CreateRemotePathIfNeeded(remotePath string, sessionLogger lager.Logger) error {
@@ -90,7 +118,7 @@ func (c *S3CliClient) remotePathExists(remotePath string, sessionLogger lager.Lo
 	bucketName := strings.Split(remotePath, "/")[0]
 
 	cmd := c.S3Cmd("ls", bucketName)
-
+	cmd.GetBucketLocation()
 	if out, err := c.ProcessMgr.Start(cmd); err != nil {
 		if bytes.Contains(out, []byte("NoSuchBucket")) {
 			return false, nil
