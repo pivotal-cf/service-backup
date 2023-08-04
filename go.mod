@@ -6,10 +6,13 @@ require (
 	cloud.google.com/go/storage v1.31.0
 	code.cloudfoundry.org/lager v2.0.0+incompatible
 	github.com/Azure/azure-sdk-for-go v63.4.0+incompatible
+	github.com/aws/aws-sdk-go-v2 v1.20.0
 	github.com/aws/aws-sdk-go-v2/config v1.18.31
+	github.com/aws/aws-sdk-go-v2/credentials v1.13.30
 	github.com/aws/aws-sdk-go-v2/service/s3 v1.38.0
+	github.com/aws/smithy-go v1.14.0
 	github.com/onsi/ginkgo v1.16.5
-	github.com/onsi/gomega v1.19.0
+	github.com/onsi/gomega v1.27.10
 	github.com/pborman/uuid v1.2.1
 	github.com/pivotal-cf/service-alerts-client v0.0.0-20190725132148-4a3ed3e6ac41
 	github.com/robfig/cron/v3 v3.0.1
@@ -31,9 +34,7 @@ require (
 	github.com/Azure/go-autorest/autorest/to v0.4.0 // indirect
 	github.com/Azure/go-autorest/logger v0.2.1 // indirect
 	github.com/Azure/go-autorest/tracing v0.6.0 // indirect
-	github.com/aws/aws-sdk-go-v2 v1.20.0 // indirect
 	github.com/aws/aws-sdk-go-v2/aws/protocol/eventstream v1.4.11 // indirect
-	github.com/aws/aws-sdk-go-v2/credentials v1.13.30 // indirect
 	github.com/aws/aws-sdk-go-v2/feature/ec2/imds v1.13.7 // indirect
 	github.com/aws/aws-sdk-go-v2/internal/configsources v1.1.37 // indirect
 	github.com/aws/aws-sdk-go-v2/internal/endpoints/v2 v2.4.31 // indirect
@@ -46,7 +47,6 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/sso v1.13.0 // indirect
 	github.com/aws/aws-sdk-go-v2/service/ssooidc v1.15.0 // indirect
 	github.com/aws/aws-sdk-go-v2/service/sts v1.21.0 // indirect
-	github.com/aws/smithy-go v1.14.0 // indirect
 	github.com/cenk/backoff v2.2.1+incompatible // indirect
 	github.com/craigfurman/herottp v0.0.0-20190418132442-c546d62f2a8d // indirect
 	github.com/dnaeon/go-vcr v1.1.0 // indirect
@@ -76,4 +76,5 @@ require (
 	google.golang.org/grpc v1.56.2 // indirect
 	google.golang.org/protobuf v1.31.0 // indirect
 	gopkg.in/tomb.v1 v1.0.0-20141024135613-dd632973f1e7 // indirect
+	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
