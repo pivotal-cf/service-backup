@@ -286,7 +286,7 @@ github.com/onsi/gomega/types
 # github.com/pborman/uuid v1.2.1
 ## explicit
 github.com/pborman/uuid
-# github.com/pivotal-cf/service-alerts-client v0.0.0-20190725132148-4a3ed3e6ac41
+# github.com/pivotal-cf/service-alerts-client v0.3.0
 ## explicit
 github.com/pivotal-cf/service-alerts-client/client
 # github.com/robfig/cron/v3 v3.0.1
