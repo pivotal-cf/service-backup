@@ -7,12 +7,14 @@
 package s3
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/credentials"
+	"github.com/aws/aws-sdk-go-v2/feature/s3/manager"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/aws/aws-sdk-go-v2/service/s3/types"
 	"github.com/aws/smithy-go"
@@ -206,16 +208,16 @@ func (c *S3CliClient) UploadFile(logger lager.Logger, client *s3.Client, localFi
 
 	logger.Info(fmt.Sprintf("S3 putting local file: %s into bucket %s with remote file: %s ", localFilePath, bucketName, remotePath))
 
-	file, err := os.Open(localFilePath)
+	readFile, err := os.ReadFile(localFilePath)
 	if err != nil {
-		return err
+		return fmt.Errorf("UploadFile: failed to read local file path: %v", err)
 	}
-	defer file.Close()
-
-	_, err = client.PutObject(context.TODO(), &s3.PutObjectInput{
+	largeBuffer := bytes.NewReader(readFile)
+	uploader := manager.NewUploader(client)
+	_, err = uploader.Upload(context.TODO(), &s3.PutObjectInput{
 		Bucket: &bucketName,
 		Key:    &remotePath,
-		Body:   file,
+		Body:   largeBuffer,
 	})
 	if err != nil {
 		return fmt.Errorf("UploadFile: failed to put object: %v", err)
