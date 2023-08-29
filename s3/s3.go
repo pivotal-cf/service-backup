@@ -212,12 +212,12 @@ func (c *S3CliClient) UploadFile(logger lager.Logger, client *s3.Client, localFi
 	if err != nil {
 		return fmt.Errorf("UploadFile: failed to read local file path: %v", err)
 	}
-	largeBuffer := bytes.NewReader(readFile)
+	fileReader := bytes.NewReader(readFile)
 	uploader := manager.NewUploader(client)
 	_, err = uploader.Upload(context.TODO(), &s3.PutObjectInput{
 		Bucket: &bucketName,
 		Key:    &remotePath,
-		Body:   largeBuffer,
+		Body:   fileReader,
 	})
 	if err != nil {
 		return fmt.Errorf("UploadFile: failed to put object: %v", err)
