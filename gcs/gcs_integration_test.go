@@ -18,7 +18,7 @@ import (
 
 	"cloud.google.com/go/storage"
 	"code.cloudfoundry.org/lager"
-	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/pborman/uuid"
 	"github.com/pivotal-cf/service-backup/gcs"
