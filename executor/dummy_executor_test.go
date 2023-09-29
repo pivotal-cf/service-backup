@@ -14,7 +14,7 @@ import (
 
 	"github.com/onsi/gomega/gbytes"
 
-	"code.cloudfoundry.org/lager"
+	"code.cloudfoundry.org/lager/v3"
 )
 
 var _ = Describe("DummyExecutor", func() {

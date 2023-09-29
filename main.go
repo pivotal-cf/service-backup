@@ -12,7 +12,7 @@ import (
 	"os/signal"
 	"syscall"
 
-	"code.cloudfoundry.org/lager"
+	"code.cloudfoundry.org/lager/v3"
 
 	alerts "github.com/pivotal-cf/service-alerts-client/client"
 	"github.com/pivotal-cf/service-backup/config"
