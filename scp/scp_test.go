@@ -6,8 +6,8 @@ import (
 
 	"github.com/pivotal-cf/service-backup/testhelpers"
 
-	"code.cloudfoundry.org/lager"
-	. "github.com/onsi/ginkgo"
+	"code.cloudfoundry.org/lager/v3"
+	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/pivotal-cf/service-backup/process"
 	"github.com/pivotal-cf/service-backup/scp"

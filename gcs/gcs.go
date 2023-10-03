@@ -15,7 +15,7 @@ import (
 	"time"
 
 	"cloud.google.com/go/storage"
-	"code.cloudfoundry.org/lager"
+	"code.cloudfoundry.org/lager/v3"
 	"github.com/pivotal-cf/service-backup/process"
 	"google.golang.org/api/iterator"
 	"google.golang.org/api/option"

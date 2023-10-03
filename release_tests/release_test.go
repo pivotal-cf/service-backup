@@ -25,7 +25,7 @@ import (
 
 	gcs "cloud.google.com/go/storage"
 	"github.com/Azure/azure-sdk-for-go/storage"
-	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"google.golang.org/api/option"
 )

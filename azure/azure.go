@@ -7,7 +7,7 @@
 package azure
 
 import (
-	"code.cloudfoundry.org/lager"
+	"code.cloudfoundry.org/lager/v3"
 	"fmt"
 	"github.com/Azure/azure-sdk-for-go/storage"
 	"github.com/pivotal-cf/service-backup/process"

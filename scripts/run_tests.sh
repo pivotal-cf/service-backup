@@ -8,11 +8,11 @@
 
 
 GO111MODULE=off ginkgo \
-  -r \
-  -race \
-  -randomizeSuites \
-  -randomizeAllSpecs \
-  -slowSpecThreshold=30 \
-  -keepGoing \
-  -cover \
+  --r \
+  --race \
+  --randomize-suites \
+  --randomize-all \
+  --poll-progress-after=30s \
+  --keep-going \
+  --cover \
   $@

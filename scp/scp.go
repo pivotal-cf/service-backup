@@ -13,7 +13,7 @@ import (
 	"os/exec"
 	"strconv"
 
-	"code.cloudfoundry.org/lager"
+	"code.cloudfoundry.org/lager/v3"
 	"github.com/pivotal-cf/service-backup/process"
 )
 

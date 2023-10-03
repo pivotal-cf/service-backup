@@ -9,7 +9,7 @@ package config
 import (
 	"io/ioutil"
 
-	"code.cloudfoundry.org/lager"
+	"code.cloudfoundry.org/lager/v3"
 	alerts "github.com/pivotal-cf/service-alerts-client/client"
 	"gopkg.in/yaml.v2"
 )

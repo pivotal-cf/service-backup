@@ -7,8 +7,8 @@
 package config_test
 
 import (
-	"code.cloudfoundry.org/lager"
-	. "github.com/onsi/ginkgo"
+	"code.cloudfoundry.org/lager/v3"
+	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	alerts "github.com/pivotal-cf/service-alerts-client/client"
 	"github.com/pivotal-cf/service-backup/config"

@@ -6,7 +6,7 @@
 
 package executor
 
-import "code.cloudfoundry.org/lager"
+import "code.cloudfoundry.org/lager/v3"
 
 type dummyExecutor struct {
 	logger lager.Logger
