@@ -170,7 +170,9 @@ func CreateS3Client(sessionLogger lager.Logger, accessKey, secretKey, endpointUR
 		return nil, fmt.Errorf("UploadDir: failed to load SDK configuration, %v", err)
 	}
 
-	client := s3.NewFromConfig(cfg)
+	client := s3.NewFromConfig(cfg, func(options *s3.Options) {
+		options.UsePathStyle = true
+	})
 
 	return client, nil
 }
