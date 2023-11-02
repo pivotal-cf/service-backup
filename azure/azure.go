@@ -28,7 +28,6 @@ type AzureClient struct {
 }
 
 const ChunkSize = 8 * 1024 * 1024 // 8MB
-const Limit = 64 * 1024 * 1024    // 64MB
 
 func New(name, accountKey, accountName, container, endpoint string, remotePathFn func() string) *AzureClient {
 	return &AzureClient{
@@ -57,49 +56,36 @@ func (a *AzureClient) uploadFile(sessionLogger lager.Logger, containerReference 
 		return fmt.Errorf("error in uploadFile could not open file: %w", err)
 	}
 	defer file.Close()
-	stat, err := file.Stat()
-	if err != nil {
-		return fmt.Errorf("error in uploadFile could not get stats of file: %w", err)
-	}
 	blob := containerReference.GetBlobReference(remoteFilePath)
-	// single file limit
-	if stat.Size() < Limit {
-		// The API will reject requests with size > 256 MiB
-		err = blob.CreateBlockBlobFromReader(file, &storage.PutBlobOptions{})
+	err = blob.CreateBlockBlob(&storage.PutBlobOptions{})
+	if err != nil {
+		return fmt.Errorf("error in uploadFile cloud not create block blob: %w", err)
+	}
+	buffer := make([]byte, ChunkSize)
+	blocks := []storage.Block{}
+	for i := 0; ; i++ {
+		bytesRead, err := file.Read(buffer)
 		if err != nil {
-			return fmt.Errorf("error in uploadFile could not create block blob from reader: %w", err)
-		}
-	} else {
-		err = blob.CreateBlockBlob(&storage.PutBlobOptions{})
-		if err != nil {
-			return fmt.Errorf("error in uploadFile cloud not create block blob: %w", err)
-		}
-		buffer := make([]byte, ChunkSize)
-		blocks := []storage.Block{}
-		for i := 0; ; i++ {
-			bytesRead, err := file.Read(buffer)
-			if err != nil {
-				if err == io.EOF {
-					break
-				} else {
-					return fmt.Errorf("error in uploadFile could not read file to buffer: %w", err)
-				}
+			if err == io.EOF {
+				break
+			} else {
+				return fmt.Errorf("error in uploadFile could not read file to buffer: %w", err)
 			}
-			chunk := buffer[:bytesRead]
-			blockID := base64.StdEncoding.EncodeToString([]byte(fmt.Sprintf("BlockID{%07d}", i)))
-			err = blob.PutBlock(blockID, chunk, &storage.PutBlockOptions{})
-			if err != nil {
-				return fmt.Errorf("error in uploadFile could not put block: %w", err)
-			}
-			blocks = append(blocks, storage.Block{
-				ID:     blockID,
-				Status: storage.BlockStatusUncommitted,
-			})
 		}
-		err = blob.PutBlockList(blocks, &storage.PutBlockListOptions{})
+		chunk := buffer[:bytesRead]
+		blockID := base64.StdEncoding.EncodeToString([]byte(fmt.Sprintf("BlockID{%07d}", i)))
+		err = blob.PutBlock(blockID, chunk, &storage.PutBlockOptions{})
 		if err != nil {
-			return fmt.Errorf("error in uploadFile put list of blocks: %w", err)
+			return fmt.Errorf("error in uploadFile could not put block: %w", err)
 		}
+		blocks = append(blocks, storage.Block{
+			ID:     blockID,
+			Status: storage.BlockStatusUncommitted,
+		})
+	}
+	err = blob.PutBlockList(blocks, &storage.PutBlockListOptions{})
+	if err != nil {
+		return fmt.Errorf("error in uploadFile put list of blocks: %w", err)
 	}
 
 	return nil
