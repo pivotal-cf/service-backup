@@ -9,7 +9,10 @@
 
 GO111MODULE=off ginkgo \
   -r \
-  --race \
-  --randomize-all \
-  --keep-going \
+  -race \
+  -randomizeSuites \
+  -randomizeAllSpecs \
+  -slowSpecThreshold=30 \
+  -keepGoing \
+  -cover \
   $@
