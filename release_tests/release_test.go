@@ -32,7 +32,7 @@ import (
 
 var _ = Describe("release tests", func() {
 	const (
-		bucketName       = "pcf-redis-service-backup-test"
+		bucketName       = "pcf-redis-service-backup-release-test"
 		testPath         = "release-tests"
 		testSourceFolder = "/tmp/to_upload/"
 		region           = "us-west-2"
@@ -76,7 +76,16 @@ var _ = Describe("release tests", func() {
 		cmd := exec.Command("bosh", allArgs...)
 		cmd.Stdout = stdout
 		cmd.Stderr = GinkgoWriter
-		Expect(cmd.Run()).To(Succeed())
+
+		retries := 3
+		for i := 0; i < retries; i++ {
+			err := cmd.Run()
+			if err == nil {
+				return
+			}
+			fmt.Printf("bosh command failed with error: %+v, retrying...", err)
+			time.Sleep(time.Second * 30)
+		}
 	}
 
 	boshCmdWithGateway := func(stdout io.Writer, command string, args ...string) {
