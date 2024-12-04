@@ -29,7 +29,7 @@ const (
 	awsSecretAccessKeyEnvKeyRestricted = "AWS_SECRET_ACCESS_KEY_RESTRICTED"
 	region                             = "us-west-2"
 
-	integrationTestBucketNamePrefix  = "pcf-redis-service-backup-integration-"
+	integrationTestBucketNamePrefix  = "cf-redis-service-backup-integration-"
 	existingBucketInNonDefaultRegion = integrationTestBucketNamePrefix + "test"
 	existingBucketInDefaultRegion    = integrationTestBucketNamePrefix + "test-restricted"
 
