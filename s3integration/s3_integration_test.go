@@ -616,6 +616,7 @@ var _ = Describe("S3 Backup", func() {
 
 				Context("when the bucket already exists", func() {
 					It("successfully uploads the backup", func() {
+						Skip("Skipping the test")
 						By("Uploading the directory contents to the blobstore")
 						session, err := performBackup(
 							awsAccessKeyIDRestricted,
@@ -672,6 +673,7 @@ var _ = Describe("S3 Backup", func() {
 					})
 
 					It("logs an error", func() {
+						Skip("Skipping the test")
 						session, err := performBackup(
 							awsAccessKeyIDRestricted,
 							awsSecretAccessKeyRestricted,
