@@ -72,16 +72,17 @@ var _ = Describe("release tests", func() {
 			command,
 		}
 		allArgs := append(commonArgs, args...)
-		GinkgoWriter.Write([]byte(fmt.Sprintf("running BOSH command %s\n", allArgs)))
-		cmd := exec.Command("bosh", allArgs...)
-		cmd.Stdout = stdout
-		cmd.Stderr = GinkgoWriter
 
 		var cmdError error
 		maxRetry := 3
 		sleepTime := time.Second * 30
 
 		for attempt := 0; attempt < maxRetry; attempt++ {
+			cmd := exec.Command("bosh", allArgs...)
+			cmd.Stdout = stdout
+			cmd.Stderr = GinkgoWriter
+
+			GinkgoWriter.Write([]byte(fmt.Sprintf("running BOSH command %s\n", allArgs)))
 			cmdError = cmd.Run()
 			if cmdError == nil {
 				break
