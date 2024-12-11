@@ -76,7 +76,26 @@ var _ = Describe("release tests", func() {
 		cmd := exec.Command("bosh", allArgs...)
 		cmd.Stdout = stdout
 		cmd.Stderr = GinkgoWriter
-		Expect(cmd.Run()).To(Succeed())
+
+		var cmdError error
+		maxRetry := 3
+		sleepTime := time.Second * 30
+
+		for attempt := 0; attempt < maxRetry; attempt++ {
+			cmdError = cmd.Run()
+			if cmdError == nil {
+				break
+			}
+
+			GinkgoWriter.Printf("failed to execute BOSH command %s\n", allArgs)
+			if attempt == maxRetry-1 {
+				break
+			}
+			GinkgoWriter.Printf("retrying after %.0f seconds\n", sleepTime.Seconds())
+			time.Sleep(sleepTime)
+		}
+
+		Expect(cmdError).To(BeNil())
 	}
 
 	boshCmdWithGateway := func(stdout io.Writer, command string, args ...string) {
