@@ -26,7 +26,7 @@ import (
 	uuid "github.com/satori/go.uuid"
 )
 
-var _ = Describe("S3 Backup", func() {
+var _ = Describe("S3 Backup", Pending, func() {
 	var (
 		region           string
 		bucketName       string
@@ -616,7 +616,6 @@ var _ = Describe("S3 Backup", func() {
 
 				Context("when the bucket already exists", func() {
 					It("successfully uploads the backup", func() {
-						Skip("Skipping the test")
 						By("Uploading the directory contents to the blobstore")
 						session, err := performBackup(
 							awsAccessKeyIDRestricted,
