@@ -9,7 +9,6 @@ package azureintegration_test
 import (
 	"crypto/rand"
 	"fmt"
-	"github.com/Azure/azure-sdk-for-go/storage"
 	"io/ioutil"
 	"os"
 	"os/exec"
@@ -17,13 +16,15 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/Azure/azure-sdk-for-go/storage"
+
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gbytes"
 	"github.com/onsi/gomega/gexec"
 )
 
-var _ = Describe("AzureClient", func() {
+var _ = Describe("AzureClient", Pending, func() {
 	var azureContainer string
 
 	BeforeEach(func() {

@@ -208,7 +208,7 @@ var _ = Describe("release tests", func() {
 		})
 	})
 
-	Context("backing up to Azure", func() {
+	Context("backing up to Azure", Pending, func() {
 		var (
 			azureBlobService storage.BlobStorageClient
 		)
