@@ -24,7 +24,7 @@ import (
 	"github.com/onsi/gomega/gexec"
 )
 
-var _ = Describe("AzureClient", Pending, func() {
+var _ = Describe("AzureClient", func() {
 	var azureContainer string
 
 	BeforeEach(func() {

@@ -172,7 +172,7 @@ var _ = Describe("release tests", func() {
 		})
 	})
 
-	Context("backing up to S3 with deployment name in path",Pending, func() {
+	Context("backing up to S3 with deployment name in path", Pending, func() {
 		var (
 			client *s3testclient.S3TestClient
 		)
@@ -208,7 +208,7 @@ var _ = Describe("release tests", func() {
 		})
 	})
 
-	Context("backing up to Azure", Pending, func() {
+	Context("backing up to Azure", func() {
 		var (
 			azureBlobService storage.BlobStorageClient
 		)
