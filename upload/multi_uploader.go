@@ -51,5 +51,5 @@ func formattedError(errors []error) error {
 	for _, e := range errors {
 		errorMessages = append(errorMessages, e.Error())
 	}
-	return fmt.Errorf(strings.Join(errorMessages, "; "))
+	return fmt.Errorf("%s", strings.Join(errorMessages, "; "))
 }
