@@ -1,4 +1,4 @@
-// Copyright 2023 Google LLC
+// Copyright 2025 Google LLC
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -21,13 +21,21 @@
 //
 // # General documentation
 //
-// For information about setting deadlines, reusing contexts, and more
-// please visit https://pkg.go.dev/cloud.google.com/go.
+// For information that is relevant for all client libraries please reference
+// https://pkg.go.dev/cloud.google.com/go#pkg-overview. Some information on this
+// page includes:
+//
+//   - [Authentication and Authorization]
+//   - [Timeouts and Cancellation]
+//   - [Testing against Client Libraries]
+//   - [Debugging Client Libraries]
+//   - [Inspecting errors]
 //
 // # Example usage
 //
 // To get started with this package, create a client.
 //
+//	// go get cloud.google.com/go/storage/internal/apiv2@latest
 //	ctx := context.Background()
 //	// This snippet has been automatically generated and should be regarded as a code template only.
 //	// It will require modifications to work:
@@ -46,33 +54,34 @@
 //
 // # Using the Client
 //
-// The following is an example of making an API call with the newly created client.
+// The following is an example of making an API call with the newly created client, mentioned above.
 //
-//	ctx := context.Background()
-//	// This snippet has been automatically generated and should be regarded as a code template only.
-//	// It will require modifications to work:
-//	// - It may require correct/in-range values for request initialization.
-//	// - It may require specifying regional endpoints when creating the service client as shown in:
-//	//   https://pkg.go.dev/cloud.google.com/go#hdr-Client_Options
-//	c, err := storage.NewClient(ctx)
+//	stream, err := c.BidiReadObject(ctx)
 //	if err != nil {
 //		// TODO: Handle error.
 //	}
-//	defer c.Close()
-//
-//	req := &storagepb.DeleteBucketRequest{
-//		// TODO: Fill request struct fields.
-//		// See https://pkg.go.dev/cloud.google.com/go/storage/internal/apiv2/storagepb#DeleteBucketRequest.
+//	go func() {
+//		reqs := []*storagepb.BidiReadObjectRequest{
+//			// TODO: Create requests.
+//		}
+//		for _, req := range reqs {
+//			if err := stream.Send(req); err != nil {
+//				// TODO: Handle error.
+//			}
+//		}
+//		stream.CloseSend()
+//	}()
+//	for {
+//		resp, err := stream.Recv()
+//		if err == io.EOF {
+//			break
+//		}
+//		if err != nil {
+//			// TODO: handle error.
+//		}
+//		// TODO: Use resp.
+//		_ = resp
 //	}
-//	err = c.DeleteBucket(ctx, req)
-//	if err != nil {
-//		// TODO: Handle error.
-//	}
-//
-// # Inspecting errors
-//
-// To see examples of how to inspect errors returned by this package please reference
-// [Inspecting errors](https://pkg.go.dev/cloud.google.com/go#hdr-Inspecting_errors).
 //
 // # Use of Context
 //
@@ -81,47 +90,10 @@
 // Individual methods on the client use the ctx given to them.
 //
 // To close the open connection, use the Close() method.
+//
+// [Authentication and Authorization]: https://pkg.go.dev/cloud.google.com/go#hdr-Authentication_and_Authorization
+// [Timeouts and Cancellation]: https://pkg.go.dev/cloud.google.com/go#hdr-Timeouts_and_Cancellation
+// [Testing against Client Libraries]: https://pkg.go.dev/cloud.google.com/go#hdr-Testing
+// [Debugging Client Libraries]: https://pkg.go.dev/cloud.google.com/go#hdr-Debugging
+// [Inspecting errors]: https://pkg.go.dev/cloud.google.com/go#hdr-Inspecting_errors
 package storage // import "cloud.google.com/go/storage/internal/apiv2"
-
-import (
-	"context"
-
-	"google.golang.org/api/option"
-	"google.golang.org/grpc/metadata"
-)
-
-// For more information on implementing a client constructor hook, see
-// https://github.com/googleapis/google-cloud-go/wiki/Customizing-constructors.
-type clientHookParams struct{}
-type clientHook func(context.Context, clientHookParams) ([]option.ClientOption, error)
-
-var versionClient string
-
-func getVersionClient() string {
-	if versionClient == "" {
-		return "UNKNOWN"
-	}
-	return versionClient
-}
-
-func insertMetadata(ctx context.Context, mds ...metadata.MD) context.Context {
-	out, _ := metadata.FromOutgoingContext(ctx)
-	out = out.Copy()
-	for _, md := range mds {
-		for k, v := range md {
-			out[k] = append(out[k], v...)
-		}
-	}
-	return metadata.NewOutgoingContext(ctx, out)
-}
-
-// DefaultAuthScopes reports the default set of authentication scopes to use with this package.
-func DefaultAuthScopes() []string {
-	return []string{
-		"https://www.googleapis.com/auth/cloud-platform",
-		"https://www.googleapis.com/auth/cloud-platform.read-only",
-		"https://www.googleapis.com/auth/devstorage.full_control",
-		"https://www.googleapis.com/auth/devstorage.read_only",
-		"https://www.googleapis.com/auth/devstorage.read_write",
-	}
-}
