@@ -25,8 +25,6 @@ SERVICE_BACKUP_TESTS_GCP_SERVICE_ACCOUNT_FILE=${SERVICE_BACKUP_TESTS_GCP_SERVICE
 SERVICE_BACKUP_TESTS_GCP_PROJECT_NAME=${SERVICE_BACKUP_TESTS_GCP_PROJECT_NAME:?}
 
 pushd "${BASE_DIR}"
-  GO111MODULE=off go get -t -v -d ./...
-  go install github.com/onsi/ginkgo/v2/ginkgo@v2.20.2
   ./scripts/run_parallel_tests.sh --skip-package scpintegration,release_tests
   go tool cover -func=coverprofile.out
 popd
