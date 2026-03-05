@@ -133,7 +133,16 @@ func (c *S3CliClient) createBucket(client *s3.Client, remotePath string) error {
 	}
 	_, err := client.CreateBucket(context.TODO(), input)
 
-	return err
+	if err != nil {
+		var bae *types.BucketAlreadyExists
+		var baoy *types.BucketAlreadyOwnedByYou
+		if errors.As(err, &bae) || errors.As(err, &baoy) {
+			return nil
+		}
+		return err
+	}
+
+	return nil
 }
 
 func CreateS3Client(sessionLogger lager.Logger, accessKey, secretKey, endpointURL, region string) (*s3.Client, error) {

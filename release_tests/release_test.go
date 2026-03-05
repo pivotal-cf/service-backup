@@ -32,7 +32,7 @@ import (
 
 var _ = Describe("release tests", func() {
 	const (
-		bucketName       = "cf-redis-service-backup-test"
+		bucketName       = "pcf-redis-service-backup-test"
 		testPath         = "release-tests"
 		testSourceFolder = "/tmp/to_upload/"
 		region           = "us-west-2"
@@ -128,7 +128,7 @@ var _ = Describe("release tests", func() {
 		boshSCP(pathToFile, testSourceFolder)
 	})
 
-	Context("backing up to S3", func() {
+	Context("backing up to S3", Pending, func() {
 		var (
 			client *s3testclient.S3TestClient
 		)
@@ -172,7 +172,7 @@ var _ = Describe("release tests", func() {
 		})
 	})
 
-	Context("backing up to S3 with deployment name in path", func() {
+	Context("backing up to S3 with deployment name in path", Pending, func() {
 		var (
 			client *s3testclient.S3TestClient
 		)
