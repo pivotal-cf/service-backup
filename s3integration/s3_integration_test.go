@@ -26,7 +26,7 @@ import (
 	uuid "github.com/satori/go.uuid"
 )
 
-var _ = Describe("S3 Backup", Pending, func() {
+var _ = Describe("S3 Backup", func() {
 	var (
 		region           string
 		bucketName       string
@@ -750,7 +750,7 @@ var _ = Describe("S3 Backup", Pending, func() {
 				)
 				Expect(err).ToNot(HaveOccurred())
 
-				Eventually(session.Out, awsTimeout).Should(gbytes.Say("no such host"))
+				Eventually(session.Out, awsTimeout).Should(gbytes.Say("connection refused|no such host"))
 
 				session.Terminate().Wait("10s")
 			})

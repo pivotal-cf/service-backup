@@ -158,6 +158,12 @@ var _ = Describe("Executor", func() {
 				Expect(executeErr.(executor.ServiceInstanceError).ServiceInstanceID).To(Equal(""))
 			})
 
+			It("still runs cleanup to prevent local backup files accumulating on disk", func() {
+				Expect(processManager.StartCallCount()).To(Equal(1))
+				cmd := processManager.StartArgsForCall(0)
+				Expect(cmd.Path).To(Equal(assetPath("fake-cleanup")))
+			})
+
 			Context("when the service identifier command is set", func() {
 				BeforeEach(func() {
 					serviceIdentifierCmd = assetPath("fake-service-identifier")

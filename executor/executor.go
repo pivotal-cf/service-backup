@@ -128,17 +128,18 @@ func (e *executor) Execute() error {
 		}
 	}
 
-	if err := e.uploadBackup(sessionLogger); err != nil {
+	uploadErr := e.uploadBackup(sessionLogger)
+
+	// Always run cleanup regardless of upload success or failure to prevent
+	// local backup files from accumulating on disk.
+	_ = e.performCleanup(sessionLogger)
+
+	if uploadErr != nil {
 		return ServiceInstanceError{
-			error:             err,
+			error:             uploadErr,
 			ServiceInstanceID: serviceInstanceID,
 		}
 	}
-
-	// Do not return error if cleanup command failed.
-	_ = e.performCleanup(sessionLogger)
-
-	sessionLogger = e.logger
 
 	return nil
 }
