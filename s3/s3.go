@@ -34,12 +34,13 @@ type S3CliClient struct {
 	secretKey    string
 	endpointURL  string
 	region       string
+	usePathStyle bool
 	caCertPath   string
 	remotePathFn func() string
 	ProcessMgr   process.ProcessManager
 }
 
-func New(name, awsCmdPath, endpointURL, region, accessKey, secretKey, caCertPath string, remotePathFn func() string) *S3CliClient {
+func New(name, awsCmdPath, endpointURL, region, accessKey, secretKey, caCertPath string, usePathStyle bool, remotePathFn func() string) *S3CliClient {
 	return &S3CliClient{
 		name:         name,
 		awsCmdPath:   awsCmdPath,
@@ -47,6 +48,7 @@ func New(name, awsCmdPath, endpointURL, region, accessKey, secretKey, caCertPath
 		region:       region,
 		accessKey:    accessKey,
 		secretKey:    secretKey,
+		usePathStyle: usePathStyle,
 		caCertPath:   caCertPath,
 		remotePathFn: remotePathFn,
 	}
@@ -127,28 +129,33 @@ func (c *S3CliClient) createBucket(client *s3.Client, remotePath string) error {
 	bucketName := strings.Split(remotePath, "/")[0]
 	input := &s3.CreateBucketInput{
 		Bucket: aws.String(bucketName),
-		CreateBucketConfiguration: &types.CreateBucketConfiguration{
-			LocationConstraint: types.BucketLocationConstraint(c.region),
-		},
 	}
-	_, err := client.CreateBucket(context.TODO(), input)
 
+	// us-east-1 is AWS's special default: the API rejects any LocationConstraint
+	// for it. All other regions require a LocationConstraint. The operator is
+	// responsible for providing the correct region via the tile UI (the UI
+	// already states that region is required for any non-us-east-1 endpoint).
+	if c.region != "" && c.region != "us-east-1" {
+		input.CreateBucketConfiguration = &types.CreateBucketConfiguration{
+			LocationConstraint: types.BucketLocationConstraint(c.region),
+		}
+	}
+
+	_, err := client.CreateBucket(context.TODO(), input)
 	return err
 }
 
-func CreateS3Client(sessionLogger lager.Logger, accessKey, secretKey, endpointURL, region string) (*s3.Client, error) {
+func CreateS3Client(sessionLogger lager.Logger, accessKey, secretKey, endpointURL, region string, usePathStyle bool) (*s3.Client, error) {
 	if len(region) == 0 {
-		sessionLogger.Info("CreateS3Client: ===warning=== region is empty. therefore using default region us-west-2")
-		region = "us-west-2"
+		region = "us-east-1"
+		sessionLogger.Info("CreateS3Client: region is empty, defaulting to us-east-1")
 	}
 
-	customResolver := aws.EndpointResolverWithOptionsFunc(func(service, region string, options ...interface{}) (aws.Endpoint, error) {
-		return aws.Endpoint{
-			URL:           endpointURL,
-			SigningRegion: region,
-			Source:        aws.EndpointSourceCustom,
-		}, nil
-	})
+	// Only send the x-amz-content-sha256 checksum header when the S3 server
+	// explicitly requires it. The default WhenSupported sends it unconditionally,
+	// which causes HTTP 400 (XAmzContentSHA256Mismatch) on non-AWS S3-compatible
+	// endpoints that do not support the header.
+	checksumOpt := config.WithRequestChecksumCalculation(aws.RequestChecksumCalculationWhenRequired)
 
 	var cfg aws.Config
 	var err error
@@ -156,21 +163,34 @@ func CreateS3Client(sessionLogger lager.Logger, accessKey, secretKey, endpointUR
 		cfg, err = config.LoadDefaultConfig(
 			context.TODO(),
 			config.WithRegion(region),
-			config.WithCredentialsProvider(credentials.NewStaticCredentialsProvider(accessKey, secretKey, "")))
+			config.WithCredentialsProvider(credentials.NewStaticCredentialsProvider(accessKey, secretKey, "")),
+			checksumOpt)
 	} else {
 		sessionLogger.Info("using a custom endpoint is deprecated with the aws sdk")
+		customResolver := aws.EndpointResolverWithOptionsFunc(func(service, region string, options ...interface{}) (aws.Endpoint, error) {
+			return aws.Endpoint{
+				URL:           endpointURL,
+				SigningRegion: region,
+				Source:        aws.EndpointSourceCustom,
+			}, nil
+		})
 		cfg, err = config.LoadDefaultConfig(
 			context.TODO(),
 			config.WithRegion(region),
 			config.WithCredentialsProvider(credentials.NewStaticCredentialsProvider(accessKey, secretKey, "")),
-			config.WithEndpointResolverWithOptions(customResolver))
+			config.WithEndpointResolverWithOptions(customResolver),
+			checksumOpt)
 	}
 
 	if err != nil {
-		return nil, fmt.Errorf("UploadDir: failed to load SDK configuration, %v", err)
+		return nil, fmt.Errorf("CreateS3Client: failed to load SDK configuration, %v", err)
 	}
 
-	client := s3.NewFromConfig(cfg)
+	var clientOpts []func(*s3.Options)
+	if usePathStyle {
+		clientOpts = append(clientOpts, func(o *s3.Options) { o.UsePathStyle = true })
+	}
+	client := s3.NewFromConfig(cfg, clientOpts...)
 
 	return client, nil
 }
@@ -184,7 +204,7 @@ func (c *S3CliClient) Upload(localPath string, sessionLogger lager.Logger, proce
 
 	sessionLogger.Info(fmt.Sprintf("about to upload %s to S3 remote path %s", localPath, remotePath))
 
-	client, err := CreateS3Client(sessionLogger, c.accessKey, c.secretKey, c.endpointURL, c.region)
+	client, err := CreateS3Client(sessionLogger, c.accessKey, c.secretKey, c.endpointURL, c.region, c.usePathStyle)
 	if err != nil {
 		return fmt.Errorf("upload: couldn't create client: %v", err)
 	}
@@ -227,7 +247,13 @@ func (c *S3CliClient) UploadFile(logger lager.Logger, client *s3.Client, localFi
 }
 
 func (c *S3CliClient) UploadDir(client *s3.Client, logger lager.Logger, localDir string, remotePath string) error {
-	err := filepath.Walk(localDir, func(filePath string, d os.FileInfo, err error) error {
+	var uploadErrors []error
+
+	walkErr := filepath.Walk(localDir, func(filePath string, d os.FileInfo, err error) error {
+		if err != nil {
+			uploadErrors = append(uploadErrors, fmt.Errorf("walk error at %s: %v", filePath, err))
+			return nil
+		}
 		if d.IsDir() {
 			return nil
 		}
@@ -235,10 +261,17 @@ func (c *S3CliClient) UploadDir(client *s3.Client, logger lager.Logger, localDir
 		relativeFilePath := strings.Replace(filePath, localDir, "", -1)
 		remoteFilePath := filepath.Join(remotePath, relativeFilePath)
 
-		return c.UploadFile(logger, client, filePath, remoteFilePath)
+		if ferr := c.UploadFile(logger, client, filePath, remoteFilePath); ferr != nil {
+			uploadErrors = append(uploadErrors, ferr)
+		}
+		return nil
 	})
-	if err != nil {
-		return fmt.Errorf("UploadDir: failed to walk dir, %v", err)
+
+	if walkErr != nil {
+		return fmt.Errorf("UploadDir: failed to walk dir, %v", walkErr)
+	}
+	if len(uploadErrors) > 0 {
+		return fmt.Errorf("UploadDir: %d file(s) failed to upload: %v", len(uploadErrors), uploadErrors)
 	}
 
 	return nil

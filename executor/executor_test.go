@@ -153,10 +153,10 @@ var _ = Describe("Executor", func() {
 			})
 
 			It("returns an error", func() {
-				Expect(executeErr).To(MatchError("some failure"))
-				Expect(executeErr).To(BeAssignableToTypeOf(executor.ServiceInstanceError{}))
-				Expect(executeErr.(executor.ServiceInstanceError).ServiceInstanceID).To(Equal(""))
-			})
+			Expect(executeErr).To(MatchError("some failure"))
+			Expect(executeErr).To(BeAssignableToTypeOf(executor.ServiceInstanceError{}))
+			Expect(executeErr.(executor.ServiceInstanceError).ServiceInstanceID).To(Equal(""))
+		})
 
 			Context("when the service identifier command is set", func() {
 				BeforeEach(func() {

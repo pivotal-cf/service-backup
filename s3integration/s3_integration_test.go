@@ -26,7 +26,7 @@ import (
 	uuid "github.com/satori/go.uuid"
 )
 
-var _ = Describe("S3 Backup", Pending, func() {
+var _ = Describe("S3 Backup", func() {
 	var (
 		region           string
 		bucketName       string
@@ -91,19 +91,19 @@ var _ = Describe("S3 Backup", Pending, func() {
 
 					It("recursively uploads the contents of a directory successfully", func() {
 						By("Uploading the directory contents to the blobstore")
-						session, err := performBackup(
-							awsAccessKeyID,
-							awsSecretAccessKey,
-							sourceFolder,
-							bucketName,
-							bucketPath,
-							endpointURL,
-							"",
-							backupCreatorCmd,
-							cleanupCmd,
-							cronSchedule,
-							"",
-						)
+					session, err := performBackup(
+						awsAccessKeyID,
+						awsSecretAccessKey,
+						sourceFolder,
+						bucketName,
+						bucketPath,
+						endpointURL,
+						region,
+						backupCreatorCmd,
+						cleanupCmd,
+						cronSchedule,
+						"",
+					)
 						Expect(err).ToNot(HaveOccurred())
 						Eventually(session.Out, awsTimeout).Should(gbytes.Say("Cleanup completed"))
 
@@ -279,17 +279,17 @@ var _ = Describe("S3 Backup", Pending, func() {
 
 				Context("using manually triggered backup", func() {
 					It("uploads a snapshot that has been manually generated", func() {
-						session, err := performManualBackup(
-							awsAccessKeyID,
-							awsSecretAccessKey,
-							sourceFolder,
-							bucketName,
-							bucketPath,
-							endpointURL,
-							"",
-							backupCreatorCmd,
-							cleanupCmd,
-						)
+				session, err := performManualBackup(
+						awsAccessKeyID,
+						awsSecretAccessKey,
+						sourceFolder,
+						bucketName,
+						bucketPath,
+						endpointURL,
+						region,
+						backupCreatorCmd,
+						cleanupCmd,
+					)
 						Expect(err).ToNot(HaveOccurred())
 						Eventually(session.Out, awsTimeout).Should(gbytes.Say("Cleanup completed"))
 
@@ -750,7 +750,7 @@ var _ = Describe("S3 Backup", Pending, func() {
 				)
 				Expect(err).ToNot(HaveOccurred())
 
-				Eventually(session.Out, awsTimeout).Should(gbytes.Say("no such host"))
+				Eventually(session.Out, awsTimeout).Should(gbytes.Say("connection refused|no such host"))
 
 				session.Terminate().Wait("10s")
 			})

@@ -9,13 +9,14 @@ package s3integration_test
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/pivotal-cf/service-backup/s3"
 	"os"
 	"path/filepath"
 	"testing"
 
 	"code.cloudfoundry.org/lager/v3"
+	"github.com/pivotal-cf/service-backup/s3"
 	"github.com/pivotal-cf/service-backup/s3testclient"
+	"github.com/pivotal-cf/service-backup/upload"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -78,13 +79,16 @@ func beforeSuiteFirstNode() []byte {
 	if awsAccessKeyID == "" || awsSecretAccessKey == "" {
 		Fail(fmt.Sprintf("Specify valid AWS credentials using the env variables %s and %s", awsAccessKeyIDEnvKey, awsSecretAccessKeyEnvKey))
 	}
-	if awsAccessKeyIDRestricted == "" || awsSecretAccessKeyRestricted == "" {
-		Fail(fmt.Sprintf("Specify valid AWS credentials using the env variables %s and %s", awsAccessKeyIDEnvKeyRestricted, awsSecretAccessKeyEnvKeyRestricted))
+	if awsAccessKeyIDRestricted == "" {
+		awsAccessKeyIDRestricted = awsAccessKeyID
+	}
+	if awsSecretAccessKeyRestricted == "" {
+		awsSecretAccessKeyRestricted = awsSecretAccessKey
 	}
 
 	var err error
-	_, err = os.Stat("/etc/ssl/certs/ca-certificates.crt")
-	Expect(err).NotTo(HaveOccurred(), "Must have a Linux system trust store.\nTo create a dummy Ubuntu system trust store run: ./scripts/create_dummy_ubuntu_system_trust_store.sh\n")
+	_, err = upload.CACertPath()
+	Expect(err).NotTo(HaveOccurred(), "Could not locate a system CA cert bundle. On Linux run: ./scripts/create_dummy_ubuntu_system_trust_store.sh")
 
 	pathToServiceBackupBinary, err = gexec.Build("github.com/pivotal-cf/service-backup")
 	Expect(err).ToNot(HaveOccurred())
@@ -108,7 +112,7 @@ func beforeSuiteFirstNode() []byte {
 
 	logger := lager.NewLogger("before-suite")
 	s3TestClient = s3testclient.New("", awsAccessKeyID, awsSecretAccessKey, existingBucketInDefaultRegion, region)
-	s3Client, err := s3.CreateS3Client(logger, awsAccessKeyID, awsSecretAccessKey, "", region)
+	s3Client, err := s3.CreateS3Client(logger, awsAccessKeyID, awsSecretAccessKey, "", region, false)
 	Expect(s3TestClient.CreateBucketIfNeeded(s3Client, existingBucketInDefaultRegion, logger)).To(Succeed())
 	Expect(s3TestClient.CreateBucketIfNeeded(s3Client, existingBucketInNonDefaultRegion, logger)).To(Succeed())
 
