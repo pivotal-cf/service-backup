@@ -32,7 +32,7 @@ import (
 
 var _ = Describe("release tests", func() {
 	const (
-		bucketName       = "cf-redis-service-backup-test"
+		bucketName       = "pcf-redis-service-backup-release-test"
 		testPath         = "release-tests"
 		testSourceFolder = "/tmp/to_upload/"
 		region           = "us-west-2"

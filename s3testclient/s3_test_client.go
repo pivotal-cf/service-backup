@@ -27,7 +27,7 @@ func New(endpointURL, accessKeyID, secretAccessKey, basePath, region string) *S3
 	caCertPath, err := upload.CACertPath()
 	Expect(err).NotTo(HaveOccurred())
 
-	s3CLIClient := s3.New("s3_test_client", "aws", endpointURL, region, accessKeyID, secretAccessKey, caCertPath, upload.RemotePathFunc(basePath, ""))
+	s3CLIClient := s3.New("s3_test_client", "aws", endpointURL, region, accessKeyID, secretAccessKey, caCertPath, false, upload.RemotePathFunc(basePath, ""))
 	s3CLIClient.ProcessMgr = process.NewManager()
 	return &S3TestClient{S3CliClient: s3CLIClient}
 }

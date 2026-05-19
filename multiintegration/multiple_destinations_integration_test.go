@@ -236,7 +236,7 @@ destinations:
 - type: s3
   config:
     endpoint_url: ''
-    region: ''
+    region: 'us-west-2'
     bucket_name: %s
     bucket_path: %s
     access_key_id: %s

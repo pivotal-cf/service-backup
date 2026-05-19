@@ -36,6 +36,7 @@ func (b *uploaderFactory) S3(destination config.Destination, caCertPath string) 
 		toString(destination.Config["access_key_id"]),
 		toString(destination.Config["secret_access_key"]),
 		caCertPath,
+		toBool(destination.Config["force_path_style"]),
 		RemotePathFunc(basePath, b.backupConfig.DeploymentName),
 	)
 }
@@ -87,4 +88,11 @@ func toInt(raw interface{}) int {
 		value = v
 	}
 	return value
+}
+
+func toBool(raw interface{}) bool {
+	if v, ok := raw.(bool); ok {
+		return v
+	}
+	return false
 }

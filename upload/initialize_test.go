@@ -40,7 +40,7 @@ var _ = Describe("Initialize", func() {
 				return expectedCACert, nil
 			}
 			backupConfig := backupConfig("s3")
-			factory.S3Returns(s3.New("s3", "", "", "", "", "", "", nil))
+			factory.S3Returns(s3.New("s3", "", "", "", "", "", "", false, nil))
 
 			uploader, err := upload.Initialize(backupConfig, logger, upload.WithUploaderFactory(factory), upload.WithCACertLocator(fakeCACertLocator))
 
