@@ -37,6 +37,7 @@ func (b *uploaderFactory) S3(destination config.Destination, caCertPath string) 
 		toString(destination.Config["secret_access_key"]),
 		caCertPath,
 		toBool(destination.Config["force_path_style"]),
+		toString(destination.Config["checksum_algorithm"]),
 		RemotePathFunc(basePath, b.backupConfig.DeploymentName),
 	)
 }

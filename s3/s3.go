@@ -28,29 +28,52 @@ import (
 )
 
 type S3CliClient struct {
-	name         string
-	awsCmdPath   string
-	accessKey    string
-	secretKey    string
-	endpointURL  string
-	region       string
-	usePathStyle bool
-	caCertPath   string
-	remotePathFn func() string
-	ProcessMgr   process.ProcessManager
+	name              string
+	awsCmdPath        string
+	accessKey         string
+	secretKey         string
+	endpointURL       string
+	region            string
+	usePathStyle      bool
+	caCertPath        string
+	checksumAlgorithm string
+	remotePathFn      func() string
+	ProcessMgr        process.ProcessManager
 }
 
-func New(name, awsCmdPath, endpointURL, region, accessKey, secretKey, caCertPath string, usePathStyle bool, remotePathFn func() string) *S3CliClient {
+func New(name, awsCmdPath, endpointURL, region, accessKey, secretKey, caCertPath string, usePathStyle bool, checksumAlgorithm string, remotePathFn func() string) *S3CliClient {
 	return &S3CliClient{
-		name:         name,
-		awsCmdPath:   awsCmdPath,
-		endpointURL:  endpointURL,
-		region:       region,
-		accessKey:    accessKey,
-		secretKey:    secretKey,
-		usePathStyle: usePathStyle,
-		caCertPath:   caCertPath,
-		remotePathFn: remotePathFn,
+		name:              name,
+		awsCmdPath:        awsCmdPath,
+		endpointURL:       endpointURL,
+		region:            region,
+		accessKey:         accessKey,
+		secretKey:         secretKey,
+		usePathStyle:      usePathStyle,
+		caCertPath:        caCertPath,
+		checksumAlgorithm: checksumAlgorithm,
+		remotePathFn:      remotePathFn,
+	}
+}
+
+// parseChecksumAlgorithm maps the operator-facing checksum_algorithm config
+// value to the AWS SDK's checksum algorithm type. An empty value preserves
+// the existing behavior (no explicit algorithm, relying on
+// RequestChecksumCalculationWhenRequired to suppress unrequested checksums).
+func parseChecksumAlgorithm(raw string) (types.ChecksumAlgorithm, error) {
+	switch strings.ToLower(strings.TrimSpace(raw)) {
+	case "", "none":
+		return "", nil
+	case "crc32":
+		return types.ChecksumAlgorithmCrc32, nil
+	case "crc32c":
+		return types.ChecksumAlgorithmCrc32c, nil
+	case "sha1":
+		return types.ChecksumAlgorithmSha1, nil
+	case "sha256":
+		return types.ChecksumAlgorithmSha256, nil
+	default:
+		return "", fmt.Errorf(`unsupported checksum_algorithm %q: must be one of "", "none", "crc32", "crc32c", "sha1", "sha256"`, raw)
 	}
 }
 
@@ -228,16 +251,24 @@ func (c *S3CliClient) UploadFile(logger lager.Logger, client *s3.Client, localFi
 
 	logger.Info(fmt.Sprintf("S3 putting local file: %s into bucket %s with remote file: %s ", localFilePath, bucketName, remotePath))
 
+	checksumAlgorithm, err := parseChecksumAlgorithm(c.checksumAlgorithm)
+	if err != nil {
+		return fmt.Errorf("UploadFile: %v", err)
+	}
+
 	readFile, err := os.ReadFile(localFilePath)
 	if err != nil {
 		return fmt.Errorf("UploadFile: failed to read local file path: %v", err)
 	}
 	fileReader := bytes.NewReader(readFile)
-	uploader := manager.NewUploader(client)
+	uploader := manager.NewUploader(client, func(u *manager.Uploader) {
+		u.RequestChecksumCalculation = aws.RequestChecksumCalculationWhenRequired
+	})
 	_, err = uploader.Upload(context.TODO(), &s3.PutObjectInput{
-		Bucket: &bucketName,
-		Key:    &remotePath,
-		Body:   fileReader,
+		Bucket:            &bucketName,
+		Key:               &remotePath,
+		Body:              fileReader,
+		ChecksumAlgorithm: checksumAlgorithm,
 	})
 	if err != nil {
 		return fmt.Errorf("UploadFile: failed to put object: %v", err)

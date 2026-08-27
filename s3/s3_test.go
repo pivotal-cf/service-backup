@@ -15,13 +15,12 @@ import (
 	"path/filepath"
 	"strings"
 
+	"code.cloudfoundry.org/lager/v3"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
-	"code.cloudfoundry.org/lager/v3"
 	"github.com/pivotal-cf/service-backup/s3"
 	"github.com/pivotal-cf/service-backup/upload"
 )
-
 
 var _ = Describe("S3", func() {
 	Describe("default arguments", func() {
@@ -40,7 +39,7 @@ var _ = Describe("S3", func() {
 		})
 
 		JustBeforeEach(func() {
-			s3CLIClient := s3.New("destination-name", awsCmdPath, endpointURL, region, accessKey, secretKey, systemTrustStorePath, false, upload.RemotePathFunc("base-path", ""))
+			s3CLIClient := s3.New("destination-name", awsCmdPath, endpointURL, region, accessKey, secretKey, systemTrustStorePath, false, "", upload.RemotePathFunc("base-path", ""))
 			lsCmd = s3CLIClient.S3Cmd("ls", "bucket-name")
 		})
 
@@ -127,7 +126,7 @@ var _ = Describe("S3", func() {
 				client, err := s3.CreateS3Client(logger, "access", "secret", server.URL, "us-east-1", true)
 				Expect(err).NotTo(HaveOccurred())
 
-				s3Client := s3.New("name", "", server.URL, "us-east-1", "access", "secret", "", true, upload.RemotePathFunc("test-bucket", ""))
+				s3Client := s3.New("name", "", server.URL, "us-east-1", "access", "secret", "", true, "", upload.RemotePathFunc("test-bucket", ""))
 				_ = s3Client.CreateBucketIfNeeded(client, "test-bucket/prefix", logger)
 
 				// With path-style, the bucket name appears as the first path segment
@@ -147,7 +146,7 @@ var _ = Describe("S3", func() {
 				Expect(err).NotTo(HaveOccurred())
 				tmpFile.Close()
 
-				s3Client := s3.New("name", "", server.URL, "us-east-1", "access", "secret", "", true, upload.RemotePathFunc("", ""))
+				s3Client := s3.New("name", "", server.URL, "us-east-1", "access", "secret", "", true, "", upload.RemotePathFunc("", ""))
 				_ = s3Client.UploadFile(logger, client, tmpFile.Name(), "test-bucket/test-key")
 
 				// RequestChecksumCalculationWhenRequired suppresses the extra payload checksum headers
@@ -163,6 +162,62 @@ var _ = Describe("S3", func() {
 				Expect(sha256).NotTo(BeEmpty())
 				Expect(sha256).NotTo(Equal("UNSIGNED-PAYLOAD"))
 				Expect(sha256).NotTo(ContainSubstring("STREAMING"))
+			})
+		})
+
+		Context("when checksum_algorithm is explicitly set to sha256", func() {
+			It("sends an explicit SHA256 checksum header, for endpoints that require one", func() {
+				client, err := s3.CreateS3Client(logger, "access", "secret", server.URL, "us-east-1", true)
+				Expect(err).NotTo(HaveOccurred())
+
+				tmpFile, err := os.CreateTemp("", "s3-test-*.txt")
+				Expect(err).NotTo(HaveOccurred())
+				defer os.Remove(tmpFile.Name())
+				_, err = tmpFile.WriteString("test content")
+				Expect(err).NotTo(HaveOccurred())
+				tmpFile.Close()
+
+				s3Client := s3.New("name", "", server.URL, "us-east-1", "access", "secret", "", true, "sha256", upload.RemotePathFunc("", ""))
+				Expect(s3Client.UploadFile(logger, client, tmpFile.Name(), "test-bucket/test-key")).To(Succeed())
+
+				Expect(receivedHeaders.Get("x-amz-sdk-checksum-algorithm")).To(Equal("SHA256"))
+				Expect(receivedHeaders.Get("x-amz-checksum-sha256")).NotTo(BeEmpty())
+			})
+		})
+
+		Context("when checksum_algorithm is not set", func() {
+			It("does not attach an explicit checksum, preserving existing behavior", func() {
+				client, err := s3.CreateS3Client(logger, "access", "secret", server.URL, "us-east-1", true)
+				Expect(err).NotTo(HaveOccurred())
+
+				tmpFile, err := os.CreateTemp("", "s3-test-*.txt")
+				Expect(err).NotTo(HaveOccurred())
+				defer os.Remove(tmpFile.Name())
+				_, err = tmpFile.WriteString("test content")
+				Expect(err).NotTo(HaveOccurred())
+				tmpFile.Close()
+
+				s3Client := s3.New("name", "", server.URL, "us-east-1", "access", "secret", "", true, "", upload.RemotePathFunc("", ""))
+				Expect(s3Client.UploadFile(logger, client, tmpFile.Name(), "test-bucket/test-key")).To(Succeed())
+
+				Expect(receivedHeaders.Get("x-amz-sdk-checksum-algorithm")).To(BeEmpty())
+			})
+		})
+
+		Context("when checksum_algorithm is set to an unsupported value", func() {
+			It("fails fast with a clear error instead of silently ignoring it", func() {
+				client, err := s3.CreateS3Client(logger, "access", "secret", server.URL, "us-east-1", true)
+				Expect(err).NotTo(HaveOccurred())
+
+				tmpFile, err := os.CreateTemp("", "s3-test-*.txt")
+				Expect(err).NotTo(HaveOccurred())
+				defer os.Remove(tmpFile.Name())
+				tmpFile.Close()
+
+				s3Client := s3.New("name", "", server.URL, "us-east-1", "access", "secret", "", true, "md5", upload.RemotePathFunc("", ""))
+				uploadErr := s3Client.UploadFile(logger, client, tmpFile.Name(), "test-bucket/test-key")
+
+				Expect(uploadErr).To(MatchError(ContainSubstring(`unsupported checksum_algorithm "md5"`)))
 			})
 		})
 
@@ -221,7 +276,7 @@ var _ = Describe("S3", func() {
 				client, err := s3.CreateS3Client(logger, "access", "secret", server.URL, "us-east-1", true)
 				Expect(err).NotTo(HaveOccurred())
 
-				s3Client := s3.New("name", "", server.URL, "us-east-1", "access", "secret", "", true, upload.RemotePathFunc("", ""))
+				s3Client := s3.New("name", "", server.URL, "us-east-1", "access", "secret", "", true, "", upload.RemotePathFunc("", ""))
 				uploadErr := s3Client.UploadDir(client, logger, uploadDir, "test-bucket/prefix")
 
 				// Error is returned
@@ -244,7 +299,7 @@ var _ = Describe("S3", func() {
 				client, err := s3.CreateS3Client(logger, "access", "secret", server.URL, "us-east-1", true)
 				Expect(err).NotTo(HaveOccurred())
 
-				s3Client := s3.New("name", "", server.URL, "us-east-1", "access", "secret", "", true, upload.RemotePathFunc("", ""))
+				s3Client := s3.New("name", "", server.URL, "us-east-1", "access", "secret", "", true, "", upload.RemotePathFunc("", ""))
 				Expect(s3Client.UploadDir(client, logger, uploadDir, "test-bucket/prefix")).To(Succeed())
 			})
 		})
