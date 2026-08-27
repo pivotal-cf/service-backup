@@ -173,6 +173,86 @@ var _ = Describe("S3", func() {
 				Expect(client).NotTo(BeNil())
 			})
 		})
+
+		Context("when the endpoint rejects the first attempt for lacking a checksum algorithm", func() {
+			It("retries automatically with an explicit SHA256 checksum and succeeds, with no configuration required", func() {
+				var attempts []http.Header
+
+				server.Close()
+				server = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+					if r.Method != http.MethodPut || !strings.Contains(r.URL.Path, "test-key") {
+						w.WriteHeader(http.StatusOK)
+						return
+					}
+
+					attempts = append(attempts, r.Header.Clone())
+					if len(attempts) == 1 {
+						w.Header().Set("Content-Type", "application/xml")
+						w.WriteHeader(http.StatusBadRequest)
+						fmt.Fprint(w, `<?xml version="1.0" encoding="UTF-8"?>`+
+							`<Error><Code>InvalidRequest</Code>`+
+							`<Message>The checksum algorithm must SHA256</Message>`+
+							`<RequestId>test-request-id</RequestId></Error>`)
+						return
+					}
+					w.WriteHeader(http.StatusOK)
+				}))
+
+				client, err := s3.CreateS3Client(logger, "access", "secret", server.URL, "us-east-1", true)
+				Expect(err).NotTo(HaveOccurred())
+
+				tmpFile, err := os.CreateTemp("", "s3-test-*.txt")
+				Expect(err).NotTo(HaveOccurred())
+				defer os.Remove(tmpFile.Name())
+				_, err = tmpFile.WriteString("test content")
+				Expect(err).NotTo(HaveOccurred())
+				tmpFile.Close()
+
+				s3Client := s3.New("name", "", server.URL, "us-east-1", "access", "secret", "", true, upload.RemotePathFunc("", ""))
+				err = s3Client.UploadFile(logger, client, tmpFile.Name(), "test-bucket/test-key")
+
+				Expect(err).NotTo(HaveOccurred())
+				Expect(attempts).To(HaveLen(2), "expected exactly one retry after the first rejection")
+				Expect(attempts[0].Get("x-amz-checksum-sha256")).To(BeEmpty(), "first attempt should not carry an explicit checksum")
+				Expect(attempts[1].Get("x-amz-checksum-sha256")).NotTo(BeEmpty(), "retry should carry an explicit SHA256 checksum")
+			})
+		})
+
+		Context("when the endpoint rejects every attempt, including the SHA256 retry", func() {
+			It("returns the underlying error rather than retrying indefinitely", func() {
+				var attemptCount int
+
+				server.Close()
+				server = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+					if r.Method != http.MethodPut || !strings.Contains(r.URL.Path, "test-key") {
+						w.WriteHeader(http.StatusOK)
+						return
+					}
+
+					attemptCount++
+					w.Header().Set("Content-Type", "application/xml")
+					w.WriteHeader(http.StatusBadRequest)
+					fmt.Fprint(w, `<?xml version="1.0" encoding="UTF-8"?>`+
+						`<Error><Code>InvalidRequest</Code>`+
+						`<Message>The checksum algorithm must SHA256</Message>`+
+						`<RequestId>test-request-id</RequestId></Error>`)
+				}))
+
+				client, err := s3.CreateS3Client(logger, "access", "secret", server.URL, "us-east-1", true)
+				Expect(err).NotTo(HaveOccurred())
+
+				tmpFile, err := os.CreateTemp("", "s3-test-*.txt")
+				Expect(err).NotTo(HaveOccurred())
+				defer os.Remove(tmpFile.Name())
+				tmpFile.Close()
+
+				s3Client := s3.New("name", "", server.URL, "us-east-1", "access", "secret", "", true, upload.RemotePathFunc("", ""))
+				err = s3Client.UploadFile(logger, client, tmpFile.Name(), "test-bucket/test-key")
+
+				Expect(err).To(MatchError(ContainSubstring("InvalidRequest: The checksum algorithm must SHA256")))
+				Expect(attemptCount).To(Equal(2), "expected the initial attempt plus exactly one retry, not an infinite loop")
+			})
+		})
 	})
 
 	Describe("UploadDir", func() {
