@@ -18,6 +18,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/aws/aws-sdk-go-v2/service/s3/types"
 	"github.com/aws/smithy-go"
+	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -233,17 +234,66 @@ func (c *S3CliClient) UploadFile(logger lager.Logger, client *s3.Client, localFi
 		return fmt.Errorf("UploadFile: failed to read local file path: %v", err)
 	}
 	fileReader := bytes.NewReader(readFile)
-	uploader := manager.NewUploader(client)
+
+	// manager.Uploader has its own RequestChecksumCalculation setting that
+	// does NOT inherit from the *s3.Client's config (set in CreateS3Client) -
+	// it defaults to WhenSupported independently. Without this, PutObject/
+	// CreateMultipartUpload/UploadPart calls made through the uploader still
+	// carry an unrequested CRC32 checksum header regardless of the client
+	// config, which strict S3-compatible endpoints (e.g. Huawei OceanStor
+	// Pacific) reject.
+	uploader := manager.NewUploader(client, func(u *manager.Uploader) {
+		u.RequestChecksumCalculation = aws.RequestChecksumCalculationWhenRequired
+	})
+
 	_, err = uploader.Upload(context.TODO(), &s3.PutObjectInput{
 		Bucket: &bucketName,
 		Key:    &remotePath,
 		Body:   fileReader,
 	})
+
+	if err != nil && isChecksumAlgorithmRejection(err) {
+		// Some endpoints reject a request that carries no checksum at all,
+		// rather than merely rejecting the wrong algorithm. Retry once with
+		// an explicit SHA256 checksum, which every S3-compatible
+		// implementation we're aware of accepts.
+		logger.Info("upload rejected due to a missing/unsupported checksum algorithm; retrying with an explicit SHA256 checksum", lager.Data{
+			"bucket": bucketName,
+			"key":    remotePath,
+		})
+
+		if _, seekErr := fileReader.Seek(0, io.SeekStart); seekErr != nil {
+			return fmt.Errorf("UploadFile: failed to rewind file for checksum retry: %v", seekErr)
+		}
+
+		_, err = uploader.Upload(context.TODO(), &s3.PutObjectInput{
+			Bucket:            &bucketName,
+			Key:               &remotePath,
+			Body:              fileReader,
+			ChecksumAlgorithm: types.ChecksumAlgorithmSha256,
+		})
+	}
+
 	if err != nil {
 		return fmt.Errorf("UploadFile: failed to put object: %v", err)
 	}
 
 	return nil
+}
+
+// isChecksumAlgorithmRejection reports whether err is the class of error some
+// strict S3-compatible endpoints (e.g. Huawei OceanStor Pacific) return when
+// they require an explicit checksum algorithm on the request rather than
+// accepting the absence of one, e.g.:
+//
+//	InvalidRequest: The checksum algorithm must SHA256
+func isChecksumAlgorithmRejection(err error) bool {
+	var apiErr smithy.APIError
+	if !errors.As(err, &apiErr) {
+		return false
+	}
+	return apiErr.ErrorCode() == "InvalidRequest" &&
+		strings.Contains(strings.ToLower(apiErr.ErrorMessage()), "checksum")
 }
 
 func (c *S3CliClient) UploadDir(client *s3.Client, logger lager.Logger, localDir string, remotePath string) error {
