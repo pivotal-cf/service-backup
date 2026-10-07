@@ -1,12 +1,102 @@
 # Changes
 
 
+## [1.69.0](https://github.com/googleapis/google-cloud-go/compare/storage/v1.68.0...storage/v1.69.0) (2026-10-01)
+
+
+### Features
+
+* **all:** Update supported go versions ([#20520](https://github.com/googleapis/google-cloud-go/issues/20520)) ([90413d3](https://github.com/googleapis/google-cloud-go/commit/90413d3e9d381ef4b92e3c496d98b023c5b2d8cc))
+* **storage:** Add read stall retry for gRPC storage client ([#20525](https://github.com/googleapis/google-cloud-go/issues/20525)) ([8bfc486](https://github.com/googleapis/google-cloud-go/commit/8bfc4863da4151976a5e4629ef9dce429edb43d5))
+
+
+### Bug Fixes
+
+* **storage:** Add App Hub storage.googleapis.com prefix to destination.id ([#20569](https://github.com/googleapis/google-cloud-go/issues/20569)) ([2bca92a](https://github.com/googleapis/google-cloud-go/commit/2bca92a333bcadaa78b7c3b841e5a293e3a681d7))
+* **storage:** Follow-ups for read stall retry ([#20577](https://github.com/googleapis/google-cloud-go/issues/20577)) ([24eacd5](https://github.com/googleapis/google-cloud-go/commit/24eacd52ffc1697341d5f6a8380abc656292367a))
+* **storage:** Update PartSize documentation and optimize cleanup ([#19930](https://github.com/googleapis/google-cloud-go/issues/19930)) ([3d09abf](https://github.com/googleapis/google-cloud-go/commit/3d09abf7dd357cbf5c1022a7e65c7859d617ccd6))
+* **various:** Address format directive issues ([#20547](https://github.com/googleapis/google-cloud-go/issues/20547)) ([e2e1047](https://github.com/googleapis/google-cloud-go/commit/e2e104731999b3bfc75ed0b8f2d71844ced3b073))
+
+## [1.68.0](https://github.com/googleapis/google-cloud-go/compare/storage/v1.67.1...storage/v1.68.0) (2026-09-17)
+
+
+### Bug Fixes
+
+* **storage:** Minor documentation fixes ([#20531](https://github.com/googleapis/google-cloud-go/issues/20531)) ([8a55dee](https://github.com/googleapis/google-cloud-go/commit/8a55dee7d694d1b0b35f9eaff8a0517bffec320d))
+
+## [1.67.1](https://github.com/googleapis/google-cloud-go/compare/storage/v1.67.0...storage/v1.67.1) (2026-09-07)
+
+
+### Bug Fixes
+
+* **storage:** Prevent panic when MultiRangeDownloader callback is nil ([#20377](https://github.com/googleapis/google-cloud-go/issues/20377)) ([a85e955](https://github.com/googleapis/google-cloud-go/commit/a85e955cacb0e4c9dd05165b8b3c02049e9e3a47))
+
+## [1.67.0](https://github.com/googleapis/google-cloud-go/compare/storage/v1.66.0...storage/v1.67.0) (2026-09-03)
+
+
+### Features
+
+* **storage:** Promote WithGRPCBidiReads and WithGRPCAppendableUploads out of experimental ([#20387](https://github.com/googleapis/google-cloud-go/issues/20387)) ([de23089](https://github.com/googleapis/google-cloud-go/commit/de230896bd59c6f34e763369fb92e1ee8df3548b))
+
+## [1.66.0](https://github.com/googleapis/google-cloud-go/compare/storage/v1.65.1...storage/v1.66.0) (2026-08-26)
+
+
+### Features
+
+* Update API sources and regenerate ([#20427](https://github.com/googleapis/google-cloud-go/issues/20427)) ([eb07af9](https://github.com/googleapis/google-cloud-go/commit/eb07af97288cb3446ef50ff1806c7bc12d5c6350))
+
+## [1.65.1](https://github.com/googleapis/google-cloud-go/compare/storage/v1.65.0...storage/v1.65.1) (2026-08-25)
+
+
+### Bug Fixes
+
+* **storage:** Enforce gRPC writer chunk retry deadlines by tying timers to server acks ([#20059](https://github.com/googleapis/google-cloud-go/issues/20059)) ([dbb5f6f](https://github.com/googleapis/google-cloud-go/commit/dbb5f6f6dc0f554f41219fecc52b01f25e8d2ffb))
+
+## [1.65.0](https://github.com/googleapis/google-cloud-go/compare/storage/v1.64.0...storage/v1.65.0) (2026-08-14)
+
+
+### Features
+
+* Update API sources and regenerate ([#20252](https://github.com/googleapis/google-cloud-go/issues/20252)) ([ac017a0](https://github.com/googleapis/google-cloud-go/commit/ac017a0d30ec2d42db35f7d3b5ea7fb20b4b860a))
+* Update API sources and regenerate ([#20369](https://github.com/googleapis/google-cloud-go/issues/20369)) ([bfe3aaf](https://github.com/googleapis/google-cloud-go/commit/bfe3aafc49e0c13815aa0401b1eba47aef4511df))
+
+## [1.64.0](https://github.com/googleapis/google-cloud-go/compare/storage/v1.63.1...storage/v1.64.0) (2026-07-21)
+
+
+### Features
+
+* **storage:** Accept CRC32C for appendable objects ([#20104](https://github.com/googleapis/google-cloud-go/issues/20104)) ([1b2f5af](https://github.com/googleapis/google-cloud-go/commit/1b2f5afa0fe0f159edbc7184467928ebbd8720e2))
+
+## [1.63.1](https://github.com/googleapis/google-cloud-go/compare/storage/v1.63.0...storage/v1.63.1) (2026-07-13)
+
+
+### Features
+
+* **o11y:** Regenerate clients for LRO tracing ([#20107](https://github.com/googleapis/google-cloud-go/issues/20107)) ([779074e](https://github.com/googleapis/google-cloud-go/commit/779074edd267a26520bae459307660953129eb07))
+
+
+### Bug Fixes
+
+* **storage:** Minor documentation fix ([#20139](https://github.com/googleapis/google-cloud-go/issues/20139)) ([37f1745](https://github.com/googleapis/google-cloud-go/commit/37f17453d73ad7abbc424f51b51ff82f8004c5b2))
+
+## [1.63.0](https://github.com/googleapis/google-cloud-go/compare/storage/v1.62.2...storage/v1.63.0) (2026-06-25)
+
+
+### Features
+
+* **go:** Add full object checksum for negative offsets &gt; size ([#20026](https://github.com/googleapis/google-cloud-go/issues/20026)) ([a04d980](https://github.com/googleapis/google-cloud-go/commit/a04d9809f8897195d796f4323d36e6880c0e02e8))
+* **storage:** Add client feature tracking in HTTP client ([#14691](https://github.com/googleapis/google-cloud-go/issues/14691)) ([319cc4c](https://github.com/googleapis/google-cloud-go/commit/319cc4c868f17196249d51faaecf91e58876ddba))
+* **storage:** App Centric Observability ([#14685](https://github.com/googleapis/google-cloud-go/issues/14685)) ([c3273bb](https://github.com/googleapis/google-cloud-go/commit/c3273bbf15b0d093dbb4e0bc62d22d26f273dbe5))
+* **storage:** Read checksums in gRPC partial reads ([#14586](https://github.com/googleapis/google-cloud-go/issues/14586)) ([d29f68a](https://github.com/googleapis/google-cloud-go/commit/d29f68afa17d1b874c374c97642afaaf0958a929))
+* **storage:** Support deleteSourceObjects option in object compose ([#14704](https://github.com/googleapis/google-cloud-go/issues/14704)) ([0d2d680](https://github.com/googleapis/google-cloud-go/commit/0d2d68046cae33909028c0c116c4743f72cc00f5))
+* Update API sources and regenerate ([#14701](https://github.com/googleapis/google-cloud-go/issues/14701)) ([a9b7921](https://github.com/googleapis/google-cloud-go/commit/a9b7921551e9c1535496731da53e880e9e364efa))
+
 ## [1.62.3](https://github.com/googleapis/google-cloud-go/releases/tag/storage%2Fv1.62.3) (2026-06-03)
 
 ### Bug Fixes
 
-* add server closed idle connection to retriable errors (#14594) ([20b37d6](https://github.com/googleapis/google-cloud-go/commit/20b37d65d56d4b5e7b8d43b1f6b2ddefcd8944be))
-* fix race condition during retries in gRPC writer (#14649) ([04b6c63](https://github.com/googleapis/google-cloud-go/commit/04b6c635c09de1772fcefd8a7fd5e4ffdd370b79))
+* **storage:** Add server closed idle connection to retriable errors ([#14594](https://github.com/googleapis/google-cloud-go/issues/14594)) ([a6bd392](https://github.com/googleapis/google-cloud-go/commit/a6bd39257d261f74680c909c24102ca6f69989b9))
+* **storage:** Fix race condition during retries in gRPC writer ([#14649](https://github.com/googleapis/google-cloud-go/issues/14649)) ([c781a75](https://github.com/googleapis/google-cloud-go/commit/c781a7535f87377bb7d0b47fc82ad0bb330faf29))
 
 ## [1.62.2](https://github.com/googleapis/google-cloud-go/releases/tag/storage%2Fv1.62.2) (2026-05-18)
 
@@ -41,18 +131,6 @@
 ### Documentation
 
 * Update `EnableParallelUpload` documentation in `writer.go` (#14328) ([22d0749](http://github.com/googleapis/google-cloud-go/commit/22d0749f8fdbeaa34f2a836b63510bd0c3def990))
-
-## [1.61.5](https://github.com/googleapis/google-cloud-go/releases/tag/storage%2Fv1.61.5) (2026-06-01)
-
-### Bug Fixes
-
-* fix race condition during retries in gRPC writer (#14649) ([e87213b](https://github.com/googleapis/google-cloud-go/commit/e87213b78affff3aafb6ee0ecd542d65719e5c5c))
-
-## [1.61.4](https://github.com/googleapis/google-cloud-go/releases/tag/storage%2Fv1.61.4) (2026-05-21)
-
-### Bug Fixes
-
-* add server closed idle connection to retriable errors (#14594) ([37580e7](https://github.com/googleapis/google-cloud-go/commit/37580e7eb530bbcf54951425947060c51cb0b30a))
 
 ## [1.61.3](https://github.com/googleapis/google-cloud-go/releases/tag/storage%2Fv1.61.3) (2026-03-13)
 
