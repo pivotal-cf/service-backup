@@ -1,6 +1,6 @@
 module github.com/pivotal-cf/service-backup
 
-go 1.27
+go 1.27.1
 
 require (
 	cloud.google.com/go/storage v1.69.0
